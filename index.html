@@ -7767,6 +7767,7 @@ function _inWeek(iso, wk) {
 }
 function _mmdd(d) { return _isoDate(d).slice(5).replace('-', '/'); }
 
+const _PROMO_STAGE_LABELS = { draft:'信件草稿', waiting:'等待回覆', needcheck:'需求確認', trial:'試用中', recommending:'薦購中', discuss:'方案討論', prepquote:'準備報價', pause:'暫結案', closed:'已成案' };
 const _MILESTONE_LABELS = [
   ['contractReceivedAt', '收到合約電子檔'],
   ['deliveryOrderSubmittedAt', '出貨單完成'],
@@ -7798,7 +7799,7 @@ function _buildWeeklyData() {
     const cname = clientMap[r.clientId]?.shortName || r.clientName || '客戶';
     const doneThisWeek = (r.actions || []).filter(a => a.done && _inWeek(a.date, wk));
     if (doneThisWeek.length) {
-      highlights.push({ text: `${cname} ${r.product || ''}：${r.stage || '推廣中'}（本週完成 ${doneThisWeek.length} 項行動）`, checked: false });
+      highlights.push({ text: `${cname} ${r.product || ''}：${_PROMO_STAGE_LABELS[r.stage] || r.stage || '推廣中'}（本週完成 ${doneThisWeek.length} 項行動）`, checked: false });
     }
   });
 
@@ -7808,10 +7809,10 @@ function _buildWeeklyData() {
     (promo.records || []).forEach(r => {
       const rtype = r.type === '續訂' ? '續訂' : '新訂';
       if (rtype !== type) return;
-      if (r.stage === '已成案') return;
+      if (r.stage === 'closed' || r.stage === '已成案') return;
       const cname = clientMap[r.clientId]?.shortName || r.clientName || '未分類';
       const active = (r.actions || []).some(a => _inWeek(a.date, wk));
-      (byClient[cname] = byClient[cname] || []).push(`${r.product || '—'}：${r.stage || '—'}${active ? '　●本週有動' : ''}`);
+      (byClient[cname] = byClient[cname] || []).push(`${r.product || '—'}：${_PROMO_STAGE_LABELS[r.stage] || r.stage || '—'}${active ? '　●本週有動' : ''}`);
     });
     return byClient;
   }
