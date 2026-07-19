@@ -7752,7 +7752,7 @@ document.getElementById('orderSearchInput').addEventListener('input', e => runOr
 // ══════════════════════════════════════════════
 //  📄 生成週報（A 重點半自動 / B 手寫 / C 全自動）
 // ══════════════════════════════════════════════
-function _weekRange() {
+function _wrWeekRange() {
   const now = new Date(); now.setHours(0,0,0,0);
   const dow = now.getDay(); // 0=日
   const monday = new Date(now);
@@ -7775,7 +7775,7 @@ const _MILESTONE_LABELS = [
 ];
 
 function _buildWeeklyData() {
-  const wk = _weekRange();
+  const wk = _wrWeekRange();
   const db = dbLoad();
   const clientMap = {};
   db.clients.forEach(c => clientMap[c.id] = c);
