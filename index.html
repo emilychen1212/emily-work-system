@@ -5681,7 +5681,7 @@ function refreshDashboardContent() {
       <div class="db-section-title">
         ${weekLabel}
         ${isNextWeek ? '<span style="font-size:11px;font-weight:400;color:var(--warning);margin-left:8px;">週末預覽</span>' : ''}
-        <button class="db-refresh-btn" id="dbRefreshBtn">↻ 重新整理</button>
+        <button class="db-refresh-btn" id="dbWeeklyBtn" style="margin-right:6px;">📄 生成週報</button><button class="db-refresh-btn" id="dbRefreshBtn">↻ 重新整理</button>
       </div>
 
       <div class="db-summary-bar">
@@ -5701,6 +5701,7 @@ function refreshDashboardContent() {
     </div>`;
 
   page.querySelector('#dbRefreshBtn')?.addEventListener('click', renderDashboardPage);
+  page.querySelector('#dbWeeklyBtn')?.addEventListener('click', openWeeklyReport);
   page.querySelector('#dbUnscheduledRow')?.addEventListener('click', () => document.getElementById('workBtn').click());
 
   const grid = page.querySelector('#dbWeekGrid');
@@ -7746,6 +7747,161 @@ function runOrderSearch(q) {
 }
 
 document.getElementById('orderSearchInput').addEventListener('input', e => runOrderSearch(e.target.value.trim()));
+
+
+// ══════════════════════════════════════════════
+//  📄 生成週報（A 重點半自動 / B 手寫 / C 全自動）
+// ══════════════════════════════════════════════
+function _weekRange() {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const dow = now.getDay(); // 0=日
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  return { start: monday, end: sunday };
+}
+function _inWeek(iso, wk) {
+  if (!iso) return false;
+  const d = new Date(iso); d.setHours(0,0,0,0);
+  return d >= wk.start && d <= wk.end;
+}
+function _mmdd(d) { return _isoDate(d).slice(5).replace('-', '/'); }
+
+const _MILESTONE_LABELS = [
+  ['contractReceivedAt', '收到合約電子檔'],
+  ['deliveryOrderSubmittedAt', '出貨單完成'],
+  ['clientAcceptedAt', '客戶驗收完成'],
+  ['contractReturnedAt', '合約簽回收回'],
+];
+
+function _buildWeeklyData() {
+  const wk = _weekRange();
+  const db = dbLoad();
+  const clientMap = {};
+  db.clients.forEach(c => clientMap[c.id] = c);
+  let promo = { records: [] };
+  try { promo = JSON.parse(cloudStore.getItem('promo_data') || '{"records":[]}'); } catch(e) {}
+
+  // ── A 候選：本週亮點 ──
+  const highlights = [];
+  db.orders.forEach(o => {
+    const cname = clientMap[o.clientId]?.shortName || '未知客戶';
+    const pname = o.productName || o.caseName || '—';
+    _MILESTONE_LABELS.forEach(([field, label]) => {
+      if (_inWeek(o[field], wk)) highlights.push({ text: `${cname} ${pname}：${label}`, checked: true });
+    });
+    if (_inWeek(o.updatedAt, wk) && !_MILESTONE_LABELS.some(([f]) => _inWeek(o[f], wk))) {
+      highlights.push({ text: `${cname} ${pname}：${o.status || '—'}`, checked: false });
+    }
+  });
+  (promo.records || []).forEach(r => {
+    const cname = clientMap[r.clientId]?.shortName || r.clientName || '客戶';
+    const doneThisWeek = (r.actions || []).filter(a => a.done && _inWeek(a.date, wk));
+    if (doneThisWeek.length) {
+      highlights.push({ text: `${cname} ${r.product || ''}：${r.stage || '推廣中'}（本週完成 ${doneThisWeek.length} 項行動）`, checked: false });
+    }
+  });
+
+  // ── C：完整進度 ──
+  function promoLines(type) {
+    const byClient = {};
+    (promo.records || []).forEach(r => {
+      const rtype = r.type === '續訂' ? '續訂' : '新訂';
+      if (rtype !== type) return;
+      if (r.stage === '已成案') return;
+      const cname = clientMap[r.clientId]?.shortName || r.clientName || '未分類';
+      const active = (r.actions || []).some(a => _inWeek(a.date, wk));
+      (byClient[cname] = byClient[cname] || []).push(`${r.product || '—'}：${r.stage || '—'}${active ? '　●本週有動' : ''}`);
+    });
+    return byClient;
+  }
+  const orderByClient = {};
+  db.orders.forEach(o => {
+    if (['履約結束', '未開始'].includes(o.status)) return;
+    const cname = clientMap[o.clientId]?.shortName || '未知客戶';
+    const pname = o.productName || o.caseName || '—';
+    const flags = [];
+    if (_inWeek(o.updatedAt, wk)) flags.push('●本週更新');
+    if (STATUSES_PENDING.includes(o.status)) flags.push('⚠待確認');
+    (orderByClient[cname] = orderByClient[cname] || []).push(`${pname}：${o.status || '—'}${flags.length ? '　' + flags.join(' ') : ''}`);
+  });
+
+  return { wk, highlights, promoNew: promoLines('新訂'), promoRenew: promoLines('續訂'), orderByClient };
+}
+
+function _sectionText(title, byClient) {
+  const clients = Object.keys(byClient);
+  if (!clients.length) return '';
+  let out = `【${title}】\n`;
+  clients.forEach((cname, i) => {
+    out += `${i + 1}. ${cname}\n`;
+    byClient[cname].forEach((line, j) => { out += `　(${j + 1}) ${line}\n`; });
+  });
+  return out + '\n';
+}
+
+function _composeWeekly() {
+  const d = window.__weeklyData;
+  const picked = [...document.querySelectorAll('.wr-hl:checked')].map(cb => cb.dataset.text);
+  const extra = document.getElementById('wrExtraHighlight').value.trim();
+  const blocked = document.getElementById('wrBlocked').value.trim();
+  let out = `📌 本週重點（${_mmdd(d.wk.start)}–${_mmdd(d.wk.end)}）\n`;
+  const hl = [...picked, ...extra.split('\n').map(s => s.trim()).filter(Boolean)];
+  out += hl.length ? hl.map(t => `・${t}`).join('\n') + '\n' : '・（無）\n';
+  out += `\n⚠️ 卡關與需支援\n`;
+  out += blocked ? blocked.split('\n').map(s => `・${s.trim()}`).filter(s => s !== '・').join('\n') + '\n' : '・無\n';
+  out += `\n────── 完整進度（系統自動生成）──────\n\n`;
+  out += _sectionText('推廣追蹤—新訂', d.promoNew);
+  out += _sectionText('推廣追蹤—續訂', d.promoRenew);
+  out += _sectionText('訂單追蹤', d.orderByClient);
+  return out.trimEnd();
+}
+
+function openWeeklyReport() {
+  const data = _buildWeeklyData();
+  window.__weeklyData = data;
+  let modal = document.getElementById('weeklyReportModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'weeklyReportModal';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div class="modal modal-lg" style="max-height:88vh;display:flex;flex-direction:column;">
+      <div class="modal-header">
+        <h2>📄 生成週報（${_mmdd(data.wk.start)}–${_mmdd(data.wk.end)}）</h2>
+        <button class="modal-close" data-close="weeklyReportModal">✕</button>
+      </div>
+      <div class="modal-body" style="overflow:auto;">
+        <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">A. 本週重點（勾選要放進週報的）</div>
+        ${data.highlights.length ? data.highlights.map((h, i) => `
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:3px 0;cursor:pointer;">
+            <input type="checkbox" class="wr-hl" data-text="${h.text.replace(/"/g, '&quot;')}" ${h.checked ? 'checked' : ''} style="margin-top:2px;" />
+            <span>${h.text}</span>
+          </label>`).join('') : '<div style="font-size:12px;color:var(--text-muted);">本週系統沒偵測到大事，可在下方手動補充</div>'}
+        <textarea id="wrExtraHighlight" rows="2" placeholder="手動補充重點（一行一條）…" style="width:100%;margin-top:8px;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:8px;"></textarea>
+
+        <div style="font-weight:700;color:var(--navy);margin:16px 0 6px;">B. 卡關與需支援（手寫，一行一條）</div>
+        <textarea id="wrBlocked" rows="3" placeholder="例：萬芳 Day2 Q&A 待整理，需要提供認證寄信名單…" style="width:100%;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:8px;"></textarea>
+
+        <div style="font-weight:700;color:var(--navy);margin:16px 0 6px;">C. 完整進度（自動生成，可先預覽）</div>
+        <pre id="wrPreview" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;white-space:pre-wrap;max-height:240px;overflow:auto;font-family:inherit;"></pre>
+      </div>
+      <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--border);">
+        <button class="btn btn-ghost" id="wrRefreshPreview">↻ 更新預覽</button>
+        <button class="btn btn-primary" id="wrCopy">📋 複製週報（貼到 Google Sheet）</button>
+      </div>
+    </div>`;
+  const refresh = () => { document.getElementById('wrPreview').textContent = _composeWeekly(); };
+  modal.querySelector('#wrRefreshPreview').addEventListener('click', refresh);
+  modal.querySelectorAll('.wr-hl').forEach(cb => cb.addEventListener('change', refresh));
+  modal.querySelector('#wrCopy').addEventListener('click', () => {
+    navigator.clipboard.writeText(_composeWeekly()).then(() => showToast('週報已複製，可直接貼到 Sheet 儲存格'));
+  });
+  refresh();
+  openModal('weeklyReportModal');
+}
 
 // ── 啟動 ──
 renderHomePage();
