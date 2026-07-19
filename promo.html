@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Emily的推廣管理系統</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📣</text></svg>">
+  <style>
+:root{
+  --navy:#3f4f71;--navy-dark:#2e3a54;--navy-light:#4e6190;
+  --sand:#aca084;--bg:#f4f5f7;--surface:#ffffff;--surface2:#f0f1f4;--border:#dde0e6;
+  --text-primary:#1e2029;--text-secondary:#4a4f5c;--text-muted:#8a8f9c;
+  --danger:#b94a48;--warning:#c47d2a;--success:#3a7d5c;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 2px 8px rgba(63,79,113,0.10);--shadow-lg:0 4px 24px rgba(63,79,113,0.15);
+  --t:0.18s cubic-bezier(.4,0,.2,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:"Microsoft JhengHei","蘋方-繁","PingFang TC","Noto Sans TC",sans-serif;font-size:14px;color:var(--text-primary);background:var(--bg);display:flex;overflow:hidden;}
+input,select,textarea,button{font-family:inherit;}
+button{cursor:pointer;}
+ul{list-style:none;}
+.sidebar{width:210px;min-width:210px;height:100vh;background:var(--navy);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.sidebar-header{padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,0.1);}
+.sidebar-title{color:#fff;font-size:13px;font-weight:700;letter-spacing:0.06em;opacity:0.85;display:block;margin-bottom:8px;}
+.view-toggle{display:flex;gap:4px;}
+.view-btn{flex:1;padding:5px 0;border:none;border-radius:5px;font-size:11.5px;font-weight:600;cursor:pointer;transition:all var(--t);background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.65);}
+.view-btn.active{background:#fff;color:var(--navy);}
+.view-btn:hover:not(.active){background:rgba(255,255,255,0.2);color:#fff;}
+.sidebar-search{padding:8px 12px 4px;}
+.sidebar-search input{width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:6px 10px;color:#fff;font-size:12.5px;outline:none;}
+.sidebar-search input::placeholder{color:rgba(255,255,255,0.4);}
+.client-list{flex:1;overflow-y:auto;padding:4px 0;}
+.client-list::-webkit-scrollbar{width:3px;}
+.client-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:3px;}
+.client-item{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;transition:background var(--t);white-space:nowrap;overflow:hidden;}
+.client-item:hover{background:rgba(255,255,255,0.1);}
+.client-item.active{background:rgba(255,255,255,0.18);}
+.client-avatar{width:24px;height:24px;border-radius:5px;background:var(--sand);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;}
+.client-item-name{color:#fff;font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;flex:1;}
+.client-item-type{color:rgba(255,255,255,0.5);font-size:10.5px;}
+.progress-mode-hint{padding:10px 14px;color:rgba(255,255,255,0.55);font-size:12px;font-style:italic;}
+.main-content{flex:1;height:100vh;overflow-y:auto;background:var(--bg);}
+.main-content::-webkit-scrollbar{width:6px;}
+.main-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text-muted);}
+.empty-state-icon{font-size:48px;opacity:0.35;}
+.page-header{display:flex;align-items:center;gap:12px;padding:18px 28px 12px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:5;}
+.page-header h1{font-size:18px;font-weight:700;color:var(--navy);flex:1;}
+.page-header-sub{font-size:11.5px;color:var(--text-muted);}
+.page-header-actions{display:flex;gap:8px;align-items:center;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:var(--radius);border:none;font-size:12.5px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap;}
+.btn-primary{background:var(--navy);color:#fff;}.btn-primary:hover{background:var(--navy-light);}
+.btn-secondary{background:var(--surface2);color:var(--text-primary);border:1px solid var(--border);}.btn-secondary:hover{background:var(--border);}
+.btn-danger{background:var(--danger);color:#fff;}.btn-danger:hover{background:#9e3a38;}
+.btn-ghost{background:none;color:var(--text-secondary);border:1px solid var(--border);}.btn-ghost:hover{background:var(--surface2);}
+.btn-success{background:var(--success);color:#fff;}.btn-success:hover{background:#2d6347;}
+.btn-sm{padding:4px 9px;font-size:12px;}
+.stage-tabs{display:flex;gap:0;padding:0 28px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
+.stage-tabs::-webkit-scrollbar{height:3px;}
+.stage-tabs::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.stage-tab{padding:9px 16px;border:none;border-bottom:2.5px solid transparent;background:none;font-size:12.5px;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all var(--t);border-radius:4px 4px 0 0;white-space:nowrap;flex-shrink:0;}
+.stage-tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:700;}
+.stage-tab:hover:not(.active){color:var(--text-primary);background:var(--surface2);}
+.promo-container{padding:16px 28px 40px;}
+.promo-grid{display:flex;flex-direction:column;gap:8px;}
+.promo-empty{text-align:center;color:var(--text-muted);font-size:13.5px;padding:50px 0;}
+.promo-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:visible;transition:box-shadow var(--t);}
+.promo-card:hover{box-shadow:var(--shadow);}
+.promo-row{display:flex;align-items:center;gap:8px;padding:10px 14px;flex-wrap:nowrap;overflow:hidden;position:relative;}
+.promo-stage-tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff;cursor:pointer;transition:opacity var(--t);white-space:nowrap;flex-shrink:0;}
+.promo-stage-tag:hover{opacity:0.82;}
+.promo-type-badge{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0;}
+.type-new{background:#7a1a1a;color:#fff;}
+.type-renew{background:#1a5c2a;color:#fff;}
+.promo-dept-text{font-size:12px;color:var(--text-muted);white-space:nowrap;flex-shrink:0;}
+.promo-client-name{font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;flex-shrink:0;background:rgba(63,79,113,0.09);border-radius:4px;padding:2px 7px;}
+.promo-product-name{font-size:13.5px;font-weight:600;color:var(--text-primary);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.promo-row-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto;}
+.promo-closed-label{font-size:11.5px;color:var(--success);font-weight:700;cursor:pointer;padding:4px 8px;border-radius:5px;transition:background var(--t);white-space:nowrap;}
+.promo-closed-label:hover{background:rgba(58,125,92,0.1);}
+.promo-actions-panel{border-top:1px solid var(--border);padding:8px 14px;background:rgba(63,79,113,0.025);display:block;}
+/* actions panel always open */
+.promo-action-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);}
+.promo-action-row:last-child{border-bottom:none;}
+.promo-action-check{width:14px;height:14px;border-radius:3px;border:1.5px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;color:transparent;flex-shrink:0;transition:all var(--t);}
+.promo-action-check.checked{background:var(--navy);border-color:var(--navy);color:#fff;}
+.promo-action-date{font-size:11.5px;font-weight:600;color:var(--navy);white-space:nowrap;min-width:68px;}
+.promo-action-date.overdue{color:var(--danger);}
+.promo-action-date.today{color:var(--warning);}
+.promo-action-desc{font-size:13px;color:var(--text-primary);flex:1;}
+.promo-action-desc.done-desc{text-decoration:line-through;color:var(--text-muted);}
+.done-action{opacity:0.6;}
+.promo-no-actions{font-size:12px;color:var(--text-muted);padding:2px 0;}
+.stage-pop-wrap{position:relative;display:inline-block;}
+.stage-inline-pop{display:none;position:absolute;top:calc(100% + 5px);left:0;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px;box-shadow:var(--shadow-lg);z-index:400;min-width:240px;}
+.stage-inline-pop.open{display:block;}
+.stage-tags-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.stage-tag-opt{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;border:none;cursor:pointer;color:#fff;transition:opacity 0.12s,transform 0.1s;}
+.stage-tag-opt:hover{opacity:0.82;transform:scale(1.04);}
+.stage-tag-opt.sel{outline:2.5px solid var(--text-primary);outline-offset:1px;}
+.stage-pop-footer{display:flex;justify-content:flex-end;gap:6px;margin-top:8px;}
+.stage-draft{background:#3a5f9e;}
+.stage-waiting{background:#3a7d5c;}
+.stage-needcheck{background:#b94a48;}
+.stage-trial{background:#3a7d5c;}
+.stage-recommending{background:#b94a48;}
+.stage-discuss{background:#3a5f9e;}
+.stage-prepquote{background:#b94a48;}
+.stage-pause{background:#888;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(30,32,41,0.45);z-index:100;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px);}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:var(--radius-lg);width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);}
+.modal-lg{max-width:820px;}.modal-sm{max-width:400px;}
+.modal-header{display:flex;align-items:center;padding:15px 22px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.modal-header h2{flex:1;font-size:16px;font-weight:700;color:var(--navy);}
+.modal-close{background:none;border:none;font-size:15px;color:var(--text-muted);width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--t);}
+.modal-close:hover{background:var(--surface2);color:var(--text-primary);}
+.modal-body{padding:18px 22px;overflow-y:auto;flex:1;overflow-x:hidden;}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 22px;border-top:1px solid var(--border);flex-shrink:0;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group.full{grid-column:1/-1;}
+.form-group label{font-size:12.5px;font-weight:600;color:var(--text-secondary);}
+.required{color:var(--danger);}
+.form-group input,.form-group select,.form-group textarea{border:1.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:13.5px;color:var(--text-primary);background:var(--surface);outline:none;width:100%;transition:border-color var(--t);font-family:inherit;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--navy);}
+.form-group textarea{resize:vertical;}
+.section-label{grid-column:1/-1;font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:0.06em;text-transform:uppercase;border-top:1.5px solid var(--border);padding-top:10px;margin-top:4px;}
+.action-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+.action-item-edit{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:7px;}
+.action-item-edit input[type="date"]{width:136px;flex-shrink:0;padding:5px 8px;font-size:12.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);outline:none;}
+.action-item-edit input[type="text"]{flex:1;padding:5px 8px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface);outline:none;}
+.action-item-edit input:focus{border-color:var(--navy);}
+.action-del-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:color var(--t);}
+.action-del-btn:hover{color:var(--danger);}
+.order-info-section{display:none;}
+.order-info-section.visible{display:block;}
+.avatar-color-red{background:rgba(220,80,80,0.6)!important;}
+.avatar-color-pink{background:rgba(220,100,160,0.6)!important;}
+.avatar-color-purple{background:rgba(140,80,220,0.6)!important;}
+.avatar-color-blue{background:rgba(60,120,220,0.6)!important;}
+.avatar-color-teal{background:rgba(40,170,160,0.6)!important;}
+.avatar-color-green{background:rgba(60,170,90,0.6)!important;}
+.avatar-color-yellow{background:rgba(210,180,30,0.6)!important;}
+.avatar-color-orange{background:rgba(220,130,40,0.6)!important;}
+.avatar-color-brown{background:rgba(160,100,60,0.6)!important;}
+.avatar-color-gray{background:rgba(130,130,140,0.6)!important;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+.promo-card{animation:fadeIn 0.18s ease both;}
+  
+/* ===== Dashboard ===== */
+.dashboard{background:var(--surface);border-bottom:2px solid var(--border);padding:14px 28px;display:flex;gap:16px;align-items:stretch;min-height:0;}
+.dash-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--surface2);border-radius:10px;padding:10px 18px;min-width:90px;flex-shrink:0;border:1.5px solid var(--border);}
+.dash-stat-num{font-size:32px;font-weight:800;color:var(--navy);line-height:1;}
+.dash-stat-label{font-size:11px;color:var(--text-muted);margin-top:4px;text-align:center;line-height:1.3;}
+.dash-stat.warn .dash-stat-num{color:var(--danger);}
+.dash-stat.ok .dash-stat-num{color:var(--success);}
+.dash-divider{width:1.5px;background:var(--border);flex-shrink:0;border-radius:2px;}
+.dash-scroll-area{flex:1;overflow:hidden;position:relative;min-width:0;}
+.dash-scroll-label{font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;}
+.dash-ticker-wrap{overflow-y:auto;height:120px;position:relative;scroll-behavior:smooth;}
+.dash-ticker{display:flex;flex-direction:column;gap:4px;}
+/* ticker uses scrollTop now */
+.dash-ticker-wrap::-webkit-scrollbar{height:3px;width:3px;}
+.dash-ticker-wrap::-webkit-scrollbar-thumb{background:rgba(63,79,113,0.2);border-radius:3px;}
+.dash-action-row{display:flex;align-items:center;gap:8px;padding:4px 8px;background:rgba(173,216,230,0.28);border-radius:6px;font-size:12px;min-height:22px;flex-shrink:0;border:1px solid rgba(100,160,200,0.18);}
+.dash-action-client{font-weight:700;color:var(--navy);white-space:nowrap;flex-shrink:0;}
+.dash-action-product{color:var(--text-secondary);white-space:nowrap;flex-shrink:0;}
+.dash-action-dept{color:var(--text-muted);font-size:11px;white-space:nowrap;flex-shrink:0;}
+.dash-action-desc{color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.dash-action-date{font-size:11px;font-weight:600;white-space:nowrap;flex-shrink:0;}
+.dash-action-date.overdue{color:var(--danger);}
+.dash-action-date.today{color:var(--warning);}
+.dash-warnings{display:flex;flex-direction:column;gap:5px;flex-shrink:0;min-width:160px;}
+.dash-warn-badge{font-size:11.5px;padding:6px 10px;border-radius:7px;font-weight:600;line-height:1.3;display:flex;align-items:flex-start;gap:5px;}
+.dash-warn-badge.danger{background:rgba(185,74,72,0.1);color:#7a1a1a;border:1px solid rgba(185,74,72,0.25);}
+.dash-warn-badge.ok{background:rgba(58,125,92,0.1);color:#1a5c2a;border:1px solid rgba(58,125,92,0.25);}
+.dash-warn-badge.info{background:rgba(63,79,113,0.08);color:var(--navy);border:1px solid rgba(63,79,113,0.18);}
+.dash-warn-badge.warn{background:rgba(196,125,42,0.1);color:#7a3d00;border:1px solid rgba(196,125,42,0.3);}
+
+
+.type-filter-bar{display:flex;gap:4px;align-items:center;padding:8px 28px;background:var(--surface);border-bottom:1px solid var(--border);}
+.type-filter-btn{padding:4px 14px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-weight:600;background:none;color:var(--text-muted);cursor:pointer;transition:all var(--t);}
+.type-filter-btn.active-new{background:#7a1a1a;color:#fff;border-color:#7a1a1a;}
+.type-filter-btn.active-renew{background:#1a5c2a;color:#fff;border-color:#1a5c2a;}
+
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">📣 推廣管理</span>
+    <div class="view-toggle">
+      <button class="view-btn active" id="viewByClient">按客戶</button>
+      <button class="view-btn" id="viewByProgress">按進度</button>
+    </div>
+  </div>
+  <div style="padding:4px 12px;"><button onclick="location.href='index.html'" style="width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:6px 10px;color:#fff;font-size:12.5px;cursor:pointer;text-align:left;">📋 回工作管理系統</button></div>
+  <div class="sidebar-search"><input type="text" id="clientSearch" placeholder="搜尋客戶…"/></div>
+  <ul class="client-list" id="clientList"></ul>
+</aside>
+<main class="main-content" id="mainContent">
+  <div id="emptyState" class="empty-state">
+    <div class="empty-state-icon">📣</div>
+    <p style="font-size:15px;color:var(--text-muted);">選擇左側客戶，或切換「按進度」查看全部</p>
+  </div>
+  <div id="promoPage" style="display:none;"></div>
+</main>
+<!-- 新增/編輯推廣記錄 Modal -->
+<div class="modal-overlay" id="promoModal">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h2 id="promoModalTitle">新增推廣記錄</h2><button class="modal-close" data-close="promoModal">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>產品名稱 <span class="required">*</span></label><input type="text" id="promoProduct" placeholder="例：VisualDx"/></div>
+        <div class="form-group"><label>科部 / 單位</label><input type="text" id="promoDept" placeholder="例：護理部、圖書館"/></div>
+        <div class="form-group"><label>推廣類型</label>
+          <select id="promoType"><option value="新訂">新訂推廣</option><option value="續訂">續訂追蹤</option></select></div>
+        <div class="form-group"><label>推廣階段 <span class="required">*</span></label>
+          <select id="promoStage">
+            <option value="draft">信件草稿</option><option value="waiting">等待回覆</option>
+            <option value="needcheck">需求確認</option><option value="trial">試用中</option>
+            <option value="recommending">薦購中</option><option value="discuss">方案討論</option>
+            <option value="prepquote">準備報價</option><option value="pause">暫結案</option>
+          </select></div>
+        <div class="form-group full"><label>備註</label><textarea id="promoNote" rows="2" placeholder="推廣說明、客戶反應…"></textarea></div>
+        <!-- 訂單資訊：僅續訂顯示 -->
+        <div class="order-info-section full" id="orderInfoWrapper" style="grid-column:1/-1;">
+          <div class="section-label" style="grid-column:1/-1;border-top:1.5px solid var(--border);padding-top:10px;margin-top:4px;font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:0.06em;text-transform:uppercase;">訂單資訊</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;margin-top:10px;">
+            <div class="form-group">
+              <label>報價日期</label>
+              <input type="date" id="promoQuoteDate"/>
+            </div>
+            <div class="form-group">
+              <label>原幣別</label>
+              <select id="promoCurrency">
+                <option value="USD">美金 US$</option>
+                <option value="EUR">歐元 €</option>
+                <option value="TWD">台幣 NT$</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label id="lbQuoteOrig">業務報價（原幣）</label>
+              <input type="number" id="promoQuoteOrig" placeholder="0" min="0" step="1"/>
+            </div>
+            <div class="form-group">
+              <label>業務報價（台幣）</label>
+              <input type="number" id="promoQuoteTwd" placeholder="0" min="0" step="1"/>
+            </div>
+            <div class="form-group">
+              <label id="lbCostOrig">公司底價（原幣）</label>
+              <input type="number" id="promoCostOrig" placeholder="0" min="0" step="1"/>
+            </div>
+            <div class="form-group">
+              <label>公司底價（台幣）</label>
+              <input type="number" id="promoCostTwd" placeholder="0" min="0" step="1"/>
+            </div>
+            <div class="form-group">
+              <label>報價匯率</label>
+              <input type="number" id="promoQuoteRate" placeholder="0.00" step="0.01"/>
+            </div>
+            <div class="form-group">
+              <label>議價 %</label>
+              <input type="number" id="promoDiscountPct" placeholder="0" min="0" max="100" step="0.1"/>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>其他訂單備註</label>
+              <textarea id="promoOrderNote" rows="2" placeholder="訂單相關補充說明…"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="section-label">後續行動</div>
+        <div class="form-group full">
+          <div class="action-list" id="actionList"></div>
+          <button type="button" class="btn btn-ghost btn-sm" id="addActionBtn" style="width:fit-content;margin-top:4px;">＋ 新增行動</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="deletePromoBtn" style="margin-right:auto;display:none;">刪除記錄</button>
+      <button class="btn btn-secondary" data-close="promoModal">取消</button>
+      <button class="btn btn-primary" id="savePromoBtn">儲存</button>
+    </div>
+  </div>
+</div>
+<!-- 轉為訂單 Modal -->
+<div class="modal-overlay" id="convertModal">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h2>填寫訂單資訊</h2><button class="modal-close" data-close="convertModal">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>採購案名稱</label><input type="text" id="cvCaseName"/></div>
+        <div class="form-group"><label>採購案號</label><input type="text" id="cvCaseNo"/></div>
+        <div class="form-group"><label>原幣別</label>
+          <select id="cvCurrency"><option value="USD">美金 US$</option><option value="EUR">歐元 €</option><option value="TWD">台幣 NT$</option></select></div>
+        <div class="form-group"><label>報價日期</label><input type="date" id="cvQuoteDate"/></div>
+        <div class="form-group"><label id="cvLbQuoteOrig">業務報價（原幣）</label><input type="number" id="cvQuoteOrig" placeholder="0" min="0" step="1"/></div>
+        <div class="form-group"><label>業務報價（台幣）</label><input type="number" id="cvQuoteTwd" placeholder="0" min="0" step="1"/></div>
+        <div class="form-group"><label id="cvLbCostOrig">公司底價（原幣）</label><input type="number" id="cvCostOrig" placeholder="0" min="0" step="1"/></div>
+        <div class="form-group"><label>公司底價（台幣）</label><input type="number" id="cvCostTwd" placeholder="0" min="0" step="1"/></div>
+        <div class="form-group"><label>報價匯率</label><input type="number" id="cvQuoteRate" placeholder="0.00" step="0.01"/></div>
+        <div class="form-group"><label>成交匯率</label><input type="number" id="cvDealRate" placeholder="0.00" step="0.01"/></div>
+        <div class="form-group"><label>成交金額（台幣）</label><input type="number" id="cvDealTwd" placeholder="0" min="0" step="1"/></div>
+        <div class="form-group"><label>訂期起始</label><input type="date" id="cvStartDate"/></div>
+        <div class="form-group"><label>訂期結束</label><input type="date" id="cvEndDate"/></div>
+        <div class="form-group full"><label>備註</label><textarea id="cvNote" rows="2"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close="convertModal">取消</button>
+      <button class="btn btn-success" id="confirmConvertBtn">確認轉為訂單</button>
+    </div>
+  </div>
+</div>
+<!-- 確認 Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal modal-sm">
+    <div class="modal-header"><h2 id="confirmTitle">確認</h2><button class="modal-close" data-close="confirmModal">✕</button></div>
+    <div class="modal-body"><p id="confirmMessage" style="font-size:14px;line-height:1.6;"></p></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close="confirmModal">取消</button>
+      <button class="btn btn-danger" id="confirmOkBtn">確定</button>
+    </div>
+  </div>
+</div>
+<div id="loginOverlay" style="position:fixed;inset:0;z-index:99990;background:#1B2A41;display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:36px 40px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,.3);">
+    <h2 style="margin:0 0 4px;font-size:20px;color:#1B2A41;">Emily 推廣管理系統</h2>
+    <p style="margin:0 0 20px;font-size:12px;color:#888;">請登入以存取資料</p>
+    <label style="font-size:12px;color:#555;">帳號</label>
+    <input id="loginUser" type="text" autocomplete="username" style="width:100%;box-sizing:border-box;margin:4px 0 12px;padding:9px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" />
+    <label style="font-size:12px;color:#555;">密碼</label>
+    <input id="loginPass" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;margin:4px 0 6px;padding:9px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" />
+    <div id="loginErr" style="font-size:12px;color:#c0392b;min-height:16px;margin-bottom:8px;"></div>
+    <button id="loginBtn" style="width:100%;padding:10px;border:none;border-radius:6px;background:#1B2A41;color:#fff;font-size:14px;cursor:pointer;">登入</button>
+  </div>
+</div>
+<div id="loadingOverlay" style="position:fixed;inset:0;z-index:99989;background:#F4F1EA;display:flex;align-items:center;justify-content:center;font-size:14px;color:#1B2A41;">資料載入中…</div>
+<div id="cloudSyncBadge" style="position:fixed;bottom:12px;right:12px;z-index:9999;font-size:11px;padding:4px 10px;border-radius:12px;background:#e8f0e8;color:#3a6b3a;border:1px solid #b8d4b8;opacity:0;transition:opacity .3s;pointer-events:none;">已同步 ✓</div>
+<script>
+// ── 雲端資料層：Google Sheet（經 Apps Script API）──
+const API_URL = 'https://script.google.com/macros/s/AKfycbxsrWZcR4s9v20YFzbvwj-ni5k7VAlD6jONPS4RjISDEBeSKwhC_SHHft12RjGIYBOj/exec';
+let __token = window.localStorage.getItem('ews_token') || '';
+
+async function __api(body) {
+  body.token = __token;
+  const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
+  return r.json();
+}
+
+const cloudStore = (() => {
+  const cache = {};
+  const dirty = new Set();
+  let timer = null, syncing = false;
+  function setStatus(s) {
+    const b = document.getElementById('cloudSyncBadge'); if (!b) return;
+    if (s === 'sync') { b.textContent = '同步中…'; b.style.background='#fff6e0'; b.style.color='#8a6d1a'; b.style.borderColor='#e8d49a'; b.style.opacity='1'; }
+    else if (s === 'ok') { b.textContent = '已同步 ✓'; b.style.background='#e8f0e8'; b.style.color='#3a6b3a'; b.style.borderColor='#b8d4b8'; b.style.opacity='1'; setTimeout(()=>{ if(!dirty.size && !syncing) b.style.opacity='0'; }, 1500); }
+    else { b.textContent = '⚠️ 同步失敗，稍後自動重試'; b.style.background='#fde8e8'; b.style.color='#a33'; b.style.borderColor='#e8b8b8'; b.style.opacity='1'; }
+  }
+  function flush() {
+    if (!dirty.size || syncing) return;
+    const payload = {};
+    dirty.forEach(k => payload[k] = cache[k] === undefined ? '' : cache[k]);
+    dirty.clear();
+    syncing = true;
+    setStatus('sync');
+    __api({ action: 'save', payload })
+      .then(res => {
+        syncing = false;
+        if (!res.ok) throw new Error(res.error || 'save failed');
+        if (dirty.size) flush(); else setStatus('ok');
+      })
+      .catch(err => {
+        syncing = false;
+        Object.keys(payload).forEach(k => dirty.add(k));
+        if (String(err).includes('unauthorized')) { window.localStorage.removeItem('ews_token'); location.reload(); return; }
+        setStatus('err');
+        setTimeout(flush, 5000);
+      });
+  }
+  return {
+    getItem: k => (k in cache && cache[k] !== '' ? cache[k] : null),
+    setItem: (k, v) => { cache[k] = String(v); dirty.add(k); clearTimeout(timer); timer = setTimeout(flush, 800); },
+    removeItem: k => { cache[k] = ''; dirty.add(k); clearTimeout(timer); timer = setTimeout(flush, 800); },
+    _seed: obj => Object.assign(cache, obj),
+    _hasPending: () => dirty.size > 0 || syncing,
+    _flush: flush,
+  };
+})();
+window.addEventListener('beforeunload', e => {
+  if (cloudStore._hasPending()) { cloudStore._flush(); e.preventDefault(); e.returnValue = ''; }
+});
+
+// ── 登入與啟動流程 ──
+function __showLogin(msg) {
+  document.getElementById('loadingOverlay').style.display = 'none';
+  document.getElementById('loginOverlay').style.display = 'flex';
+  if (msg) document.getElementById('loginErr').textContent = msg;
+  setTimeout(() => document.getElementById('loginUser').focus(), 50);
+}
+async function __loadAndStart() {
+  const res = await __api({ action: 'load' });
+  if (!res.ok) { window.localStorage.removeItem('ews_token'); __token = ''; __showLogin(''); return; }
+  cloudStore._seed(res.data || {});
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('loadingOverlay').style.display = 'none';
+  if (document.readyState === 'complete' || document.readyState === 'interactive') __startApp();
+  else window.addEventListener('DOMContentLoaded', __startApp);
+}
+async function __doLogin() {
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = '登入中…';
+  document.getElementById('loginErr').textContent = '';
+  try {
+    const res = await __api({ action: 'login', user, pass });
+    if (!res.ok) { document.getElementById('loginErr').textContent = '帳號或密碼錯誤'; return; }
+    __token = res.token;
+    window.localStorage.setItem('ews_token', __token);
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    await __loadAndStart();
+  } catch (err) {
+    document.getElementById('loginErr').textContent = '連線失敗，請再試一次';
+  } finally {
+    btn.disabled = false; btn.textContent = '登入';
+  }
+}
+document.getElementById('loginBtn').addEventListener('click', __doLogin);
+document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') __doLogin(); });
+document.getElementById('loginUser').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); });
+
+if (__token) { __loadAndStart(); } else { __showLogin(''); }
+</script>
+<script>
+function __startApp() {
+
+// ===== DASHBOARD =====
+const GOAL_WEEK  = 8;
+const GOAL_MONTH = 30;
+
+function getWeekRange(offsetWeeks=0){
+  const now=new Date();
+  const day=now.getDay()||7; // Mon=1
+  const mon=new Date(now);mon.setDate(now.getDate()-(day-1)+offsetWeeks*7);mon.setHours(0,0,0,0);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);sun.setHours(23,59,59,999);
+  return{start:mon,end:sun};
+}
+function isoDate(d){return d.toISOString().slice(0,10);}
+
+function computeDashboard(){
+  const allRecords=getAllPromoRecords();
+  const clientMap={};getClients().forEach(c=>{clientMap[c.id]=c;});
+  const now=new Date();
+  // Month range
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1);
+  const monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59);
+  // Week ranges
+  const thisWeek=getWeekRange(0);
+  const nextWeek=getWeekRange(1);
+
+  let monthDone=0,weekDone=0;
+  let thisWeekPending=[],nextWeekPending=[];
+
+  allRecords.forEach(r=>{
+    const c=clientMap[r.clientId];
+    (r.actions||[]).forEach(a=>{
+      const d=a.date?new Date(a.date+'T00:00:00'):null;
+      if(a.done){
+        // done this month?
+        if(d&&d>=monthStart&&d<=monthEnd) monthDone++;
+        // done this week?
+        if(d&&d>=thisWeek.start&&d<=thisWeek.end) weekDone++;
+      } else if(d){
+        if(d>=thisWeek.start&&d<=thisWeek.end)
+          thisWeekPending.push({r,a,c,label:'本週'});
+        else if(d>=nextWeek.start&&d<=nextWeek.end)
+          nextWeekPending.push({r,a,c,label:'下週'});
+      }
+    });
+  });
+
+  // sort by date
+  thisWeekPending.sort((a,b)=>(a.a.date||'').localeCompare(b.a.date||''));
+  nextWeekPending.sort((a,b)=>(a.a.date||'').localeCompare(b.a.date||''));
+  const tickerItems=[...thisWeekPending,...nextWeekPending];
+
+  // warnings
+  const thisWeekTotal=(allRecords.flatMap(r=>(r.actions||[]).filter(a=>{const d=a.date?new Date(a.date+'T00:00:00'):null;return d&&d>=thisWeek.start&&d<=thisWeek.end;})).length);
+  const nextWeekTotal=(allRecords.flatMap(r=>(r.actions||[]).filter(a=>{const d=a.date?new Date(a.date+'T00:00:00'):null;return d&&d>=nextWeek.start&&d<=nextWeek.end;})).length);
+
+  return{monthDone,weekDone,thisWeekTotal,nextWeekTotal,tickerItems,thisWeekPending,nextWeekPending};
+}
+
+let _tickerTimer=null;
+let _tickerIndex=0;
+
+function renderDashboard(){
+  const existing=document.getElementById('dashboardBar');
+  if(existing) existing.remove();
+
+  const dash=computeDashboard();
+  const{monthDone,weekDone,thisWeekTotal,nextWeekTotal,tickerItems}=dash;
+
+  const monthCls=monthDone>=GOAL_MONTH?'ok':monthDone>=GOAL_MONTH*0.7?'':'warn';
+  const weekCls=weekDone>=GOAL_WEEK?'ok':weekDone>=GOAL_WEEK*0.5?'':'warn';
+
+  // Warnings
+  const warnings=[];
+  // 今天是星期幾（1=週一, 5=週五）
+  const todayDow = new Date().getDay(); // 0=日,1=一...6=六
+  const isThursday = todayDow === 4;
+  const isFriday   = todayDow === 5;
+  const isThursdayOrAfter = todayDow >= 4 && todayDow <= 5;
+
+  // ── 本週警示：只在週四、週五觸發 ──
+  if(isThursdayOrAfter){
+    if(weekDone < GOAL_WEEK)
+      warnings.push(`<div class="dash-warn-badge danger">⚠ 本週已完成 ${weekDone} 件，目標 ${GOAL_WEEK} 件，加油！</div>`);
+    else
+      warnings.push(`<div class="dash-warn-badge ok">✓ 本週已完成 ${weekDone} 件，達標！</div>`);
+  } else {
+    warnings.push(`<div class="dash-warn-badge info">本週已完成 ${weekDone} 件（目標 ${GOAL_WEEK}）</div>`);
+  }
+
+  // ── 下週警示：依今天是星期幾升級 ──
+  if(nextWeekTotal >= GOAL_WEEK){
+    warnings.push(`<div class="dash-warn-badge ok">✓ 下週已排 ${nextWeekTotal} 件行動</div>`);
+  } else if(isFriday){
+    warnings.push(`<div class="dash-warn-badge danger">⚠ 本週結束！下週僅排 ${nextWeekTotal} 件，請立即補充</div>`);
+  } else if(isThursday){
+    warnings.push(`<div class="dash-warn-badge warn">⚡ 今天週四，下週僅排 ${nextWeekTotal} 件，今天記得規劃</div>`);
+  } else {
+    // 週一到週三
+    warnings.push(`<div class="dash-warn-badge info">📋 下週已排 ${nextWeekTotal} 件，週四前記得補到 ${GOAL_WEEK} 件</div>`);
+  }
+
+  // Ticker rows HTML
+  const tickerRowsHtml=tickerItems.length
+    ?tickerItems.map(({r,a,c})=>{
+        const dc=dueDateCls(a.date);
+        return `<div class="dash-action-row">
+          <span class="dash-action-client">${c?.shortName||'—'}</span>
+          <span class="dash-action-product">${r.product||''}</span>
+          ${r.dept?`<span class="dash-action-dept">${r.dept}</span>`:''}
+          <span class="dash-action-desc">${a.desc||''}</span>
+          <span class="dash-action-date ${dc}">${fmtDate(a.date)}</span>
+        </div>`;
+      }).join('')
+    :'<div class="dash-action-row"><span style="color:var(--text-muted);font-size:12px;">本週及下週尚無安排行動</span></div>';
+
+  const bar=document.createElement('div');
+  bar.id='dashboardBar';
+  bar.className='dashboard';
+  bar.innerHTML=`
+    <div class="dash-stat ${weekCls}">
+      <div class="dash-stat-num">${weekDone}</div>
+      <div class="dash-stat-label">本週完成<br>目標 ${GOAL_WEEK}</div>
+    </div>
+    <div class="dash-stat ${monthCls}">
+      <div class="dash-stat-num">${monthDone}</div>
+      <div class="dash-stat-label">本月完成<br>目標 ${GOAL_MONTH}</div>
+    </div>
+    <div class="dash-divider"></div>
+    <div class="dash-scroll-area">
+      <div class="dash-scroll-label">本週＆下週行動</div>
+      <div class="dash-ticker-wrap">
+        <div class="dash-ticker" id="dashTicker">${tickerRowsHtml}</div>
+      </div>
+    </div>
+    <div class="dash-divider"></div>
+    <div class="dash-warnings">${warnings.join('')}</div>
+  `;
+
+  // insert before stage-tabs
+  const page=document.getElementById('promoPage');
+  const stageTabs=page.querySelector('.stage-tabs');
+  if(stageTabs) page.insertBefore(bar,stageTabs);
+  else page.insertBefore(bar,page.firstChild);
+
+  // 插入新訂／續訂篩選列，在儀表板下、分頁上
+  const existingTypeBar=document.getElementById('typeFilterBar');
+  if(existingTypeBar) existingTypeBar.remove();
+  const typeBar=document.createElement('div');
+  typeBar.id='typeFilterBar';
+  typeBar.className='type-filter-bar';
+  typeBar.innerHTML=`
+    <span style="font-size:12px;color:var(--text-muted);align-self:center;margin-right:4px;">類型：</span>
+    <button class="type-filter-btn${currentTypeFilter==='新訂'?' active-new':''}" data-type-filter="新訂">新訂</button>
+    <button class="type-filter-btn${currentTypeFilter==='續訂'?' active-renew':''}" data-type-filter="續訂">續訂</button>
+    ${currentTypeFilter!=='all'?`<button class="type-filter-btn" data-type-filter="all" style="font-size:11px;padding:3px 9px;opacity:0.7;">✕ 清除</button>`:''}
+  `;
+  typeBar.querySelectorAll('[data-type-filter]').forEach(btn=>btn.addEventListener('click',()=>{
+    currentTypeFilter=btn.dataset.typeFilter;
+    renderPromoGrid();
+    renderDashboard(); // re-render to refresh active state
+  }));
+  const stageTabsEl=page.querySelector('.stage-tabs');
+  if(stageTabsEl) page.insertBefore(typeBar,stageTabsEl);
+
+  // Start auto-scroll ticker
+  startTicker(tickerItems.length);
+}
+
+function startTicker(count){
+  clearInterval(_tickerTimer);
+  if(count<=1) return;
+  _tickerIndex=0;
+  const ROW_H=28; // px per row
+  _tickerTimer=setInterval(()=>{
+    const wrap=document.querySelector('.dash-ticker-wrap');
+    if(!wrap) return;
+    // if user has scrolled to end, loop back to top
+    const maxScroll=wrap.scrollHeight-wrap.clientHeight;
+    if(wrap.scrollTop>=maxScroll-2){
+      wrap.scrollTo({top:0,behavior:'smooth'});
+      _tickerIndex=0;
+    } else {
+      _tickerIndex=Math.min(_tickerIndex+1,count-1);
+      wrap.scrollTo({top:_tickerIndex*ROW_H,behavior:'smooth'});
+    }
+  },2800);
+}
+
+const DB_KEY='crm_data';
+const PROMO_KEY='promo_data';
+const CURRENCY_SYMBOLS={USD:'US$',EUR:'€',TWD:'NT$'};
+const STAGES=[
+  {key:'draft',        label:'信件草稿', cls:'stage-draft'       },
+  {key:'waiting',      label:'等待回覆', cls:'stage-waiting'     },
+  {key:'needcheck',    label:'需求確認', cls:'stage-needcheck'   },
+  {key:'trial',        label:'試用中',   cls:'stage-trial'       },
+  {key:'recommending', label:'薦購中',   cls:'stage-recommending'},
+  {key:'discuss',      label:'方案討論', cls:'stage-discuss'     },
+  {key:'prepquote',    label:'準備報價', cls:'stage-prepquote'   },
+  {key:'pause',        label:'暫結案',   cls:'stage-pause'       },
+];
+function stageInfo(key){return STAGES.find(s=>s.key===key)||{label:key,cls:'stage-draft'};}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function dbLoad(){try{const raw=cloudStore.getItem(DB_KEY);if(!raw)return{clients:[],orders:[],contacts:[]};const d=JSON.parse(raw);d.clients=d.clients||[];d.orders=d.orders||[];d.contacts=d.contacts||[];return d;}catch{return{clients:[],orders:[],contacts:[]};}}
+function dbSave(d){cloudStore.setItem(DB_KEY,JSON.stringify(d));}
+function promoLoad(){try{const raw=cloudStore.getItem(PROMO_KEY);if(!raw)return{records:[]};const d=JSON.parse(raw);d.records=d.records||[];return d;}catch{return{records:[]};}}
+function promoSave(d){cloudStore.setItem(PROMO_KEY,JSON.stringify(d));}
+function getClients(){return dbLoad().clients.sort((a,b)=>(a.sortOrder??9999)-(b.sortOrder??9999)||a.shortName.localeCompare(b.shortName,'zh-TW'));}
+function getClientById(id){return dbLoad().clients.find(c=>c.id===id);}
+function getAllPromoRecords(){return promoLoad().records;}
+function getPromoRecordsByClient(clientId){return promoLoad().records.filter(r=>r.clientId===clientId);}
+function savePromoRecord(rec){const d=promoLoad();const now=new Date().toISOString();if(rec.id){const i=d.records.findIndex(r=>r.id===rec.id);if(i!==-1)d.records[i]={...d.records[i],...rec,updatedAt:now};}else d.records.push({...rec,id:genId(),closed:false,createdAt:now,updatedAt:now});promoSave(d);}
+function deletePromoRecord(id){const d=promoLoad();d.records=d.records.filter(r=>r.id!==id);promoSave(d);}
+function updatePromoStage(id,stage){const d=promoLoad();const now=new Date().toISOString();const r=d.records.find(x=>x.id===id);if(r){r.stage=stage;r.updatedAt=now;}promoSave(d);}
+function setPromoClosed(id,closed,linkedOrderId){const d=promoLoad();const now=new Date().toISOString();const r=d.records.find(x=>x.id===id);if(r){r.closed=closed;r.linkedOrderId=closed?linkedOrderId:null;r.updatedAt=now;}promoSave(d);}
+function toggleAction(recId,actionId){const d=promoLoad();const now=new Date().toISOString();const r=d.records.find(x=>x.id===recId);if(r){const a=(r.actions||[]).find(x=>x.id===actionId);if(a)a.done=!a.done;r.updatedAt=now;}promoSave(d);}
+function fmtDate(iso){return iso?iso.slice(0,10).replace(/-/g,'/'):'—';}
+function fmtDateTime(iso){if(!iso)return'—';const d=new Date(iso);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
+function fmtMoney(v){const n=parseInt(v);return isNaN(n)?'—':n.toLocaleString('zh-TW');}
+function dueDateCls(dateStr){if(!dateStr)return'';const today=new Date();today.setHours(0,0,0,0);const due=new Date(dateStr);due.setHours(0,0,0,0);const diff=(due-today)/86400000;return diff<0?'overdue':diff===0?'today':'';}
+function actionDateLabel(dateStr){if(!dateStr)return'（無日期）';const cls=dueDateCls(dateStr);if(cls==='overdue')return`⚠ ${fmtDate(dateStr)}`;if(cls==='today')return'今天';return fmtDate(dateStr);}
+let _toastTimer;
+function showToast(msg,type='success'){let t=document.getElementById('_toast');if(!t){t=document.createElement('div');t.id='_toast';t.style.cssText='position:fixed;bottom:24px;right:28px;z-index:999;padding:10px 18px;border-radius:8px;font-size:13.5px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,0.15);transition:opacity 0.3s;font-family:inherit;pointer-events:none;';document.body.appendChild(t);}t.textContent=msg;t.style.background=type==='error'?'#b94a48':'#3f4f71';t.style.color='#fff';t.style.opacity='1';clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.style.opacity='0',2400);}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.addEventListener('click',e=>{const btn=e.target.closest('[data-close]');if(btn)closeModal(btn.dataset.close);if(!e.target.closest('.stage-pop-wrap'))document.querySelectorAll('.stage-inline-pop.open').forEach(p=>p.classList.remove('open'));});
+function showConfirm(message,title='確認'){return new Promise(resolve=>{document.getElementById('confirmTitle').textContent=title;document.getElementById('confirmMessage').textContent=message;openModal('confirmModal');const okBtn=document.getElementById('confirmOkBtn');const clBtn=document.querySelector('[data-close="confirmModal"]');function onOk(){cleanup();resolve(true);}function onCl(){cleanup();resolve(false);}function cleanup(){okBtn.removeEventListener('click',onOk);clBtn.removeEventListener('click',onCl);closeModal('confirmModal');}okBtn.addEventListener('click',onOk);clBtn.addEventListener('click',onCl);});}
+let viewMode='client';
+let currentClientId=null;
+let currentStageTab='all';
+let currentTypeFilter='all'; // 'all' | '新訂' | '續訂'
+const AVATAR_COLORS={red:'rgba(220,80,80,0.6)',pink:'rgba(220,100,160,0.6)',purple:'rgba(140,80,220,0.6)',blue:'rgba(60,120,220,0.6)',teal:'rgba(40,170,160,0.6)',green:'rgba(60,170,90,0.6)',yellow:'rgba(210,180,30,0.6)',orange:'rgba(220,130,40,0.6)',brown:'rgba(160,100,60,0.6)',gray:'rgba(130,130,140,0.6)'};
+function renderClientList(filter=''){
+  const list=document.getElementById('clientList');list.innerHTML='';
+  if(viewMode==='progress'){list.innerHTML='<li class="progress-mode-hint">顯示全部客戶推廣記錄</li>';return;}
+  const clients=getClients().filter(c=>c.shortName.includes(filter)||c.fullName.includes(filter));
+  if(!clients.length){list.innerHTML='<li style="color:rgba(255,255,255,0.35);font-size:12px;padding:14px;">尚無客戶</li>';return;}
+  clients.forEach(c=>{
+    const li=document.createElement('li');li.className='client-item'+(c.id===currentClientId?' active':'');li.dataset.id=c.id;
+    const bg=c.color?AVATAR_COLORS[c.color]:'var(--sand)';
+    li.innerHTML=`<div class="client-avatar${c.color?' avatar-color-'+c.color:''}" style="background:${bg};">${c.shortName.slice(0,2)}</div><div style="flex:1;min-width:0;"><div class="client-item-name">${c.shortName}</div>${c.type?`<div class="client-item-type">${c.type}</div>`:''}</div>`;
+    li.addEventListener('click',()=>selectClient(c.id));list.appendChild(li);
+  });
+}
+function selectClient(clientId){currentClientId=clientId;document.querySelectorAll('.client-item').forEach(li=>li.classList.toggle('active',li.dataset.id===clientId));showPromoPage();}
+function showPromoPage(){document.getElementById('emptyState').style.display='none';document.getElementById('promoPage').style.display='block';renderPromoPage();}
+function buildStageTabs(){
+  const all=[{key:'all',label:'所有'},...STAGES,{key:'closed',label:'✓ 已成案',cls:''}];
+  return all.map(s=>`<button class="stage-tab${s.key===currentStageTab?' active':''}" data-stage-tab="${s.key}">${s.label}</button>`).join('');
+}
+function renderPromoPage(){
+  const page=document.getElementById('promoPage');
+  const isClient=viewMode==='client';
+  const c=isClient?getClientById(currentClientId):null;
+  let headerHtml='';
+  if(isClient&&c){
+    headerHtml=`<div class="page-header"><div><h1>${c.shortName}</h1>${c.fullName!==c.shortName?`<div class="page-header-sub">${c.fullName}</div>`:''}</div><div class="page-header-actions"><button class="btn btn-ghost btn-sm" id="exportBtn">⬇ 匯出 CSV</button><button class="btn btn-primary btn-sm" id="addPromoBtn">＋ 新增推廣記錄</button></div></div>`;
+  } else {
+    headerHtml=`<div class="page-header"><h1>全部推廣記錄</h1><div class="page-header-actions"><button class="btn btn-ghost btn-sm" id="exportBtn">⬇ 匯出 CSV</button><button class="btn btn-ghost btn-sm" id="exportBackupBtn">⬆ 匯出備份</button><label class="btn btn-ghost btn-sm" style="cursor:pointer;">⬇ 匯入備份<input type="file" accept=".json" id="importBackupInput" style="display:none;"/></label></div></div>`;
+  }
+  page.innerHTML=headerHtml+`<div class="stage-tabs">${buildStageTabs()}</div><div class="promo-container"><div class="promo-grid" id="promoGrid"></div></div>`;
+  page.querySelectorAll('[data-stage-tab]').forEach(btn=>btn.addEventListener('click',()=>{currentStageTab=btn.dataset.stageTab;renderPromoPage();}));
+  page.querySelector('#addPromoBtn')?.addEventListener('click',()=>openPromoModal());
+  page.querySelector('#exportBtn')?.addEventListener('click',exportCSV);
+  page.querySelector('#exportBackupBtn')?.addEventListener('click',exportPromoBackup);
+  page.querySelector('#importBackupInput')?.addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{await importPromoBackup(file);showToast('備份匯入成功');renderPromoPage();}catch(err){showToast(err.message||'匯入失敗');}e.target.value='';});
+  renderPromoGrid();
+  renderDashboard();
+}
+function nearestActionDate(r){
+  const pending=(r.actions||[]).filter(a=>!a.done&&a.date).map(a=>a.date).sort();
+  return pending.length?pending[0]:'9999-99-99';
+}
+function renderPromoGrid(){
+  const grid=document.getElementById('promoGrid');if(!grid)return;
+  const _searchVal=document.getElementById('clientSearch')?.value?.trim()||'';
+  let records;
+  if(viewMode==='client'){
+    records=getPromoRecordsByClient(currentClientId);
+  } else {
+    const allClients=getClients();
+    const matchedIds=_searchVal
+      ?allClients.filter(c=>c.shortName.includes(_searchVal)).map(c=>c.id)
+      :allClients.map(c=>c.id);
+    records=getAllPromoRecords().filter(r=>matchedIds.includes(r.clientId));
+  }
+  // 類型篩選
+  if(currentTypeFilter!=='all') records=records.filter(r=>r.type===currentTypeFilter);
+  // 階段篩選
+  if(currentStageTab==='all'){records=records.filter(r=>!r.closed);}
+  else if(currentStageTab==='closed'){records=records.filter(r=>r.closed);}
+  else{records=records.filter(r=>!r.closed&&r.stage===currentStageTab);}
+  // 按最近未完成行動日期排序（從近到遠），無行動的排最後
+  records=records.sort((a,b)=>nearestActionDate(a).localeCompare(nearestActionDate(b)));
+  if(!records.length){grid.innerHTML='<div class="promo-empty">此階段目前沒有推廣記錄</div>';return;}
+  grid.innerHTML='';
+  records.forEach((r,i)=>{const card=buildPromoCard(r);card.style.animationDelay=`${i*20}ms`;grid.appendChild(card);});
+}
+function buildPromoCard(r){
+  const si=stageInfo(r.stage);
+  const pendingActions=(r.actions||[]).filter(a=>!a.done).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const doneActions=(r.actions||[]).filter(a=>a.done).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const doneCount=doneActions.length;
+  const hasActions=(r.actions||[]).length>0;
+  const clientName=viewMode==='progress'?(getClientById(r.clientId)?.shortName||''):'';
+  const card=document.createElement('div');card.className='promo-card';card.dataset.id=r.id;
+  const footerRight=r.closed?`<span class="promo-closed-label" data-unclose="${r.id}" title="點兩下可逆轉">✓ 已成案</span>`:`<button class="btn btn-success btn-sm" data-convert="${r.id}">→ 轉為訂單</button>`;
+  card.innerHTML=`
+    <div class="promo-row">
+      <div class="stage-pop-wrap">
+        <span class="promo-stage-tag ${si.cls}" data-stage-open="${r.id}">${si.label}</span>
+        <div class="stage-inline-pop" id="stagePop_${r.id}">
+          <div class="stage-tags-grid">${STAGES.map(s=>`<button class="stage-tag-opt ${s.cls}${r.stage===s.key?' sel':''}" data-pick-stage="${s.key}">${s.label}</button>`).join('')}</div>
+          <div class="stage-pop-footer"><button class="btn btn-secondary btn-sm" data-close-pop="${r.id}">取消</button><button class="btn btn-primary btn-sm" data-save-stage="${r.id}">確認</button></div>
+        </div>
+      </div>
+      <span class="promo-type-badge ${r.type==='續訂'?'type-renew':'type-new'}">${r.type||'新訂'}</span>
+      ${r.dept?`<span class="promo-dept-text">${r.dept}</span>`:''}
+      ${clientName?`<span class="promo-client-name">${clientName}</span>`:''}
+      <span class="promo-product-name">${r.product||'—'}</span>
+      <div class="promo-row-actions">
+        <button class="btn btn-ghost btn-sm" data-toggle-panel="${r.id}">＋行動</button>
+        ${footerRight}
+        <button class="btn btn-ghost btn-sm" data-edit-promo="${r.id}">✎</button>
+      </div>
+    </div>
+    <div class="promo-actions-panel" id="actionPanel_${r.id}">
+      ${hasActions
+        ? [...pendingActions,...doneActions].map(a=>`
+            <div class="promo-action-row${a.done?' done-action':''}">
+              <div class="promo-action-check${a.done?' checked':''}" data-toggle="${r.id}" data-action="${a.id}">${a.done?'✓':''}</div>
+              <span class="promo-action-date ${dueDateCls(a.date)}">${actionDateLabel(a.date)}</span>
+              <span class="promo-action-desc${a.done?' done-desc':''}">${a.desc||''}</span>
+            </div>`).join('')
+        : ''}
+    </div>`;
+  let _selStage=r.stage;
+  card.querySelector('[data-stage-open]').addEventListener('click',e=>{e.stopPropagation();const pop=document.getElementById(`stagePop_${r.id}`);const was=pop.classList.contains('open');document.querySelectorAll('.stage-inline-pop.open').forEach(p=>p.classList.remove('open'));if(!was)pop.classList.add('open');});
+  card.querySelectorAll('[data-pick-stage]').forEach(btn=>{btn.addEventListener('click',e=>{e.stopPropagation();_selStage=btn.dataset.pickStage;card.querySelectorAll('[data-pick-stage]').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');});});
+  card.querySelector('[data-save-stage]').addEventListener('click',e=>{e.stopPropagation();updatePromoStage(r.id,_selStage);document.getElementById(`stagePop_${r.id}`).classList.remove('open');renderPromoGrid();showToast('推廣階段已更新');});
+  card.querySelector('[data-close-pop]').addEventListener('click',e=>{e.stopPropagation();document.getElementById(`stagePop_${r.id}`).classList.remove('open');});
+  card.querySelector('[data-toggle-panel]').addEventListener('click',()=>openPromoModal(r.id));
+  card.querySelectorAll('[data-toggle]').forEach(el=>el.addEventListener('click',()=>{toggleAction(el.dataset.toggle,el.dataset.action);renderPromoGrid();renderDashboard();}));
+  card.querySelector('[data-edit-promo]').addEventListener('click',()=>openPromoModal(r.id));
+  card.querySelector('[data-convert]')?.addEventListener('click',()=>openConvertModal(r.id));
+  const unclosEl=card.querySelector('[data-unclose]');
+  if(unclosEl){let _cc=0,_ct;unclosEl.addEventListener('click',()=>{_cc++;if(_cc===1){_ct=setTimeout(()=>{_cc=0;},400);}else if(_cc>=2){clearTimeout(_ct);_cc=0;reverseClosed(r.id,r.linkedOrderId);}});}
+  return card;
+}
+async function reverseClosed(promoId,linkedOrderId){
+  const ok=await showConfirm('確定要逆轉已成案？相關訂單將從訂單系統中刪除。','逆轉已成案');
+  if(!ok)return;
+  if(linkedOrderId){const db=dbLoad();db.orders=db.orders.filter(o=>o.id!==linkedOrderId);dbSave(db);}
+  setPromoClosed(promoId,false,null);renderPromoGrid();showToast('已逆轉成案，相關訂單已刪除');
+}
+let _convertPromoId=null;
+function openConvertModal(promoId){
+  _convertPromoId=promoId;const r=promoLoad().records.find(x=>x.id===promoId);
+  document.getElementById('cvCaseName').value='';document.getElementById('cvCaseNo').value='';
+  document.getElementById('cvCurrency').value=r?.currency||'USD';
+  document.getElementById('cvQuoteDate').value=r?.quoteDate||'';
+  document.getElementById('cvQuoteOrig').value=r?.quoteOrig||'';document.getElementById('cvQuoteTwd').value=r?.quoteTwd||'';
+  document.getElementById('cvCostOrig').value=r?.costOrig||'';document.getElementById('cvCostTwd').value=r?.costTwd||'';
+  document.getElementById('cvQuoteRate').value=r?.quoteRate||'';
+  document.getElementById('cvDealRate').value='';document.getElementById('cvDealTwd').value='';
+  document.getElementById('cvStartDate').value='';document.getElementById('cvEndDate').value='';
+  document.getElementById('cvNote').value=r?.note||'';
+  updateConvertCurrencyLabels();openModal('convertModal');
+}
+function updateConvertCurrencyLabels(){const sym=CURRENCY_SYMBOLS[document.getElementById('cvCurrency').value]||'US$';document.getElementById('cvLbQuoteOrig').textContent=`業務報價（${sym}）`;document.getElementById('cvLbCostOrig').textContent=`公司底價（${sym}）`;}
+document.getElementById('cvCurrency').addEventListener('change',updateConvertCurrencyLabels);
+document.getElementById('confirmConvertBtn').addEventListener('click',()=>{
+  const r=promoLoad().records.find(x=>x.id===_convertPromoId);if(!r)return;
+  const db=dbLoad();const now=new Date().toISOString();const newOrderId=genId();db.orders=db.orders||[];
+  db.orders.push({id:newOrderId,clientId:r.clientId,productType:'資源',productName:r.product,caseName:document.getElementById('cvCaseName').value.trim(),caseNo:document.getElementById('cvCaseNo').value.trim(),startDate:document.getElementById('cvStartDate').value,endDate:document.getElementById('cvEndDate').value,quoteDate:document.getElementById('cvQuoteDate').value,currency:document.getElementById('cvCurrency').value,costOrig:parseInt(document.getElementById('cvCostOrig').value)||0,costTwd:parseInt(document.getElementById('cvCostTwd').value)||0,quoteOrig:parseInt(document.getElementById('cvQuoteOrig').value)||0,quoteTwd:parseInt(document.getElementById('cvQuoteTwd').value)||0,quoteRate:parseFloat(document.getElementById('cvQuoteRate').value)||0,dealRate:parseFloat(document.getElementById('cvDealRate').value)||0,dealTwd:parseInt(document.getElementById('cvDealTwd').value)||0,taxIncluded:false,quoteNote:document.getElementById('cvNote').value.trim(),status:'新訂推廣',createdAt:now,updatedAt:now});
+  dbSave(db);setPromoClosed(_convertPromoId,true,newOrderId);closeModal('convertModal');renderPromoGrid();showToast('已轉入訂單管理系統 ✓');
+});
+function toggleOrderInfoSection(){const isRenew=document.getElementById('promoType').value==='續訂';const wrapper=document.getElementById('orderInfoWrapper');if(wrapper)wrapper.classList.toggle('visible',isRenew);}
+document.getElementById('promoType').addEventListener('change',toggleOrderInfoSection);
+let editingPromoId=null;let _pendingActions=[];
+function openPromoModal(promoId=null){
+  editingPromoId=promoId;
+  document.getElementById('promoModalTitle').textContent=promoId?'編輯推廣記錄':'新增推廣記錄';
+  document.getElementById('deletePromoBtn').style.display=promoId?'inline-flex':'none';
+  if(promoId){const r=promoLoad().records.find(x=>x.id===promoId);if(!r)return;
+    document.getElementById('promoProduct').value=r.product||'';document.getElementById('promoDept').value=r.dept||'';
+    document.getElementById('promoType').value=r.type||'新訂';document.getElementById('promoStage').value=r.stage||'draft';
+    document.getElementById('promoCurrency').value=r.currency||'USD';document.getElementById('promoQuoteDate').value=r.quoteDate||'';
+    document.getElementById('promoQuoteOrig').value=r.quoteOrig||'';document.getElementById('promoQuoteTwd').value=r.quoteTwd||'';
+    document.getElementById('promoCostOrig').value=r.costOrig||'';document.getElementById('promoCostTwd').value=r.costTwd||'';
+    document.getElementById('promoQuoteRate').value=r.quoteRate||'';document.getElementById('promoDiscountPct').value=r.discountPct||'';
+    document.getElementById('promoNote').value=r.note||'';document.getElementById('promoOrderNote').value=r.orderNote||'';_pendingActions=(r.actions||[]).map(a=>({...a}));
+  } else {
+    ['promoProduct','promoDept','promoQuoteDate','promoQuoteOrig','promoQuoteTwd','promoCostOrig','promoCostTwd','promoQuoteRate','promoDiscountPct','promoNote','promoOrderNote'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('promoType').value='新訂';document.getElementById('promoStage').value='draft';document.getElementById('promoCurrency').value='USD';_pendingActions=[];
+  }
+  updatePromoModalCurrencyLabels();toggleOrderInfoSection();renderActionList();openModal('promoModal');
+}
+function updatePromoModalCurrencyLabels(){const sym=CURRENCY_SYMBOLS[document.getElementById('promoCurrency').value]||'US$';document.getElementById('lbQuoteOrig').textContent=`業務報價（${sym}）`;document.getElementById('lbCostOrig').textContent=`公司底價（${sym}）`;}
+document.getElementById('promoCurrency').addEventListener('change',updatePromoModalCurrencyLabels);
+function renderActionList(){
+  const list=document.getElementById('actionList');
+  list.innerHTML='';
+  // sort: undone first, done last
+  const sorted=[..._pendingActions].map((a,origIdx)=>({...a,origIdx})).sort((a,b)=>{
+    if(a.done===b.done) return (a.date||'').localeCompare(b.date||'');
+    return a.done?1:-1;
+  });
+  sorted.forEach(a=>{
+    const i=a.origIdx;
+    const div=document.createElement('div');
+    div.className='action-item-edit'+(a.done?' done-edit':'');
+    if(a.done) div.style.opacity='0.65';
+    div.innerHTML=`
+      <input type="checkbox" data-ai-check="${i}" ${a.done?'checked':''} style="width:15px;height:15px;cursor:pointer;flex-shrink:0;" title="取消完成"/>
+      <input type="date" value="${a.date||''}" data-ai="${i}" data-field="date" ${a.done?'style="opacity:0.6;"':''}/>
+      <input type="text" value="${a.desc||''}" data-ai="${i}" data-field="desc" placeholder="行動描述…" ${a.done?'style="text-decoration:line-through;opacity:0.6;"':''}/>
+      <button class="action-del-btn" data-del="${i}">✕</button>`;
+    // checkbox toggle done
+    div.querySelector('[data-ai-check]').addEventListener('change',e=>{
+      _pendingActions[i].done=e.target.checked;
+      renderActionList();
+    });
+    div.querySelectorAll('input[type="date"],input[type="text"]').forEach(inp=>{
+      inp.addEventListener('input',e=>{_pendingActions[parseInt(e.target.dataset.ai)][e.target.dataset.field]=e.target.value;});
+    });
+    div.querySelector('[data-del]').addEventListener('click',e=>{
+      _pendingActions.splice(i,1);renderActionList();
+    });
+    list.appendChild(div);
+  });
+}
+document.getElementById('addActionBtn').addEventListener('click',()=>{_pendingActions.push({id:genId(),date:'',desc:'',done:false});renderActionList();const rows=document.querySelectorAll('#actionList .action-item-edit');if(rows.length)rows[rows.length-1].querySelector('input[type="date"]').focus();});
+document.getElementById('savePromoBtn').addEventListener('click',()=>{
+  const product=document.getElementById('promoProduct').value.trim();if(!product){showToast('請填寫產品名稱','error');return;}
+  document.querySelectorAll('#actionList input').forEach(inp=>{const i=parseInt(inp.dataset.ai);if(!isNaN(i)&&inp.dataset.field)_pendingActions[i][inp.dataset.field]=inp.value;});
+  const isRenew=document.getElementById('promoType').value==='續訂';
+  const recClientId=editingPromoId?promoLoad().records.find(r=>r.id===editingPromoId)?.clientId:currentClientId;
+  savePromoRecord({id:editingPromoId||undefined,clientId:recClientId,product,dept:document.getElementById('promoDept').value.trim(),type:document.getElementById('promoType').value,stage:document.getElementById('promoStage').value,note:document.getElementById('promoNote').value.trim(),actions:_pendingActions.filter(a=>a.desc||a.date),...(isRenew?{currency:document.getElementById('promoCurrency').value,quoteDate:document.getElementById('promoQuoteDate').value,quoteOrig:parseInt(document.getElementById('promoQuoteOrig').value)||0,quoteTwd:parseInt(document.getElementById('promoQuoteTwd').value)||0,costOrig:parseInt(document.getElementById('promoCostOrig').value)||0,costTwd:parseInt(document.getElementById('promoCostTwd').value)||0,quoteRate:parseFloat(document.getElementById('promoQuoteRate').value)||0,discountPct:parseFloat(document.getElementById('promoDiscountPct').value)||0,orderNote:document.getElementById('promoOrderNote').value.trim()}:{})});
+  closeModal('promoModal');renderPromoGrid();renderDashboard();showToast(editingPromoId?'推廣記錄已更新':'推廣記錄新增成功');
+});
+document.getElementById('deletePromoBtn').addEventListener('click',async()=>{const id=editingPromoId;closeModal('promoModal');await new Promise(r=>setTimeout(r,180));const ok=await showConfirm('確定要刪除此推廣記錄？','刪除記錄');if(!ok)return;deletePromoRecord(id);renderPromoGrid();showToast('已刪除推廣記錄');});
+function exportPromoBackup(){
+  const data={promo:promoLoad(),clients:dbLoad().clients};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download=`推廣備份_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();URL.revokeObjectURL(url);showToast('備份匯出成功');
+}
+async function importPromoBackup(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const data=JSON.parse(e.target.result);
+        if(!data.promo||!data.promo.records)throw new Error('格式不符，匯入失敗');
+        promoSave(data.promo);
+        resolve();
+      }catch(err){reject(err);}
+    };
+    reader.onerror=reject;
+    reader.readAsText(file);
+  });
+}
+function exportCSV(){const records=viewMode==='client'?getPromoRecordsByClient(currentClientId):getAllPromoRecords();const clientMap={};getClients().forEach(c=>{clientMap[c.id]=c;});const headers=['客戶','產品名稱','科部','類型','推廣階段','備註','後續行動（未完成）','更新時間'];const rows=records.map(r=>[clientMap[r.clientId]?.shortName||'',r.product,r.dept||'',r.type||'',r.closed?'已成案':stageInfo(r.stage).label,r.note||'',(r.actions||[]).filter(a=>!a.done).map(a=>`${fmtDate(a.date)} ${a.desc}`).join(' | '),fmtDateTime(r.updatedAt)]);const csv=[headers,...rows].map(row=>row.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`推廣記錄_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);showToast('匯出成功');}
+document.getElementById('viewByClient').addEventListener('click',()=>{viewMode='client';document.getElementById('viewByClient').classList.add('active');document.getElementById('viewByProgress').classList.remove('active');renderClientList();if(currentClientId)showPromoPage();else{document.getElementById('emptyState').style.display='flex';document.getElementById('promoPage').style.display='none';}});
+document.getElementById('viewByProgress').addEventListener('click',()=>{viewMode='progress';document.getElementById('viewByProgress').classList.add('active');document.getElementById('viewByClient').classList.remove('active');document.querySelectorAll('.client-item').forEach(li=>li.classList.remove('active'));renderClientList();showPromoPage();});
+document.getElementById('clientSearch').addEventListener('input',e=>{
+  renderClientList(e.target.value);
+  if(viewMode==='progress') renderPromoGrid();
+});
+renderClientList();
+}
+</script>
+</body>
+</html>
