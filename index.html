@@ -1697,6 +1697,7 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
     <button class="sidebar-home-btn" id="projectPanelBtn">📁 專案面板</button>
     <button class="sidebar-home-btn" id="orderSearchBtn">🔍 查詢訂單</button>
     <button class="sidebar-home-btn" onclick="location.href='promo.html'">📣 推廣系統</button>
+    <button class="sidebar-home-btn" id="userMgmtBtn" style="display:none;" onclick="__openUserMgmt()">👤 帳號管理</button>
     <ul class="client-list" id="clientList"></ul>
   </aside>
 
@@ -2465,7 +2466,11 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 <div id="loginOverlay" style="position:fixed;inset:0;z-index:99990;background:#1B2A41;display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:12px;padding:36px 40px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,.3);">
     <h2 style="margin:0 0 4px;font-size:20px;color:#1B2A41;">Emily 工作管理系統</h2>
-    <p style="margin:0 0 20px;font-size:12px;color:#888;">請登入以存取資料</p>
+    <p style="margin:0 0 14px;font-size:12px;color:#888;">請選擇身分並登入</p>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button type="button" class="login-role-btn" data-lrole="staff" style="flex:1;padding:9px 0;border-radius:6px;border:2px solid #1B2A41;background:#1B2A41;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">👩‍💼 我是員工</button>
+      <button type="button" class="login-role-btn" data-lrole="boss" style="flex:1;padding:9px 0;border-radius:6px;border:2px solid #ccc;background:#fff;color:#555;font-size:13px;font-weight:600;cursor:pointer;">👔 我是主管</button>
+    </div>
     <label style="font-size:12px;color:#555;">帳號</label>
     <input id="loginUser" type="text" autocomplete="username" style="width:100%;box-sizing:border-box;margin:4px 0 12px;padding:9px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" />
     <label style="font-size:12px;color:#555;">密碼</label>
@@ -2480,6 +2485,22 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 // ── 雲端資料層：Google Sheet（經 Apps Script API）──
 const API_URL = 'https://script.google.com/macros/s/AKfycbxsrWZcR4s9v20YFzbvwj-ni5k7VAlD6jONPS4RjISDEBeSKwhC_SHHft12RjGIYBOj/exec';
 let __token = window.localStorage.getItem('ews_token') || '';
+let __role = window.localStorage.getItem('ews_role') || '';
+window.__ROLE_VIEWER__ = (__role === 'viewer');
+document.querySelectorAll('.login-role-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.login-role-btn').forEach(x => { x.style.background='#fff'; x.style.color='#555'; x.style.borderColor='#ccc'; });
+  b.style.background='#1B2A41'; b.style.color='#fff'; b.style.borderColor='#1B2A41';
+}));
+function __applyRoleUI() {
+  const mgmtBtn = document.getElementById('userMgmtBtn');
+  if (mgmtBtn) mgmtBtn.style.display = (__role === 'admin') ? '' : 'none';
+  if (__role === 'viewer') {
+    window.__ROLE_VIEWER__ = true;
+    const b = document.getElementById('cloudSyncBadge');
+    if (b) { b.textContent = '👁 檢視模式：無法儲存變更'; b.style.background='#EDE7DA'; b.style.color='#4a4f5c'; b.style.borderColor='#E3DED2'; b.style.opacity='1'; }
+  }
+}
+
 
 async function __api(body) {
   body.token = __token;
@@ -2520,8 +2541,8 @@ const cloudStore = (() => {
   }
   return {
     getItem: k => (k in cache && cache[k] !== '' ? cache[k] : null),
-    setItem: (k, v) => { cache[k] = String(v); dirty.add(k); clearTimeout(timer); timer = setTimeout(flush, 800); },
-    removeItem: k => { cache[k] = ''; dirty.add(k); clearTimeout(timer); timer = setTimeout(flush, 800); },
+    setItem: (k, v) => { cache[k] = String(v); if (window.__ROLE_VIEWER__) return; dirty.add(k); clearTimeout(timer); timer = setTimeout(flush, 800); },
+    removeItem: k => { cache[k] = ''; if (window.__ROLE_VIEWER__) return; dirty.add(k); clearTimeout(timer); timer = setTimeout(flush, 800); },
     _seed: obj => Object.assign(cache, obj),
     _hasPending: () => dirty.size > 0 || syncing,
     _flush: flush,
@@ -2532,6 +2553,76 @@ window.addEventListener('beforeunload', e => {
 });
 
 // ── 登入與啟動流程 ──
+
+async function __openUserMgmt() {
+  let m = document.getElementById('userMgmtModal');
+  if (!m) { m = document.createElement('div'); m.id = 'userMgmtModal'; m.className = 'modal-overlay'; document.body.appendChild(m); }
+  m.innerHTML = `<div class="modal" style="width:680px;max-width:94vw;">
+    <div class="modal-header"><h2>👤 帳號管理</h2><button class="modal-close" data-close="userMgmtModal">✕</button></div>
+    <div class="modal-body" id="umBody" style="overflow:auto;max-height:62vh;font-size:13px;">載入中…</div>
+  </div>`;
+  m.classList.add('open');
+  await __renderUserList();
+}
+async function __renderUserList(msg) {
+  const body = document.getElementById('umBody');
+  const res = await __api({ action: 'listUsers' });
+  if (!res.ok) { body.textContent = '載入失敗：' + (res.error || ''); return; }
+  const rowHtml = (u) => `
+    <tr data-user="${u.user}">
+      <td style="padding:6px 8px;font-weight:600;">${u.user}</td>
+      <td style="padding:6px 8px;"><input class="um-name" value="${(u.name||'').replace(/"/g,'&quot;')}" style="width:90px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" /></td>
+      <td style="padding:6px 8px;"><input class="um-pass" value="${(u.pass||'').replace(/"/g,'&quot;')}" style="width:150px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" /></td>
+      <td style="padding:6px 8px;">
+        <select class="um-role" style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;">
+          <option value="admin" ${u.role==='admin'?'selected':''}>管理者</option>
+          <option value="viewer" ${u.role==='viewer'?'selected':''}>檢視者</option>
+        </select>
+      </td>
+      <td style="padding:6px 8px;white-space:nowrap;">
+        <button class="um-save" style="padding:5px 10px;border:none;border-radius:6px;background:var(--navy);color:#fff;cursor:pointer;">儲存</button>
+        <button class="um-del" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;color:#A36B5E;cursor:pointer;margin-left:4px;">刪除</button>
+      </td>
+    </tr>`;
+  document.getElementById('umBody').innerHTML = `
+    ${msg ? `<div style="margin-bottom:8px;color:var(--success,#4A5D4E);font-size:12px;">${msg}</div>` : ''}
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="border-bottom:2px solid var(--border);color:var(--text-muted);font-size:12px;text-align:left;">
+        <th style="padding:6px 8px;">帳號</th><th style="padding:6px 8px;">名稱</th><th style="padding:6px 8px;">密碼</th><th style="padding:6px 8px;">角色</th><th style="padding:6px 8px;">操作</th>
+      </tr></thead>
+      <tbody>${res.users.map(rowHtml).join('')}</tbody>
+    </table>
+    <div style="border-top:1px dashed var(--border);margin-top:12px;padding-top:12px;">
+      <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">＋ 新增帳號</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <input id="umNewUser" placeholder="帳號" style="width:110px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" />
+        <input id="umNewName" placeholder="名稱" style="width:90px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" />
+        <input id="umNewPass" placeholder="密碼" style="width:150px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" />
+        <select id="umNewRole" style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;">
+          <option value="viewer">檢視者</option><option value="admin">管理者</option>
+        </select>
+        <button id="umAdd" style="padding:5px 12px;border:none;border-radius:6px;background:var(--navy);color:#fff;cursor:pointer;">新增</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">管理者：完整編輯權限｜檢視者：僅能瀏覽與匯出，無法儲存變更</div>
+    </div>`;
+  const body2 = document.getElementById('umBody');
+  body2.querySelectorAll('tr[data-user]').forEach(tr => {
+    tr.querySelector('.um-save').addEventListener('click', async () => {
+      const r = await __api({ action: 'saveUser', user2: tr.dataset.user, name2: tr.querySelector('.um-name').value, pass2: tr.querySelector('.um-pass').value, role2: tr.querySelector('.um-role').value });
+      __renderUserList(r.ok ? `已更新「${tr.dataset.user}」` : '❌ ' + (r.error || '更新失敗'));
+    });
+    tr.querySelector('.um-del').addEventListener('click', async () => {
+      if (!confirm(`確定要刪除帳號「${tr.dataset.user}」？`)) return;
+      const r = await __api({ action: 'deleteUser', user2: tr.dataset.user });
+      __renderUserList(r.ok ? `已刪除「${tr.dataset.user}」` : '❌ ' + (r.error || '刪除失敗'));
+    });
+  });
+  body2.querySelector('#umAdd').addEventListener('click', async () => {
+    const r = await __api({ action: 'saveUser', user2: document.getElementById('umNewUser').value, name2: document.getElementById('umNewName').value, pass2: document.getElementById('umNewPass').value, role2: document.getElementById('umNewRole').value });
+    __renderUserList(r.ok ? '已新增帳號' : '❌ ' + (r.error || '新增失敗'));
+  });
+}
+
 function __showLogin(msg) {
   document.getElementById('loadingOverlay').style.display = 'none';
   document.getElementById('loginOverlay').style.display = 'flex';
@@ -2542,6 +2633,8 @@ async function __loadAndStart() {
   const res = await __api({ action: 'load' });
   if (!res.ok) { window.localStorage.removeItem('ews_token'); __token = ''; __showLogin(''); return; }
   cloudStore._seed(res.data || {});
+  if (res.role) { __role = res.role; window.localStorage.setItem('ews_role', __role); window.localStorage.setItem('ews_name', res.name || ''); }
+  __applyRoleUI();
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('loadingOverlay').style.display = 'none';
   if (document.readyState === 'complete' || document.readyState === 'interactive') __startApp();
@@ -2558,6 +2651,7 @@ async function __doLogin() {
     if (!res.ok) { document.getElementById('loginErr').textContent = '帳號或密碼錯誤'; return; }
     __token = res.token;
     window.localStorage.setItem('ews_token', __token);
+    __role = res.role || ''; window.localStorage.setItem('ews_role', __role); window.localStorage.setItem('ews_name', res.name || '');
     document.getElementById('loadingOverlay').style.display = 'flex';
     await __loadAndStart();
   } catch (err) {
