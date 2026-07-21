@@ -8036,6 +8036,17 @@ document.addEventListener('mousemove', e => {
 });
 window.addSplitItem = addSplitItem;
 window.snoozeOrderAlert = snoozeOrderAlert;
+// 供 HTML inline 事件處理器（onchange/oninput）呼叫 — 主程式包在 __startApp() 內，需顯式掛到 window
+window.renderCtYearFields = renderCtYearFields;
+window.updateCurrencyLabels = updateCurrencyLabels;
+window.onLinkedOrderChange = onLinkedOrderChange;
+window.recalcRise = recalcRise;
+window.toggleAutoTwd = toggleAutoTwd;
+window.autoCalcTwd = autoCalcTwd;
+window.toggleServiceFee = toggleServiceFee;
+window.toggleSplitItems = toggleSplitItems;
+window.updateBargainPct = updateBargainPct;
+window.updateSplitTotal = updateSplitTotal;
 }
 </script>
 </body>
