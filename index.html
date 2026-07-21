@@ -2847,7 +2847,7 @@ function fmtMoney(val) {
 
 function fmtRate(val) {
   const n = parseFloat(val);
-  if (isNaN(n)) return '—';
+  if (isNaN(n) || n === 0) return '—';  // 匯率 0（如台幣訂單）顯示為 —
   return n.toFixed(2);
 }
 
@@ -2933,6 +2933,27 @@ function updateCurrencyLabels() {
   const sym = CURRENCY_SYMBOLS[sel.value] || sel.value;
   document.getElementById('labelCostOrig').textContent  = `公司底價（${sym}）`;
   document.getElementById('labelQuoteOrig').textContent = `客戶報價（${sym}）`;
+
+  // 台幣訂單：沒有匯率問題 → 匯率視為 1、鎖住報價/成交匯率欄位（灰色不可填）
+  const isTWD = sel.value === 'TWD';
+  ['orderQuoteRate', 'orderDealRate'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = isTWD;
+    if (isTWD) {
+      el.value = '';
+      el.placeholder = '台幣免匯率';
+      el.style.background = 'var(--surface2)';
+      el.style.color = 'var(--text-muted)';
+      el.style.cursor = 'not-allowed';
+    } else {
+      el.placeholder = '0.00';
+      el.style.background = '';
+      el.style.color = '';
+      el.style.cursor = '';
+    }
+  });
+  autoCalcTwd();
 }
 
 
@@ -3118,10 +3139,12 @@ function addYears(dateStr, years, dayOffset=0) {
 
 // ── 價格自動計算 ──
 function autoCalcTwd() {
+  const isTWD      = document.getElementById('orderCurrency')?.value === 'TWD';
   const costOrig   = parsePriceInput(document.getElementById('orderCostOrig'));
   const quoteOrig  = parsePriceInput(document.getElementById('orderQuoteOrig'));
-  const quoteRate  = parseFloat(document.getElementById('orderQuoteRate')?.value)  || 0;
-  const dealRate   = parseFloat(document.getElementById('orderDealRate')?.value)   || 0;
+  // 台幣訂單：匯率固定為 1（台幣 = 原幣，含稅／服務費照常加乘）
+  const quoteRate  = isTWD ? 1 : (parseFloat(document.getElementById('orderQuoteRate')?.value)  || 0);
+  const dealRate   = isTWD ? 1 : (parseFloat(document.getElementById('orderDealRate')?.value)   || 0);
   // 底價台幣：成交匯率優先，否則報價匯率；報價台幣：永遠用報價匯率
   const costRate   = dealRate || quoteRate;
   const tax        = document.getElementById('orderTaxIncluded')?.checked ? 1.05 : 1;
