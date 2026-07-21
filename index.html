@@ -3176,7 +3176,7 @@ function autoCalcTwd() {
     updateBargainPct();
   }
 
-  recalcRise();
+  calcRiseDisplay();  // 只更新漲幅顯示（不可呼叫 recalcRise，否則與 autoCalcTwd 互相遞迴爆堆疊）
 }
 
 function toggleServiceFee() {
