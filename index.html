@@ -1912,7 +1912,9 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
             <input type="text" id="orderCaseNo" placeholder="採購案號" />
           </div>
           <div class="form-group">
-            <label>訂期起始日</label>
+            <label style="display:flex;align-items:center;gap:6px;">訂期起始日
+              <button type="button" onclick="fillOneYearEnd()" title="依起始日自動帶入一年後的結束日" style="font-size:10px;font-weight:600;line-height:1.4;padding:1px 8px;border:1px solid var(--warm);background:var(--surface2);color:var(--warm);border-radius:8px;cursor:pointer;">＋一年</button>
+            </label>
             <input type="date" id="orderStartDate" />
           </div>
           <div class="form-group">
@@ -3177,6 +3179,20 @@ function autoCalcTwd() {
   }
 
   calcRiseDisplay();  // 只更新漲幅顯示（不可呼叫 recalcRise，否則與 autoCalcTwd 互相遞迴爆堆疊）
+}
+
+// 依訂期起始日自動帶入「一年後減一天」的結束日（例：2025/06/01 → 2026/05/31）
+function fillOneYearEnd() {
+  const startEl = document.getElementById('orderStartDate');
+  const endEl   = document.getElementById('orderEndDate');
+  if (!startEl?.value) { showToast('請先填訂期起始日', 'error'); return; }
+  const d = new Date(startEl.value + 'T00:00:00');
+  d.setFullYear(d.getFullYear() + 1);
+  d.setDate(d.getDate() - 1);
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const dd   = String(d.getDate()).padStart(2, '0');
+  endEl.value = `${yyyy}-${mm}-${dd}`;
 }
 
 function toggleServiceFee() {
@@ -8047,6 +8063,7 @@ window.toggleServiceFee = toggleServiceFee;
 window.toggleSplitItems = toggleSplitItems;
 window.updateBargainPct = updateBargainPct;
 window.updateSplitTotal = updateSplitTotal;
+window.fillOneYearEnd = fillOneYearEnd;
 }
 </script>
 </body>
