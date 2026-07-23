@@ -937,6 +937,22 @@ document.getElementById('clientSearch').addEventListener('input',e=>{
   if(viewMode==='progress') renderPromoGrid();
 });
 renderClientList();
+
+// 從首頁總覽跳轉過來：#client=<id> → 自動切到「按客戶」並開啟該客戶
+(function(){
+  const m = (location.hash || '').match(/client=([^&]+)/);
+  if (!m) return;
+  const cid = decodeURIComponent(m[1]);
+  if (!getClientById(cid)) return;
+  viewMode = 'client';
+  document.getElementById('viewByClient').classList.add('active');
+  document.getElementById('viewByProgress').classList.remove('active');
+  renderClientList();
+  selectClient(cid);
+  const li = document.querySelector('.client-item.active');
+  if (li) li.scrollIntoView({ block: 'center' });
+  history.replaceState(null, '', location.pathname);  // 清掉 hash，避免重整又跳
+})();
 }
 </script>
 </body>

@@ -5666,7 +5666,10 @@ function computeDashboardItems() {
   });
 
   // ── 2. 推廣系統（從共用 localStorage 讀取） ──
-  const _promoNav = () => { window.location.href = 'promo.html'; };
+  // 帶客戶 id 跳轉推廣系統，開頁後自動定位到「按客戶」的該客戶頁
+  const _promoNav = (clientId) => () => {
+    window.location.href = 'promo.html' + (clientId ? '#client=' + encodeURIComponent(clientId) : '');
+  };
   try {
     const _promoRaw = cloudStore.getItem('promo_data');
     const promo = _promoRaw ? JSON.parse(_promoRaw) : { records: [] };
@@ -5694,7 +5697,7 @@ function computeDashboardItems() {
           title:   a.desc || '推廣動作',
           sub:     promoSub,
           tooltip: [a.desc || '推廣動作', promoSub].filter(Boolean).join('\n'),
-          taskId:  null, overdue: false, navFn: _promoNav,
+          taskId:  null, overdue: false, navFn: _promoNav(rec.clientId),
           recId: rec.id, actionId: a.id,
         });
       });
@@ -5722,7 +5725,7 @@ function computeDashboardItems() {
               source:'promo', icon: staleDays >= 7 ? '🔸' : '📣', priW:3, cls:'pri-green',
               title:   staleTitle, sub: staleSub,
               tooltip: [staleTitle, staleSub].join('\n'),
-              taskId:  null, overdue: false, navFn: _promoNav,
+              taskId:  null, overdue: false, navFn: _promoNav(rec.clientId),
               recId: rec.id, actionId: null,
             });
           }
