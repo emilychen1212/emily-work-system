@@ -5524,15 +5524,15 @@ function computeDashboardItems() {
   const snapDate = today < days[0] ? days[0] : today;
   const dayMap  = {}; // isoDate → [{source,icon,title,sub,priW,cls,overdue,navFn}]
   days.forEach(d => { dayMap[_isoDate(d)] = []; });
-  // 下週日期（供「下週到期預告」大格子）；週末預覽模式下 days 已是下週，故不重複收集
+  // 下週到期預告視窗：從「本週六」到「下週日」（涵蓋週末縫隙，避免提前顯示邏輯把下週初任務丟到週末而漏掉）
+  // 週末預覽模式下 days 已是下週，故不重複收集
   const isWeekendPreview = today < days[0];
   const nextDays = [];
   if (!isWeekendPreview) {
-    const nextMon = new Date(days[0]); nextMon.setDate(days[0].getDate() + 7);
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(nextMon); d.setDate(nextMon.getDate() + i);
+    for (let i = 1; i <= 9; i++) {  // days[4]=本週五；+1=六 … +9=下週日
+      const d = new Date(days[4]); d.setDate(days[4].getDate() + i);
       nextDays.push(d);
-      dayMap[_isoDate(d)] = [];  // 讓現有排入邏輯自然把下週項目收進來
+      dayMap[_isoDate(d)] = [];  // 讓現有排入邏輯自然把這些日期的項目收進來
     }
   }
   const unscheduled = []; // tasks without dueDate
