@@ -204,6 +204,7 @@ ul{list-style:none;}
 .note-row{grid-template-columns:1fr 2fr auto;}
 .notes-save-hint{font-size:11px;color:var(--success);margin-left:auto;opacity:0;transition:opacity .3s;}
 .notes-save-hint.show{opacity:1;}
+#confirmModal{z-index:200;}  /* 確認視窗永遠壓在最上層（避免被動態筆記視窗蓋住）*/
 </style>
 </head>
 <body>
