@@ -2070,6 +2070,11 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
                 <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">交貨型（長庚/明志）：約定交貨日期</div>
               </div>
             </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--border);">
+              <input type="checkbox" id="orderNeedsContract" style="width:15px;height:15px;cursor:pointer;" />
+              <label for="orderNeedsContract" style="cursor:pointer;font-weight:600;font-size:12.5px;color:var(--navy);">📝 需做合約</label>
+              <span style="font-size:10.5px;color:var(--text-muted);">勾選後自動建立「製作合約」任務（🔴 文書作業；有履保金截止日則排在其前 3 天）</span>
+            </div>
           </div>
         </div>
       </div>
@@ -4511,12 +4516,14 @@ function openOrderModal(orderId = null, parentOrderId = null) {
     document.getElementById('orderQuoteNote').value      = o.quoteNote   || '';
     document.getElementById('orderBondDeadline').value  = o.bondDeadline || '';
     document.getElementById('orderDeliveryDate').value  = o.deliveryDate || '';
+    document.getElementById('orderNeedsContract').checked = !!o.needsContract;
   } else {
     ['orderProductType','orderCurrency'].forEach(id => document.getElementById(id).value = id === 'orderCurrency' ? 'USD' : '');
     ['orderProductName','orderCaseName','orderCaseNo','orderStartDate','orderEndDate',
      'orderQuoteDate','orderCostOrig','orderCostTwd','orderQuoteOrig','orderQuoteTwd',
      'orderQuoteRate','orderDealRate','orderDealTwd','orderBondDeadline','orderDeliveryDate'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('orderTaxIncluded').checked = false;
+    document.getElementById('orderNeedsContract').checked = false;
     document.getElementById('orderQuoteNote').value = '';
     _splitItems = [];
     document.getElementById('orderSplitEnabled').checked = false;
@@ -4615,9 +4622,12 @@ async function handleSaveOrder() {
     quoteNote:   document.getElementById('orderQuoteNote').value.trim(),
     bondDeadline:    document.getElementById('orderBondDeadline').value || null,
     deliveryDate:    document.getElementById('orderDeliveryDate').value || null,
+    needsContract:   document.getElementById('orderNeedsContract').checked,
   };
 
   const savedOrderId = saveOrder(orderData);
+  // 需做合約 → 自動建立「製作合約」任務（每訂單只建一次）
+  if (orderData.needsContract) maybeCreateContractTask(savedOrderId);
   // 子訂單不處理拆項
   const _isChild = !!(orderData.parentOrderId);
   // 儲存拆項為子訂單
@@ -6142,6 +6152,33 @@ function saveTask(t) {
 }
 function deleteTask(id) {
   const d = workLoad(); d.tasks = d.tasks.filter(t => t.id !== id); workSave(d);
+}
+
+// 需做合約 → 自動建立「製作合約」任務（每訂單只建一次；有履保金截止日則排在其前 3 天）
+function maybeCreateContractTask(orderId) {
+  const db = dbLoad();
+  const o = (db.orders || []).find(x => x.id === orderId);
+  if (!o) return;
+  // 防重複：該訂單已有未完成（非已完成/取消）的自動合約任務 → 不再建立
+  const exists = getTasks().some(t => t.orderId === orderId && t.autoKind === 'contract'
+    && t.status !== '已完成' && t.status !== '取消');
+  if (exists) return;
+  // 截止日：履保金截止日 − 3 天（沒填則不設固定日期）
+  let dueDate = '';
+  if (o.bondDeadline) {
+    const d = new Date(o.bondDeadline + 'T00:00:00'); d.setDate(d.getDate() - 3);
+    dueDate = _isoDate(d);
+  }
+  saveTask({
+    desc: '製作合約' + (o.productName ? `（${o.productName}）` : ''),
+    detail: '', type: '任務收件處',
+    category: '文書作業', priority: '🔴',
+    clientId: o.clientId, dueDate: dueDate, status: '今日收件',
+    orderId: orderId, autoKind: 'contract',
+  });
+  if (typeof renderWorkQuad === 'function') renderWorkQuad();
+  refreshDashboardContent();
+  showToast(dueDate ? `已建立「製作合約」任務（截止 ${dueDate.slice(5).replace('-','/')}）` : '已建立「製作合約」任務');
 }
 function toggleTaskDone(id) {
   const d = workLoad(); const now = new Date().toISOString();
