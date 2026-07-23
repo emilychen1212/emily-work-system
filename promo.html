@@ -189,6 +189,21 @@ ul{list-style:none;}
 .type-filter-btn.active-new{background:#7E4A3E;color:#fff;border-color:#7E4A3E;}
 .type-filter-btn.active-renew{background:#3C4C40;color:#fff;border-color:#3C4C40;}
 
+/* 筆記 */
+.notes-count{display:inline-block;min-width:16px;padding:0 4px;background:var(--warm);color:#fff;border-radius:9px;font-size:10px;font-weight:700;text-align:center;}
+.notes-modal .modal{width:720px;max-width:94vw;max-height:86vh;display:flex;flex-direction:column;}
+.notes-modal .modal-body{overflow:auto;padding:14px 20px 18px;}
+.notes-empty{text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;opacity:.75;}
+.note-row{display:grid;grid-template-columns:1fr 2fr;gap:12px;align-items:start;padding:8px 0;border-bottom:1px dashed var(--border);}
+.note-time{font-size:11.5px;color:var(--text-muted);padding-top:9px;line-height:1.5;}
+.note-time .nt-label{display:block;font-size:10px;opacity:.7;}
+.note-text{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;line-height:1.6;resize:none;overflow:hidden;min-height:38px;background:var(--surface);color:var(--text-primary);transition:border-color var(--t);}
+.note-text:focus{outline:none;border-color:var(--warm);}
+.note-del{border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:6px 4px;align-self:start;}
+.note-del:hover{color:var(--danger);}
+.note-row{grid-template-columns:1fr 2fr auto;}
+.notes-save-hint{font-size:11px;color:var(--success);margin-left:auto;opacity:0;transition:opacity .3s;}
+.notes-save-hint.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -785,6 +800,7 @@ function buildPromoCard(r){
       ${clientName?`<span class="promo-client-name">${clientName}</span>`:''}
       <span class="promo-product-name">${r.product||'—'}</span>
       <div class="promo-row-actions">
+        <button class="btn btn-ghost btn-sm" data-notes-promo="${r.id}" title="筆記">📝 筆記${(r.notes&&r.notes.length)?` <span class="notes-count">${r.notes.length}</span>`:''}</button>
         <button class="btn btn-ghost btn-sm" data-toggle-panel="${r.id}">＋行動</button>
         ${footerRight}
         <button class="btn btn-ghost btn-sm" data-edit-promo="${r.id}">✎</button>
@@ -808,6 +824,7 @@ function buildPromoCard(r){
   card.querySelector('[data-toggle-panel]').addEventListener('click',()=>openPromoModal(r.id));
   card.querySelectorAll('[data-toggle]').forEach(el=>el.addEventListener('click',()=>{toggleAction(el.dataset.toggle,el.dataset.action);renderPromoGrid();renderDashboard();}));
   card.querySelector('[data-edit-promo]').addEventListener('click',()=>openPromoModal(r.id));
+  card.querySelector('[data-notes-promo]').addEventListener('click',()=>openNotesModal(r.id));
   card.querySelector('[data-convert]')?.addEventListener('click',()=>openConvertModal(r.id));
   const unclosEl=card.querySelector('[data-unclose]');
   if(unclosEl){let _cc=0,_ct;unclosEl.addEventListener('click',()=>{_cc++;if(_cc===1){_ct=setTimeout(()=>{_cc=0;},400);}else if(_cc>=2){clearTimeout(_ct);_cc=0;reverseClosed(r.id,r.linkedOrderId);}});}
@@ -819,6 +836,116 @@ async function reverseClosed(promoId,linkedOrderId){
   if(linkedOrderId){const db=dbLoad();db.orders=db.orders.filter(o=>o.id!==linkedOrderId);dbSave(db);}
   setPromoClosed(promoId,false,null);renderPromoGrid();showToast('已逆轉成案，相關訂單已刪除');
 }
+
+// ══════════════════════════════════════════════
+//  📝 推廣記錄筆記（每筆記錄獨立、自動儲存）
+// ══════════════════════════════════════════════
+let _notesRecId=null, _notesArr=[], _notesTimer=null;
+
+function _notesSaveToRecord(){
+  const d=promoLoad();
+  const r=d.records.find(x=>x.id===_notesRecId);
+  if(r){ r.notes=_notesArr.map(n=>({id:n.id,text:n.text,updatedAt:n.updatedAt})); promoSave(d); }
+}
+function _notesFlash(){
+  const h=document.getElementById('notesSaveHint');
+  if(!h)return; h.classList.add('show'); clearTimeout(h._t); h._t=setTimeout(()=>h.classList.remove('show'),1200);
+}
+function _notesAutoSave(){
+  clearTimeout(_notesTimer);
+  _notesTimer=setTimeout(()=>{ _notesSaveToRecord(); _notesFlash(); },400);
+}
+
+function openNotesModal(recId){
+  const rec=promoLoad().records.find(x=>x.id===recId);
+  if(!rec)return;
+  _notesRecId=recId;
+  _notesArr=(rec.notes||[]).map(n=>({id:n.id,text:n.text||'',updatedAt:n.updatedAt||rec.updatedAt||new Date().toISOString()}));
+  _notesArr.sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
+
+  const clientName=getClientById(rec.clientId)?.shortName||'';
+  let modal=document.getElementById('notesModal');
+  if(!modal){ modal=document.createElement('div'); modal.id='notesModal'; modal.className='modal-overlay notes-modal'; document.body.appendChild(modal); }
+  modal.innerHTML=`
+    <div class="modal">
+      <div class="modal-header">
+        <h2 style="font-family:'Noto Serif TC','Songti TC',serif;">📝 筆記 — ${clientName} ${rec.product||''}</h2>
+        <span class="notes-save-hint" id="notesSaveHint">已自動儲存 ✓</span>
+        <button class="btn btn-primary btn-sm" id="notesAddBtn" style="margin-left:10px;">＋ 新增筆記</button>
+        <button class="modal-close" id="notesCloseBtn" style="margin-left:6px;">✕</button>
+      </div>
+      <div class="modal-body" id="notesBody"></div>
+    </div>`;
+  _renderNotesBody();
+  openModal('notesModal');
+
+  document.getElementById('notesAddBtn').addEventListener('click',()=>_notesAdd());
+  document.getElementById('notesCloseBtn').addEventListener('click',()=>_notesClose());
+}
+
+function _notesAdd(){
+  _notesArr.unshift({ id:genId(), text:'', updatedAt:new Date().toISOString() });
+  _notesSaveToRecord();
+  _renderNotesBody(true);   // true = focus 第一列
+}
+
+function _renderNotesBody(focusFirst){
+  const body=document.getElementById('notesBody');
+  if(!_notesArr.length){ body.innerHTML='<div class="notes-empty">尚無筆記，點右上角「＋ 新增筆記」開始</div>'; return; }
+  body.innerHTML=_notesArr.map(n=>`
+    <div class="note-row" data-nid="${n.id}">
+      <div class="note-time"><span class="nt-label">最近更新</span>${fmtDateTime(n.updatedAt)}</div>
+      <textarea class="note-text" data-nid="${n.id}" rows="1" placeholder="輸入筆記…（連按兩次 Enter 新增下一筆）">${(n.text||'').replace(/</g,'&lt;')}</textarea>
+      <button class="note-del" data-del="${n.id}" title="刪除這筆">🗑</button>
+    </div>`).join('');
+
+  body.querySelectorAll('.note-text').forEach(ta=>{
+    const grow=()=>{ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; };
+    grow();
+    ta.addEventListener('input',()=>{
+      grow();
+      const n=_notesArr.find(x=>x.id===ta.dataset.nid);
+      if(n){ n.text=ta.value; n.updatedAt=new Date().toISOString(); }
+      // 同列時間標籤即時更新，但不重排（避免游標跳走）
+      const timeEl=ta.closest('.note-row')?.querySelector('.note-time');
+      if(timeEl&&n) timeEl.innerHTML=`<span class="nt-label">最近更新</span>${fmtDateTime(n.updatedAt)}`;
+      _notesAutoSave();
+    });
+    ta.addEventListener('blur',()=>{ _notesSaveToRecord(); });
+    ta.addEventListener('keydown',e=>{
+      if(e.key==='Enter'&&!e.shiftKey){
+        // 連按兩次 Enter（此時 value 已含前一個換行）→ 新增下一列
+        if(ta.value.endsWith('\n')){
+          e.preventDefault();
+          const n=_notesArr.find(x=>x.id===ta.dataset.nid);
+          if(n){ n.text=ta.value.replace(/\n+$/,''); }
+          _notesSaveToRecord();
+          _notesAdd();
+        }
+      }
+    });
+  });
+  body.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const ok=await showConfirm('確定要刪除這筆筆記？','刪除筆記');
+      if(!ok)return;
+      _notesArr=_notesArr.filter(n=>n.id!==btn.dataset.del);
+      _notesSaveToRecord();
+      _renderNotesBody();
+    });
+  });
+
+  if(focusFirst){ const first=body.querySelector('.note-text'); if(first){ first.focus(); } }
+}
+
+function _notesClose(){
+  clearTimeout(_notesTimer);
+  _notesArr=_notesArr.filter(n=>(n.text||'').trim()!=='');  // 丟棄空白筆記
+  _notesSaveToRecord();
+  closeModal('notesModal');
+  renderPromoGrid();  // 更新筆記數量徽章
+}
+
 let _convertPromoId=null;
 function openConvertModal(promoId){
   _convertPromoId=promoId;const r=promoLoad().records.find(x=>x.id===promoId);
