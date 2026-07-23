@@ -1600,6 +1600,12 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .db-source-section + .db-source-section { border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 6px; }
 .db-source-label { font-size: 10.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em; padding: 0 10px 4px; opacity: 0.75; }
 .db-section-title { font-size: 13px; font-weight: 700; color: var(--navy); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.db-nextweek { margin-top: 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.db-nextweek-title { font-size: 12px; font-weight: 700; color: var(--warm); letter-spacing: 0.03em; margin-bottom: 10px; }
+.db-nextweek-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.db-nextweek-cell { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 4px 8px; min-height: 60px; }
+.db-nextweek-cell .db-source-label { padding: 0 10px 6px; }
+.db-nextweek-empty { font-size: 11px; color: var(--text-muted); text-align: center; padding: 10px 0; opacity: 0.7; }
 .db-refresh-btn { font-size: 11px; background: none; border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; color: var(--text-muted); margin-left: auto; }
 .db-refresh-btn:hover { color: var(--navy); }
 .db-item { position: relative; }
@@ -5518,6 +5524,17 @@ function computeDashboardItems() {
   const snapDate = today < days[0] ? days[0] : today;
   const dayMap  = {}; // isoDate → [{source,icon,title,sub,priW,cls,overdue,navFn}]
   days.forEach(d => { dayMap[_isoDate(d)] = []; });
+  // 下週日期（供「下週到期預告」大格子）；週末預覽模式下 days 已是下週，故不重複收集
+  const isWeekendPreview = today < days[0];
+  const nextDays = [];
+  if (!isWeekendPreview) {
+    const nextMon = new Date(days[0]); nextMon.setDate(days[0].getDate() + 7);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(nextMon); d.setDate(nextMon.getDate() + i);
+      nextDays.push(d);
+      dayMap[_isoDate(d)] = [];  // 讓現有排入邏輯自然把下週項目收進來
+    }
+  }
   const unscheduled = []; // tasks without dueDate
 
   // ── 1. 訂單管理 ──
@@ -5649,6 +5666,7 @@ function computeDashboardItems() {
   });
 
   // ── 2. 推廣系統（從共用 localStorage 讀取） ──
+  const _promoNav = () => { window.location.href = 'promo.html'; };
   try {
     const _promoRaw = cloudStore.getItem('promo_data');
     const promo = _promoRaw ? JSON.parse(_promoRaw) : { records: [] };
@@ -5665,16 +5683,18 @@ function computeDashboardItems() {
       const allActions  = rec.actions || [];
       const undoneActions = allActions.filter(a => !a.done);
 
-      // Trigger ①: 未完成且有日期的行動 → 排入對應日期
+      // Trigger ①: 未完成且有日期的行動 → 排入對應日期（過期則比照任務 snap 到今天/週一，用 🔸 標示）
       undoneActions.filter(a => a.date).forEach(a => {
-        const iso = a.date.slice(0,10);
-        if (!dayMap[iso]) return;
+        const ad = new Date(a.date.slice(0,10) + 'T00:00:00'); ad.setHours(0,0,0,0);
+        const isPast = ad < snapDate;
+        const iso = _isoDate(isPast ? snapDate : ad);
+        if (!dayMap[iso]) return;  // 未來（本週之後）不進主格，交給下週預告
         dayMap[iso].push({
-          source:'promo', icon:'📣', priW:3, cls:'pri-green',
+          source:'promo', icon: isPast ? '🔸' : '📣', priW:3, cls:'pri-green',
           title:   a.desc || '推廣動作',
           sub:     promoSub,
           tooltip: [a.desc || '推廣動作', promoSub].filter(Boolean).join('\n'),
-          taskId:  null, overdue: false, navFn: null,
+          taskId:  null, overdue: false, navFn: _promoNav,
           recId: rec.id, actionId: a.id,
         });
       });
@@ -5693,16 +5713,16 @@ function computeDashboardItems() {
         const baseDate   = baseRef ? new Date(baseRef.date) : new Date(rec.createdAt || today);
         baseDate.setHours(0,0,0,0);
         const staleDays = _daysBetween(baseDate, today);
-        if (staleDays >= 5) {
-          const iso = _isoDate(today);
+        if (staleDays >= 3) {
+          const iso = _isoDate(snapDate);
           if (dayMap[iso]) {
             const staleTitle = `追蹤 ${clientName}${rec.product ? ' ' + rec.product : ''} — 停滯${staleDays}天`;
             const staleSub   = `推廣階段：${rec.stage || '—'}`;
             dayMap[iso].push({
-              source:'promo', icon:'📣', priW:3, cls:'pri-green',
+              source:'promo', icon: staleDays >= 7 ? '🔸' : '📣', priW:3, cls:'pri-green',
               title:   staleTitle, sub: staleSub,
               tooltip: [staleTitle, staleSub].join('\n'),
-              taskId:  null, overdue: staleDays >= 10, navFn: null,
+              taskId:  null, overdue: false, navFn: _promoNav,
               recId: rec.id, actionId: null,
             });
           }
@@ -5781,21 +5801,21 @@ function computeDashboardItems() {
   // Sort each day by priority
   Object.values(dayMap).forEach(arr => arr.sort((a,b) => a.priW - b.priW));
 
-  return { days, dayMap, unscheduled };
+  return { days, nextDays, dayMap, unscheduled };
 }
 
 function refreshDashboardContent() {
 
   const page = document.getElementById('dashboardPage');
-  const { days, dayMap, unscheduled } = computeDashboardItems();
+  const { days, nextDays, dayMap, unscheduled } = computeDashboardItems();
   const today = new Date(); today.setHours(0,0,0,0);
 
   const DAY_NAMES = ['日','一','二','三','四','五','六'];
   const SOURCE_LABELS = { order:'訂單', promo:'推廣', task:'任務', checklist:'子任務' };
 
-  // Totals
+  // Totals（只計本週 5 天，不含下週預告）
   let totalOrder=0, totalPromo=0, totalTask=0, totalChecklist=0;
-  Object.values(dayMap).forEach(arr => arr.forEach(item => {
+  days.forEach(day => (dayMap[_isoDate(day)] || []).forEach(item => {
     if (item.source==='order') totalOrder++;
     else if (item.source==='promo') totalPromo++;
     else if (item.source==='task') totalTask++;
@@ -5965,6 +5985,37 @@ function refreshDashboardContent() {
 
     grid.appendChild(col);
   });
+
+  // ── 下週到期預告（全寬大格子；訂單 / 任務 / 推廣三格）──
+  if (nextDays && nextDays.length) {
+    // 蒐集下週所有項目，依來源分類
+    const nextItems = [];
+    nextDays.forEach(d => (dayMap[_isoDate(d)] || []).forEach(it => nextItems.push(it)));
+    if (nextItems.length) {
+      const nwStart = _isoDate(nextDays[0]).slice(5).replace('-','/');
+      const nwEnd   = _isoDate(nextDays[nextDays.length-1]).slice(5).replace('-','/');
+      const box = document.createElement('div');
+      box.className = 'db-nextweek';
+      box.innerHTML = `<div class="db-nextweek-title">📅 下週到期預告（${nwStart} – ${nwEnd}）</div>
+        <div class="db-nextweek-grid"></div>`;
+      const nwGrid = box.querySelector('.db-nextweek-grid');
+      const NW_SECTIONS = [
+        { label: '📋 訂單', source: 'order' },
+        { label: '✅ 任務', source: 'task' },
+        { label: '📣 推廣', source: 'promo' },
+      ];
+      NW_SECTIONS.forEach(sec => {
+        const cell = document.createElement('div');
+        cell.className = 'db-nextweek-cell';
+        cell.innerHTML = `<div class="db-source-label">${sec.label}</div>`;
+        const cellItems = nextItems.filter(i => i.source === sec.source);
+        if (cellItems.length) cellItems.forEach(item => cell.appendChild(buildItemEl(item)));
+        else cell.insertAdjacentHTML('beforeend', '<div class="db-nextweek-empty">—</div>');
+        nwGrid.appendChild(cell);
+      });
+      page.querySelector('.db-wrap').appendChild(box);
+    }
+  }
 }
 
 // ── renderDashboardPage：跳頁 + 刷新內容 ──
