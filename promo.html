@@ -683,7 +683,7 @@ const STAGES=[
 ];
 function stageInfo(key){return STAGES.find(s=>s.key===key)||{label:key,cls:'stage-draft'};}
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function dbLoad(){try{const raw=cloudStore.getItem(DB_KEY);if(!raw)return{clients:[],orders:[],contacts:[]};const d=JSON.parse(raw);d.clients=d.clients||[];d.orders=d.orders||[];d.contacts=d.contacts||[];return d;}catch{return{clients:[],orders:[],contacts:[]};}}
+function dbLoad(){try{const raw=cloudStore.getItem(DB_KEY);if(!raw)return{clients:[],orders:[],contracts:[],contacts:[]};const d=JSON.parse(raw);d.clients=d.clients||[];d.orders=d.orders||[];d.contracts=d.contracts||[];d.contacts=d.contacts||[];return d;}catch{return{clients:[],orders:[],contracts:[],contacts:[]};}}
 function dbSave(d){cloudStore.setItem(DB_KEY,JSON.stringify(d));}
 function promoLoad(){try{const raw=cloudStore.getItem(PROMO_KEY);if(!raw)return{records:[]};const d=JSON.parse(raw);d.records=d.records||[];return d;}catch{return{records:[]};}}
 function promoSave(d){cloudStore.setItem(PROMO_KEY,JSON.stringify(d));}
