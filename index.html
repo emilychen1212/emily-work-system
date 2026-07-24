@@ -5483,7 +5483,7 @@ const PRIORITY_ADVANCE = { '🔥':3, '🔴':2, '🟡':1, '🟢':0 };
 const PRIORITY_TRACK_DAYS = { '🔥':2, '🔴':5, '🟡':7, '🟢':null };
 
 // 不設警示的任務類別
-const NO_ALERT_CATEGORIES = new Set(['跑統計','個人']);
+const NO_ALERT_CATEGORIES = new Set(['跑統計']);
 
 // ── 依訂期自動判斷初始狀態 ──
 // isFirstYear=true 且 startDate 尚未到 → 用「詢價中」（代表仍在洽談）
@@ -5748,7 +5748,7 @@ function computeDashboardItems() {
   // ── 3. 任務管理 ──
   const tasks = getTasks().filter(t => t.status !== '已完成' && t.status !== '取消');
   tasks.forEach(t => {
-    // 跑統計、個人 → 不進儀表板
+    // 跑統計 → 不進儀表板
     if (NO_ALERT_CATEGORIES.has(t.category)) return;
 
     const { cls, w } = _priClass(t.priority);
