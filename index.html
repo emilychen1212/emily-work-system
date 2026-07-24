@@ -2112,6 +2112,7 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
       <div class="modal-body">
         <div class="contact-tabs">
           <button class="contact-tab active" data-role="館員">館員</button>
+          <button class="contact-tab" data-role="行政">行政</button>
           <button class="contact-tab" data-role="醫護人員">醫護人員</button>
           <button class="contact-tab" data-role="老師">老師</button>
         </div>
@@ -4905,7 +4906,7 @@ function exportOrdersToCSV(clientId) {
 
 let contactClientId  = null;
 let currentRole      = '館員';
-let pendingContacts  = {}; // { '館員': [...], '醫護人員': [...], '老師': [...] }
+let pendingContacts  = {}; // { '館員': [...], '行政': [...], '醫護人員': [...], '老師': [...] }
 
 function openContactModal(clientId) {
   contactClientId = clientId;
@@ -4914,7 +4915,7 @@ function openContactModal(clientId) {
 
   // Load existing contacts
   const allContacts = getContacts(clientId);
-  pendingContacts = { '館員': [], '醫護人員': [], '老師': [] };
+  pendingContacts = { '館員': [], '行政': [], '醫護人員': [], '老師': [] };
   allContacts.forEach(ct => {
     if (pendingContacts[ct.role]) pendingContacts[ct.role].push({ ...ct });
     else pendingContacts['館員'].push({ ...ct });
