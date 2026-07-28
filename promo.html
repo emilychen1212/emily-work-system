@@ -877,8 +877,8 @@ function openNotesModal(recId){
       </div>
       <div class="modal-body" id="notesBody"></div>
     </div>`;
+  openModal('notesModal');   // 先開啟（可見）再渲染，textarea 才能量到正確高度自動撐開
   _renderNotesBody();
-  openModal('notesModal');
 
   document.getElementById('notesAddBtn').addEventListener('click',()=>_notesAdd());
   document.getElementById('notesCloseBtn').addEventListener('click',()=>_notesClose());
@@ -936,6 +936,8 @@ function _renderNotesBody(focusFirst){
     });
   });
 
+  // 安全重算高度（保險：若首次讀取 scrollHeight 時版面尚未完全就緒）
+  requestAnimationFrame(()=>{ body.querySelectorAll('.note-text').forEach(ta=>{ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; }); });
   if(focusFirst){ const first=body.querySelector('.note-text'); if(first){ first.focus(); } }
 }
 
