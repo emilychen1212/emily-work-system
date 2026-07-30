@@ -2810,6 +2810,11 @@ function updateOrderStatus(orderId, status, note) {
   const now = new Date().toISOString();
   const idx = db.orders.findIndex(o => o.id === orderId);
   if (idx !== -1) {
+    const prevStatus = db.orders[idx].status;
+    // 申退履保金 → 履約結束：自動開始追蹤履保金退款（提供申退文件後，等客戶退款）
+    if (prevStatus === '申退履保金' && status === '履約結束' && !db.orders[idx].bondRefundStatus) {
+      db.orders[idx].bondRefundStatus = 'pending';
+    }
     db.orders[idx].status    = status;
     db.orders[idx].statusNote = note || '';
     db.orders[idx].updatedAt = now;
@@ -4107,6 +4112,8 @@ function renderOrdersGrid() {
           ${['契約書簽訂中','出貨中','驗收中'].includes(o.status) ? `<button data-milestone-delivery-order="${o.id}" title="${o.deliveryOrderSubmittedAt ? '✅ 出貨單完成 '+fmtDate(o.deliveryOrderSubmittedAt) : '標記出貨單已完成送出'}" style="font-size:13px;${o.deliveryOrderSubmittedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">📦</button>` : ''}
           ${['驗收中','可開發票'].includes(o.status) ? `<button data-milestone-client-accepted="${o.id}" title="${o.clientAcceptedAt ? '✅ 驗收完成 '+fmtDate(o.clientAcceptedAt) : '標記客戶通知驗收完成'}" style="font-size:13px;${o.clientAcceptedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">🎯</button>` : ''}
           ${['發票確認中','履約期間'].includes(o.status) ? `<button data-milestone-contract-returned="${o.id}" title="${o.contractReturnedAt ? '✅ 合約簽回 '+fmtDate(o.contractReturnedAt) : '標記已收回客戶簽回合約'}" style="font-size:13px;${o.contractReturnedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">🔁</button>` : ''}
+          ${o.status === '履約結束' && o.bondRefundStatus === 'pending' ? `<button data-bond-refund="${o.id}" title="履保金退款追蹤中 — 收到退款後點此，訂單正式結束" style="font-size:12px;background:#C06C4C;color:#fff;border-radius:5px;padding:1px 6px;">💰 追蹤退款</button>` : ''}
+          ${o.status === '履約結束' && o.bondRefundStatus === 'refunded' ? `<button data-bond-refund="${o.id}" title="履保金已於 ${o.bondRefundedAt?fmtDate(o.bondRefundedAt):''} 退回（點此可還原追蹤）" style="font-size:12px;background:#4A5D4E;color:#fff;border-radius:5px;padding:1px 6px;cursor:pointer;">💰✓ 已退款</button>` : ''}
           ${!isChild ? `<button data-delivery-order="${o.id}" title="生成出貨確認單">📄</button>` : ''}
           ${!isChild ? `<button data-invoice-order="${o.id}" title="開發票申請">💰</button>` : ''}
           <button data-edit-order="${o.id}">✎ 編輯</button>
@@ -4324,6 +4331,29 @@ function renderOrdersGrid() {
   );
   wrap.querySelectorAll('[data-milestone-contract-returned]').forEach(btn =>
     _handleMilestone(btn, 'milestoneContractReturned', 'contractReturnedAt', '合約簽回', '🔁 已記錄收回簽回合約，流程確認完成')
+  );
+
+  wrap.querySelectorAll('[data-bond-refund]').forEach(btn =>
+    btn.addEventListener('click', async () => {
+      const db = dbLoad();
+      const o = db.orders.find(x => x.id === btn.dataset.bondRefund);
+      if (!o) return;
+      if (o.bondRefundStatus === 'refunded') {
+        const ok = await showConfirm(`此訂單履保金已標記退回（${o.bondRefundedAt?fmtDate(o.bondRefundedAt):''}）。\n確定要還原為「退款追蹤中」？`);
+        if (!ok) return;
+        o.bondRefundStatus = 'pending'; o.bondRefundedAt = null;
+      } else {
+        const ok = await showConfirm('確認已收到履保金退款？\n確認後將停止每月追蹤提醒，此訂單正式結束。', '確認履保金退款');
+        if (!ok) return;
+        o.bondRefundStatus = 'refunded'; o.bondRefundedAt = new Date().toISOString();
+      }
+      o.updatedAt = new Date().toISOString();
+      dbSave(db);
+      renderOrdersGrid(); renderOrderDashboard();
+      if (currentClientId) renderClientDashboard(currentClientId);
+      refreshDashboardContent();
+      showToast(o.bondRefundStatus === 'refunded' ? '✅ 已確認履保金退款，訂單正式結束' : '已還原為退款追蹤中');
+    })
   );
 
   wrap.querySelectorAll('[data-delivery-order]').forEach(btn =>
@@ -5647,6 +5677,12 @@ function computeDashboardItems() {
       const base = new Date(o.clientAcceptedAt); base.setHours(0,0,0,0);
       const remind = new Date(base); remind.setDate(base.getDate() + 30);
       _pushItem(remind, '追回客戶簽回合約', '🔁', 2);
+    }
+
+    // 7. 履保金退款追蹤（履約結束但退款未收到）→ 每月 28 號提醒確認是否入帳
+    if (o.status === '履約結束' && o.bondRefundStatus === 'pending') {
+      const d28 = new Date(today.getFullYear(), today.getMonth(), 28); d28.setHours(0,0,0,0);
+      _pushItem(d28, '追蹤履保金退款是否入帳', '💰', 2);
     }
 
     // ── 其他狀態：一般規則 ──
