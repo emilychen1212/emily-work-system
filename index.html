@@ -5590,13 +5590,13 @@ function computeDashboardItems() {
     const caseName    = o.caseName || o.caseNo || '';
     const subParts    = [clientName, productName, caseName].filter(Boolean);
 
-    const _pushItem = (actionDate, label, icon, priW, extraTooltip) => {
+    const _pushItem = (actionDate, label, icon, priW, extraTooltip, extra) => {
       const isOverdue = actionDate < snapDate;
       const showDate  = isOverdue ? snapDate : actionDate;
       const iso       = _isoDate(showDate);
       if (!dayMap[iso]) return;
       const tooltipLines = [label, ...(extraTooltip ? [extraTooltip] : []), ...subParts];
-      dayMap[iso].push({
+      dayMap[iso].push(Object.assign({
         source: 'order', icon, priW,
         cls:     ['pri-fire','pri-red','pri-yellow','pri-yellow','pri-green'][priW] || 'pri-yellow',
         title:   label,
@@ -5604,7 +5604,7 @@ function computeDashboardItems() {
         tooltip: tooltipLines.join('\n'),
         taskId:  null, overdue: isOverdue,
         navFn:   () => { renderClientPage(o.clientId); },
-      });
+      }, extra || {}));
     };
 
     // ── 詢價中：雙階段邏輯 ──
@@ -5679,10 +5679,13 @@ function computeDashboardItems() {
       _pushItem(remind, '追回客戶簽回合約', '🔁', 2);
     }
 
-    // 7. 履保金退款追蹤（履約結束但退款未收到）→ 每月 28 號提醒確認是否入帳
+    // 7. 履保金退款追蹤（履約結束但退款未收到）→ 每月 28 號提醒；本月已略過則不顯示
     if (o.status === '履約結束' && o.bondRefundStatus === 'pending') {
-      const d28 = new Date(today.getFullYear(), today.getMonth(), 28); d28.setHours(0,0,0,0);
-      _pushItem(d28, '追蹤履保金退款是否入帳', '💰', 2);
+      const ym = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+      if (o.bondRefundSnoozedMonth !== ym) {
+        const d28 = new Date(today.getFullYear(), today.getMonth(), 28); d28.setHours(0,0,0,0);
+        _pushItem(d28, '追蹤履保金退款是否入帳', '💰', 2, '打勾＝本月已追蹤/仍在等待，下個月再提醒', { bondSnoozeOrderId: o.id });
+      }
     }
 
     // ── 其他狀態：一般規則 ──
@@ -5940,6 +5943,27 @@ function refreshDashboardContent() {
     checkEl.addEventListener('click', e => {
       e.stopPropagation();
       if (checkEl.classList.contains('completing')) return;
+
+      // 履保金退款追蹤：打勾 → 本月略過（下月自動再提醒）
+      if (item.bondSnoozeOrderId) {
+        const db = dbLoad();
+        const o = db.orders.find(x => x.id === item.bondSnoozeOrderId);
+        if (o) {
+          const now = new Date();
+          o.bondRefundSnoozedMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+          o.updatedAt = new Date().toISOString();
+          dbSave(db);
+        }
+        checkEl.classList.add('completing');
+        checkEl.textContent = '✓';
+        el.querySelector('.db-item-title').style.textDecoration = 'line-through';
+        setTimeout(() => {
+          el.classList.add('collapsing');
+          setTimeout(() => { el.remove(); refreshDashboardContent(); }, 370);
+        }, 500);
+        showToast('本月已略過，下個月再提醒追蹤退款');
+        return;
+      }
 
       // 訂單：打勾 → 導向對應頁面更新狀態
       if (item.source === 'order') {
