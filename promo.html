@@ -506,7 +506,8 @@ function computeDashboard(){
   const nextWeek=getWeekRange(1);
 
   let monthDone=0,weekDone=0;
-  let thisWeekPending=[],nextWeekPending=[];
+  let allPending=[];     // 所有「未完成」的推廣行動（不分週次）
+  let overdueCount=0;    // 本週之前（上週及更早）到期仍未完成的行動數
 
   allRecords.forEach(r=>{
     const c=clientMap[r.clientId];
@@ -517,25 +518,28 @@ function computeDashboard(){
         if(d&&d>=monthStart&&d<=monthEnd) monthDone++;
         // done this week?
         if(d&&d>=thisWeek.start&&d<=thisWeek.end) weekDone++;
-      } else if(d){
-        if(d>=thisWeek.start&&d<=thisWeek.end)
-          thisWeekPending.push({r,a,c,label:'本週'});
-        else if(d>=nextWeek.start&&d<=nextWeek.end)
-          nextWeekPending.push({r,a,c,label:'下週'});
+      } else {
+        // 未完成 → 全部帶入儀表板
+        allPending.push({r,a,c});
+        if(d&&d<thisWeek.start) overdueCount++;
       }
     });
   });
 
-  // sort by date
-  thisWeekPending.sort((a,b)=>(a.a.date||'').localeCompare(b.a.date||''));
-  nextWeekPending.sort((a,b)=>(a.a.date||'').localeCompare(b.a.date||''));
-  const tickerItems=[...thisWeekPending,...nextWeekPending];
+  // 排序：有日期的照日期升序在前，無日期的排最後
+  allPending.sort((x,y)=>{
+    const dx=x.a.date||'', dy=y.a.date||'';
+    if(dx&&dy) return dx.localeCompare(dy);
+    if(dx) return -1;
+    if(dy) return 1;
+    return 0;
+  });
 
-  // warnings
+  // 本週/下週統計（供既有警示使用）
   const thisWeekTotal=(allRecords.flatMap(r=>(r.actions||[]).filter(a=>{const d=a.date?new Date(a.date+'T00:00:00'):null;return d&&d>=thisWeek.start&&d<=thisWeek.end;})).length);
   const nextWeekTotal=(allRecords.flatMap(r=>(r.actions||[]).filter(a=>{const d=a.date?new Date(a.date+'T00:00:00'):null;return d&&d>=nextWeek.start&&d<=nextWeek.end;})).length);
 
-  return{monthDone,weekDone,thisWeekTotal,nextWeekTotal,tickerItems,thisWeekPending,nextWeekPending};
+  return{monthDone,weekDone,thisWeekTotal,nextWeekTotal,tickerItems:allPending,overdueCount};
 }
 
 let _tickerTimer=null;
@@ -546,7 +550,7 @@ function renderDashboard(){
   if(existing) existing.remove();
 
   const dash=computeDashboard();
-  const{monthDone,weekDone,thisWeekTotal,nextWeekTotal,tickerItems}=dash;
+  const{monthDone,weekDone,thisWeekTotal,nextWeekTotal,tickerItems,overdueCount}=dash;
 
   const monthCls=monthDone>=GOAL_MONTH?'ok':monthDone>=GOAL_MONTH*0.7?'':'warn';
   const weekCls=weekDone>=GOAL_WEEK?'ok':weekDone>=GOAL_WEEK*0.5?'':'warn';
@@ -581,19 +585,26 @@ function renderDashboard(){
     warnings.push(`<div class="dash-warn-badge info">📋 下週已排 ${nextWeekTotal} 件，週四前記得補到 ${GOAL_WEEK} 件</div>`);
   }
 
-  // Ticker rows HTML
+  // 上週（及更早）未完成 → 置頂提醒檢視
+  if(overdueCount>0){
+    warnings.unshift(`<div class="dash-warn-badge danger">🔴 上週未完成共 ${overdueCount} 件，請檢視</div>`);
+  }
+
+  // Ticker rows HTML — 所有未完成行動；日期一律紅字（未排日者顯示提示）
   const tickerRowsHtml=tickerItems.length
     ?tickerItems.map(({r,a,c})=>{
-        const dc=dueDateCls(a.date);
+        const dateHtml=a.date
+          ?`<span class="dash-action-date overdue">${fmtDate(a.date)}</span>`
+          :`<span class="dash-action-date" style="color:var(--text-muted);font-style:italic;">未排日</span>`;
         return `<div class="dash-action-row">
           <span class="dash-action-client">${c?.shortName||'—'}</span>
           <span class="dash-action-product">${r.product||''}</span>
           ${r.dept?`<span class="dash-action-dept">${r.dept}</span>`:''}
           <span class="dash-action-desc">${a.desc||''}</span>
-          <span class="dash-action-date ${dc}">${fmtDate(a.date)}</span>
+          ${dateHtml}
         </div>`;
       }).join('')
-    :'<div class="dash-action-row"><span style="color:var(--text-muted);font-size:12px;">本週及下週尚無安排行動</span></div>';
+    :'<div class="dash-action-row"><span style="color:var(--text-muted);font-size:12px;">目前沒有未完成的推廣行動 🎉</span></div>';
 
   const bar=document.createElement('div');
   bar.id='dashboardBar';
@@ -609,7 +620,7 @@ function renderDashboard(){
     </div>
     <div class="dash-divider"></div>
     <div class="dash-scroll-area">
-      <div class="dash-scroll-label">本週＆下週行動</div>
+      <div class="dash-scroll-label">可執行的推廣行動</div>
       <div class="dash-ticker-wrap">
         <div class="dash-ticker" id="dashTicker">${tickerRowsHtml}</div>
       </div>
