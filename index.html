@@ -1586,6 +1586,10 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .db-item:hover { background: rgba(0,0,0,0.03); }
 .db-item-icon { flex-shrink: 0; font-size: 13px; line-height: 1.4; }
 .db-item-body { flex: 1; min-width: 0; }
+.db-item-snooze { flex-shrink: 0; display: none; align-items: center; gap: 3px; font-size: 11px; color: var(--text-muted); align-self: center; }
+.db-item:hover .db-item-snooze { display: inline-flex; }
+.db-item-snooze button { font-size: 10px; padding: 0 5px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--warm); cursor: pointer; line-height: 1.6; }
+.db-item-snooze button:hover { background: var(--warm); color: #fff; border-color: var(--warm); }
 .db-item-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
 .db-item-sub { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .db-item.pri-fire { border-left: 3px solid #c0392b; }
@@ -5604,6 +5608,7 @@ function computeDashboardItems() {
         tooltip: tooltipLines.join('\n'),
         taskId:  null, overdue: isOverdue,
         navFn:   () => { renderClientPage(o.clientId); },
+        snoozeOrderId: o.id,
       }, extra || {}));
     };
 
@@ -5666,10 +5671,10 @@ function computeDashboardItems() {
       _pushItem(dd,    '🚚 交貨日', '🚚', 0);
     }
 
-    // 5. 客戶驗收完成 → 當天提醒申請開發票＋製作啟用通知
-    if (o.clientAcceptedAt) {
+    // 5. 客戶驗收完成 → 當天提醒申請開發票＋製作啟用通知（打勾標記完成後不再顯示）
+    if (o.clientAcceptedAt && !o.invoiceNoticeDoneAt) {
       const base = new Date(o.clientAcceptedAt); base.setHours(0,0,0,0);
-      _pushItem(base, '申請開發票＋製作啟用通知', '🧾', 0);
+      _pushItem(base, '申請開發票＋製作啟用通知', '🧾', 0, '打勾＝已完成，訂單狀態照常往下走', { invoiceNoticeOrderId: o.id });
     }
 
     // 6. 追回簽回合約（驗收完成後30天，仍無 contractReturnedAt）
@@ -5930,7 +5935,15 @@ function refreshDashboardContent() {
       <div class="db-item-body">
         <div class="db-item-title">${item.overdue ? '⚠️ ' : ''}${item.title}</div>
         ${item.sub ? `<div class="db-item-sub">${item.sub}</div>` : ''}
-      </div>`;
+      </div>
+      ${item.snoozeOrderId && !item.bondSnoozeOrderId ? `<span class="db-item-snooze" title="延後提醒">💤<button data-snooze-days="3">+3</button><button data-snooze-days="7">+7</button></span>` : ''}`;
+
+    el.querySelectorAll('.db-item-snooze button').forEach(sb => {
+      sb.addEventListener('click', e => {
+        e.stopPropagation();
+        snoozeOrderAlert(item.snoozeOrderId, parseInt(sb.dataset.snoozeDays));
+      });
+    });
 
     const tooltipText = item.tooltip || item.title;
     el.addEventListener('mouseenter', () => {
@@ -5962,6 +5975,22 @@ function refreshDashboardContent() {
           setTimeout(() => { el.remove(); refreshDashboardContent(); }, 370);
         }, 500);
         showToast('本月已略過，下個月再提醒追蹤退款');
+        return;
+      }
+
+      // 申請開發票＋製作啟用通知：打勾 → 標記完成，提醒消失（訂單狀態照常往下走）
+      if (item.invoiceNoticeOrderId) {
+        const db = dbLoad();
+        const o = db.orders.find(x => x.id === item.invoiceNoticeOrderId);
+        if (o) { o.invoiceNoticeDoneAt = new Date().toISOString(); o.updatedAt = new Date().toISOString(); dbSave(db); }
+        checkEl.classList.add('completing');
+        checkEl.textContent = '✓';
+        el.querySelector('.db-item-title').style.textDecoration = 'line-through';
+        setTimeout(() => {
+          el.classList.add('collapsing');
+          setTimeout(() => { el.remove(); refreshDashboardContent(); }, 370);
+        }, 500);
+        showToast('✅ 已完成開發票＋啟用通知');
         return;
       }
 
