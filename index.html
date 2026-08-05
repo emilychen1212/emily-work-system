@@ -5612,27 +5612,30 @@ function computeDashboardItems() {
       }, extra || {}));
     };
 
+    // 延後中：把提醒改排到「延後到期日」（落在本週→主格、下週→下週預告；不再完全隱藏）
+    const _snoozeDate = (o.alertSnoozedUntil && now < new Date(o.alertSnoozedUntil).getTime())
+      ? (() => { const d = new Date(o.alertSnoozedUntil); d.setHours(0,0,0,0); return d; })()
+      : null;
+
     // ── 詢價中：雙階段邏輯 ──
     if (o.status === '詢價中') {
       const hardLimit = new Date(new Date(o.updatedAt).getTime() + 21*86400000);
-      const snoozed   = o.alertSnoozedUntil && now < new Date(o.alertSnoozedUntil).getTime();
+      const forced    = now >= hardLimit.getTime();
+      const snoozeHint = _snoozeDate ? `已延後至 ${fmtDate(_isoDate(_snoozeDate))}` : null;
 
       if (!o.inquirySentAt) {
         // 階段一：詢價信還沒寄 → 狀態更新後2天內要寫信
-        if (!(now < hardLimit && snoozed)) {
-          const base = new Date(o.updatedAt); base.setHours(0,0,0,0);
-          const actionDate = new Date(base); actionDate.setDate(base.getDate() + 2);
-          _pushItem(actionDate, '撰寫詢價信給PM', '📝', 0); // 🔥 極緊急
-        }
+        const base = new Date(o.updatedAt); base.setHours(0,0,0,0);
+        let actionDate = new Date(base); actionDate.setDate(base.getDate() + 2);
+        if (_snoozeDate && !forced) actionDate = _snoozeDate;
+        _pushItem(actionDate, '撰寫詢價信給PM', '📝', 0, snoozeHint); // 🔥 極緊急
       } else {
         // 階段二：詢價信已寄 → 5天後追蹤PM回覆
-        const forcedShow = now >= hardLimit.getTime();
-        if (forcedShow || !snoozed) {
-          const base = new Date(o.inquirySentAt); base.setHours(0,0,0,0);
-          const actionDate = new Date(base); actionDate.setDate(base.getDate() + 5);
-          const sentLabel = `詢價信已於 ${fmtDate(o.inquirySentAt)} 寄出`;
-          _pushItem(actionDate, '追蹤PM詢價回覆', '📞', 1, sentLabel); // 🔴 高優先
-        }
+        const base = new Date(o.inquirySentAt); base.setHours(0,0,0,0);
+        let actionDate = new Date(base); actionDate.setDate(base.getDate() + 5);
+        if (_snoozeDate && !forced) actionDate = _snoozeDate;
+        const sentLabel = `詢價信已於 ${fmtDate(o.inquirySentAt)} 寄出`;
+        _pushItem(actionDate, '追蹤PM詢價回覆', '📞', 1, [sentLabel, snoozeHint].filter(Boolean).join('\n')); // 🔴 高優先
       }
       return;
     }
@@ -5697,8 +5700,6 @@ function computeDashboardItems() {
     const rule = DASH_ORDER_RULES[o.status];
     if (!rule) return;
 
-    if (o.alertSnoozedUntil && now < new Date(o.alertSnoozedUntil).getTime()) return;
-
     let actionDate;
     if (rule.base === 'updatedAt') {
       const base = new Date(o.updatedAt); base.setHours(0,0,0,0);
@@ -5716,7 +5717,11 @@ function computeDashboardItems() {
     }
     if (!actionDate) return;
 
-    _pushItem(actionDate, rule.label, rule.icon, rule.priW);
+    // 延後中：改排到延後到期日（落在本週→主格、下週→下週預告；不再完全隱藏）
+    const _snoozeHint = _snoozeDate ? `已延後至 ${fmtDate(_isoDate(_snoozeDate))}` : null;
+    if (_snoozeDate) actionDate = _snoozeDate;
+
+    _pushItem(actionDate, rule.label, rule.icon, rule.priW, _snoozeHint);
 
   });
 
