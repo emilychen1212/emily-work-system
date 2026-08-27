@@ -1729,13 +1729,28 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-f{display:flex;flex-direction:column;gap:5px;}
 .tl-f.full{grid-column:1/-1;}
 .tl-f label{font-size:12px;color:var(--text-secondary);font-weight:600;}
-.tl-f input,.tl-f select,.tl-f textarea{border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit;background:var(--surface2);color:var(--text-primary);}
-.tl-f input:focus,.tl-f select:focus,.tl-f textarea:focus{outline:none;border-color:var(--warm);background:var(--surface);}
+.tl-f input,.tl-f select,.tl-f textarea{border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit;background:#ffffff;color:var(--text-primary);}
+.tl-f input:focus,.tl-f select:focus,.tl-f textarea:focus{outline:none;border-color:var(--warm);background:#ffffff;}
+.tl-f input[readonly]{background:#f4f2ec;color:var(--text-secondary);}
 .tl-f textarea{min-height:60px;resize:vertical;}
 .tl-f .roc{font-size:10.5px;color:var(--warm);font-weight:600;}
 .tl-f .hint{font-size:10.5px;color:var(--text-muted);}
 .tl-chk{flex-direction:row;align-items:center;gap:8px;}
 .tl-chk input{width:16px;height:16px;}
+.tl-section-label{font-size:12.5px;font-weight:700;color:var(--navy);margin:16px 2px 8px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.tl-grid + .tl-grid{margin-top:2px;}
+.tl-mini-btn{font-size:10px;font-weight:600;padding:1px 7px;margin-left:6px;border:1px solid var(--warm);background:var(--surface);color:var(--warm);border-radius:8px;cursor:pointer;}
+.tl-mini-btn.danger{border-color:#A94E3E;color:#A94E3E;}
+.tl-auto{font-size:10px;font-weight:500;color:var(--text-muted);margin-left:6px;display:inline-flex;align-items:center;gap:3px;cursor:pointer;}
+.tl-auto input{width:13px;height:13px;}
+.tl-fu-quick{margin-top:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--text-secondary);}
+.tl-fu-btn{font-size:11px;font-weight:600;padding:3px 10px;border:1px solid var(--navy);background:var(--surface);color:var(--navy);border-radius:8px;cursor:pointer;}
+.tl-fu-btn:hover{background:var(--navy);color:#fff;}
+.tl-quote-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:12px;}
+.tl-quote-status{font-size:12px;color:var(--text-secondary);}
+.tl-btn.ghost{background:var(--surface);border:1.5px solid var(--warm);color:var(--warm);}
+.tl-split-row{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;background:var(--surface);}
+.tl-split-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .tl-acts{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
 .tl-btn{border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;}
 .tl-btn.primary{background:var(--navy);color:#fff;}
@@ -4236,7 +4251,6 @@ function renderOrdersGrid() {
           ${['發票確認中','履約期間'].includes(o.status) ? `<button data-milestone-contract-returned="${o.id}" title="${o.contractReturnedAt ? '✅ 合約簽回 '+fmtDate(o.contractReturnedAt) : '標記已收回客戶簽回合約'}" style="font-size:13px;${o.contractReturnedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">🔁</button>` : ''}
           ${o.status === '履約結束' && o.bondRefundStatus === 'pending' ? `<button data-bond-refund="${o.id}" title="履保金退款追蹤中 — 收到退款後點此，訂單正式結束" style="font-size:12px;background:#C06C4C;color:#fff;border-radius:5px;padding:1px 6px;">💰 追蹤退款</button>` : ''}
           ${o.status === '履約結束' && o.bondRefundStatus === 'refunded' ? `<button data-bond-refund="${o.id}" title="履保金已於 ${o.bondRefundedAt?fmtDate(o.bondRefundedAt):''} 退回（點此可還原追蹤）" style="font-size:12px;background:#4A5D4E;color:#fff;border-radius:5px;padding:1px 6px;cursor:pointer;">💰✓ 已退款</button>` : ''}
-          ${!isChild ? `<button data-quote-order="${o.id}" title="生成報價單（Excel）">📋</button>` : ''}
           ${!isChild ? `<button data-delivery-order="${o.id}" title="生成出貨確認單">📄</button>` : ''}
           ${!isChild ? `<button data-invoice-order="${o.id}" title="開發票申請">💰</button>` : ''}
           <button data-edit-order="${o.id}">✎ 編輯</button>
@@ -7559,6 +7573,12 @@ async function _generateQuote() {
     a.href = url; a.download = fname; a.click();
     URL.revokeObjectURL(url);
     closeModal('quoteModal');
+    // 記錄「已下載報價單」的日期到訂單上（供時間軸「已提案／草報價」階段顯示）
+    if (window._qtOrderId) {
+      const _db = dbLoad(); const _o = _db.orders.find(x => x.id === window._qtOrderId);
+      if (_o) { _o.quoteDownloadedAt = _isoDate(new Date()); _o.updatedAt = new Date().toISOString(); dbSave(_db);
+        if (typeof _tlOrderId !== 'undefined' && _tlOrderId === window._qtOrderId && document.getElementById('tlModal')?.classList.contains('open')) _tlRender(); }
+    }
     showToast('報價單下載成功！');
   } catch(e) {
     console.error(e);
@@ -8453,12 +8473,12 @@ document.addEventListener('mousemove', e => {
 // ══════════════ 訂單時間軸編輯器（原型）══════════════
 const TL_STAGES = [
   {key:'__base__', label:'訂單資料', grp:0},
-  {key:'詢價中', label:'詢價中', grp:1},
-  {key:'已提案/草報價', label:'已提案／草報價', grp:2},
-  {key:'採購議價', label:'採購議價', grp:3},
+  {key:'詢價中', label:'詢價中', grp:1, fu3:true},
+  {key:'已提案/草報價', label:'已提案／草報價', grp:2, fu3:true, quote:true},
+  {key:'採購議價', label:'採購議價', grp:3, custom:'bid'},
   {key:'契約書簽訂中', label:'契約書簽訂中', grp:4, par:true},
   {key:'出貨中', label:'出貨中', grp:4, par:true},
-  {key:'驗收中', label:'驗收中', grp:4, par:true},
+  {key:'驗收中', label:'驗收中', grp:4, par:true, custom:'accept', noFu:true},
   {key:'可開發票', label:'可開發票', grp:5},
   {key:'發票確認中', label:'發票確認中', grp:6},
   {key:'履約期間', label:'履約期間', grp:7},
@@ -8466,22 +8486,6 @@ const TL_STAGES = [
   {key:'履約結束', label:'履約結束', grp:9},
 ];
 const TL_FIELDS = {
-  '__base__':[
-    {f:'productType',l:'產品類別',t:'select',o:['資源','系統','其他','設備','服務']},
-    {f:'productName',l:'產品名稱',t:'text',full:1},
-    {f:'caseName',l:'採購案名稱',t:'text'},
-    {f:'caseNo',l:'採購案號',t:'text'},
-    {f:'currency',l:'原幣別',t:'select',o:['USD','EUR','TWD']},
-    {f:'quoteRate',l:'報價匯率',t:'number'},
-    {f:'costOrig',l:'公司底價（原幣）',t:'number'},
-    {f:'quoteOrig',l:'客戶報價（原幣）',t:'number'},
-    {f:'quoteTwd',l:'客戶報價（台幣）',t:'number'},
-    {f:'startDate',l:'訂期起始日',t:'date'},
-    {f:'endDate',l:'訂期結束日',t:'date'},
-    {f:'quoteDate',l:'報價日期',t:'date'},
-    {f:'taxIncluded',l:'含稅（5%）',t:'check'},
-    {f:'needsContract',l:'需做合約（勾選→自動建製作合約任務）',t:'check',full:1},
-  ],
   '詢價中':[
     {f:'inquirySentAt',l:'詢價信寄出日',t:'date',hint:'記錄後系統改為追蹤 PM 回覆'},
     {f:'__note',l:'備註',t:'textarea',full:1},
@@ -8489,10 +8493,6 @@ const TL_FIELDS = {
   '已提案/草報價':[
     {f:'quoteDate',l:'寄出報價日期',t:'date'},
     {f:'__note',l:'備註',t:'textarea',full:1},
-  ],
-  '採購議價':[
-    {f:'bondDeadline',l:'履保金繳納截止日',t:'date',hint:'標案得標後從合約確認'},
-    {f:'__note',l:'備註（議價/標案進度）',t:'textarea',full:1},
   ],
   '契約書簽訂中':[
     {f:'contractReceivedAt',l:'收到客戶合約',t:'date'},
@@ -8506,11 +8506,6 @@ const TL_FIELDS = {
     {f:'deliveryOrderSubmittedAt',l:'出貨單完成',t:'date'},
     {f:'deliveryDate',l:'交貨日（交貨型客戶）',t:'date'},
     {f:'__note',l:'備註/卡住的點',t:'textarea',full:1},
-  ],
-  '驗收中':[
-    {f:'clientAcceptedAt',l:'客戶驗收完成',t:'date'},
-    {f:'startDate',l:'訂期起始日（啟用通知基準）',t:'date'},
-    {f:'__note',l:'備註',t:'textarea',full:1},
   ],
   '可開發票':[
     {f:'invoiceNoticeDoneAt',l:'開發票＋啟用通知完成',t:'date',hint:'完成後儀表板提醒消失'},
@@ -8619,26 +8614,249 @@ function _tlDetail(){
   const right=document.getElementById('tlRight');
   const stagTxt = st==='done'?'已過':st==='overdue'?'逾期未追蹤':st==='active'?'目前進度':'尚未進入';
   const isPar = stage.par;
-  if(stage.key!=='__base__' && st==='pending'){
+
+  // ── 訂單資料（基本＋價格＋成交＋拆項）──
+  if(stage.key==='__base__'){
+    right.innerHTML=`
+      <div class="tl-dh"><h3>訂單資料</h3><span class="tl-stag done">基本資料</span></div>
+      ${_tlBasePanel(o)}
+      <div class="tl-acts"><button class="tl-btn primary" onclick="_tlSave()">儲存</button></div>`;
+    _tlBaseInit(o);
+    refreshRocHints(right);
+    return;
+  }
+
+  if(st==='pending'){
     right.innerHTML=`<div class="tl-dh"><h3>${stage.label}</h3><span class="tl-stag pending">${stagTxt}</span></div>
       <div class="tl-notreach">此訂單還沒走到「${stage.label}」，目前在「${o.status}」。<br>此階段的欄位會在走到這裡後開放。<br><br>
       <button class="tl-btn setcur" onclick="_tlSetStatus('${stage.key}')">直接把狀態設為「${stage.label}」</button></div>`;
     return;
   }
-  const fields=TL_FIELDS[stage.key]||[];
+
+  // 主體欄位：自訂面板 or 一般欄位
+  let bodyInner='';
+  if(stage.custom==='bid') bodyInner=_tlBidPanel(o);
+  else if(stage.custom==='accept') bodyInner=_tlAcceptPanel(o);
+  else bodyInner=(TL_FIELDS[stage.key]||[]).map(fd=>_tlFieldHtml(o,fd)).join('');
+
+  // 下次追蹤日（noFu 階段不顯示）＋快速追蹤按鈕
   const fu=(o.followUp||{})[stage.key]||'';
-  const gridInner = fields.map(fd=>_tlFieldHtml(o,fd)).join('') +
-    (stage.key!=='__base__' ? `<div class="tl-f full"><label>下次追蹤日（可覆蓋系統預設提醒時間）</label><input type="date" data-tlfu value="${fu}"/></div>` : '');
+  const fuBlock = stage.noFu ? '' :
+    `<div class="tl-f full"><label>下次追蹤日（可覆蓋系統預設提醒時間）</label>
+      <input type="date" data-tlfu value="${fu}"/>
+      ${stage.fu3?`<div class="tl-fu-quick">快速設定：
+        <button type="button" class="tl-fu-btn" onclick="_tlSetFu(3)">+3 天</button>
+        <button type="button" class="tl-fu-btn" onclick="_tlSetFu(5)">+5 天</button>
+        <button type="button" class="tl-fu-btn" onclick="_tlSetFu(7)">+7 天</button>
+        <span class="hint">（自動填入下次追蹤日，可再手動調整）</span></div>`:''}
+    </div>`;
+
+  // 已提案／草報價：生成報價單
+  const quoteBlock = stage.quote ? `
+    <div class="tl-quote-box">
+      <button type="button" class="tl-btn ghost" onclick="_tlOpenQuote()">📋 生成報價單（Excel）</button>
+      <span class="tl-quote-status">${o.quoteDownloadedAt?('✅ 已於 '+fmtDate(o.quoteDownloadedAt)+' 下載報價單'):'尚未下載報價單'}</span>
+    </div>` : '';
+
   right.innerHTML=`
     <div class="tl-dh"><h3>${stage.label}</h3><span class="tl-stag ${st}">${stagTxt}</span></div>
     ${isPar?'<div class="tl-parbanner">「契約書簽訂中／出貨中／驗收中」沒有固定先後順序，可同時編輯、各自追蹤，不用等其中一個完成。</div>':''}
-    <div class="tl-grid">${gridInner}</div>
+    ${quoteBlock}
+    <div class="tl-grid">${bodyInner}${fuBlock}</div>
     <div class="tl-acts">
       <button class="tl-btn primary" onclick="_tlSave()">儲存</button>
-      ${stage.key!=='__base__' && o.status!==stage.key ? `<button class="tl-btn setcur" onclick="_tlSave(true)">儲存並設為目前狀態</button>`:''}
+      ${o.status!==stage.key ? `<button class="tl-btn setcur" onclick="_tlSave(true)">儲存並設為目前狀態</button>`:''}
     </div>`;
   refreshRocHints(right);
 }
+
+// ── 訂單資料面板（含價格資訊／成交資訊／拆項）──
+function _tlBasePanel(o){
+  const cur = o.currency||'USD';
+  const money = v => (v||v===0)&&v!=='' ? parseInt(v).toLocaleString('zh-TW') : '';
+  const dv = v => String(v||'').slice(0,10);
+  const opts = (arr,val)=>arr.map(x=>`<option ${String(val)===x?'selected':''}>${x}</option>`).join('');
+  return `
+  <div class="tl-grid">
+    <div class="tl-f"><label>產品類別</label><select data-tlf="productType">${opts(['資源','系統','其他','設備','服務'],o.productType)}</select></div>
+    <div class="tl-f"><label>產品名稱</label><input type="text" data-tlf="productName" value="${o.productName||''}"/></div>
+    <div class="tl-f"><label>採購案名稱</label><input type="text" data-tlf="caseName" value="${o.caseName||''}"/></div>
+    <div class="tl-f"><label>採購案號</label><input type="text" data-tlf="caseNo" value="${o.caseNo||''}"/></div>
+
+    <div class="tl-f"><label>訂期起始日</label><input type="date" data-tlf="startDate" value="${dv(o.startDate)}"/></div>
+    <div class="tl-f"><label>訂期結束日 <button type="button" class="tl-mini-btn" onclick="_tlFillOneYear()">＋一年</button></label><input type="date" data-tlf="endDate" value="${dv(o.endDate)}"/></div>
+
+    <div class="tl-f"><label>報價日期</label><input type="date" data-tlf="quoteDate" value="${dv(o.quoteDate)}"/></div>
+    <div class="tl-f"><label>原幣別</label><select data-tlf="currency" onchange="_tlPriceCalc()">${opts(['USD','EUR','TWD'],cur)}</select></div>
+    <div class="tl-f full"><label>關聯去年訂單（顯示去年價格與漲幅）</label><select data-tlf="linkedOrderId" id="tlLinkedId" onchange="_tlLinkedChange()"></select></div>
+  </div>
+
+  <div class="tl-section-label">價格資訊</div>
+  <div class="tl-grid">
+    <div class="tl-f"><label>報價匯率</label><input type="number" step="0.0001" data-tlf="quoteRate" value="${o.quoteRate||''}" oninput="_tlPriceCalc()"/></div>
+    <div class="tl-f tl-chk" style="align-self:end;"><input type="checkbox" data-tlf="taxIncluded" ${o.taxIncluded?'checked':''} onchange="_tlPriceCalc()"/><label>含稅（5%）</label></div>
+
+    <div class="tl-f"><label>公司底價（原幣）</label><input type="number" data-tlf="costOrig" value="${o.costOrig||''}" oninput="_tlPriceCalc()"/><span class="hint" id="tlRefCostOrig"></span></div>
+    <div class="tl-f"><label>公司底價（台幣）<label class="tl-auto"><input type="checkbox" id="tlCostAuto" ${o.costTwdAuto===false?'':'checked'} onchange="_tlToggleAuto()"/>自動</label></label><input type="text" data-tlf="costTwd" id="tlCostTwd" value="${money(o.costTwd)}"/></div>
+
+    <div class="tl-f"><label>客戶報價（原幣）</label><input type="number" data-tlf="quoteOrig" value="${o.quoteOrig||''}" oninput="_tlPriceCalc()"/><span class="hint" id="tlRefQuoteOrig"></span></div>
+    <div class="tl-f"><label>客戶報價（台幣）<label class="tl-auto"><input type="checkbox" id="tlQuoteAuto" ${o.quoteTwdAuto===false?'':'checked'} onchange="_tlToggleAuto()"/>自動</label></label><input type="text" data-tlf="quoteTwd" id="tlQuoteTwd" value="${money(o.quoteTwd)}"/></div>
+  </div>
+
+  <div class="tl-section-label">成交資訊（決標後填寫）</div>
+  <div class="tl-grid">
+    <div class="tl-f"><label>成交匯率</label><input type="number" step="0.0001" data-tlf="dealRate" value="${o.dealRate||''}" oninput="_tlPriceCalc()"/></div>
+    <div class="tl-f"><label>成交金額（台幣）<label class="tl-auto"><input type="checkbox" id="tlDealAuto" ${o.dealTwdAuto?'checked':''} onchange="_tlToggleAuto()"/>自動</label></label><input type="text" data-tlf="dealTwd" id="tlDealTwd" value="${money(o.dealTwd)}"/></div>
+    <div class="tl-f full"><span class="hint" id="tlBargainPct"></span></div>
+  </div>
+
+  <div class="tl-section-label">拆項（選填）</div>
+  <div class="tl-grid">
+    <div class="tl-f full tl-chk"><input type="checkbox" id="tlSplitEnabled" ${(o.splitItems&&o.splitItems.length)?'checked':''} onchange="_tlToggleSplit()"/><label>此訂單有拆項</label></div>
+    <div class="tl-f full" id="tlSplitWrap" style="display:${(o.splitItems&&o.splitItems.length)?'block':'none'};">
+      <div id="tlSplitList"></div>
+      <button type="button" class="tl-btn ghost" style="margin-top:6px;" onclick="_tlAddSplit()">＋ 新增拆項</button>
+    </div>
+  </div>`;
+}
+
+// 拆項暫存（原型：存入 order.splitItems；正式版將對接子訂單）
+let _tlSplit = [];
+function _tlBaseInit(o){
+  _tlSplit = (o.splitItems||[]).map(s=>({...s}));
+  _tlPopulateLinked(o);
+  _tlRenderSplit();
+  _tlPriceCalc();
+}
+function _tlPopulateLinked(o){
+  const sel=document.getElementById('tlLinkedId'); if(!sel) return;
+  const all=dbLoad().orders.filter(x=>x.clientId===o.clientId && x.id!==o.id && !x.parentOrderId)
+    .sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||''));
+  sel.innerHTML='<option value="">（不關聯）</option>'+all.map(x=>{
+    const p=x.startDate?x.startDate.slice(0,7):'—';
+    return `<option value="${x.id}" ${o.linkedOrderId===x.id?'selected':''}>${x.productName||'未命名'} ${p}</option>`;
+  }).join('');
+  _tlLinkedChange();
+}
+function _tlLinkedChange(){
+  const sel=document.getElementById('tlLinkedId'); if(!sel) return;
+  const setR=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v||'';};
+  if(!sel.value){ setR('tlRefCostOrig','');setR('tlRefQuoteOrig',''); return; }
+  const l=dbLoad().orders.find(x=>x.id===sel.value); if(!l) return;
+  const sym=(typeof CURRENCY_SYMBOLS!=='undefined'&&CURRENCY_SYMBOLS[l.currency])||l.currency||'';
+  const cur=v=>parseFloat((document.querySelector(`[data-tlf="${v}"]`)||{}).value||0)||0;
+  const rise=(c,p)=>(p&&c)?(((c-p)/p*100).toFixed(1)):null;
+  const tag=p=>p===null?'':` <b style="color:${p>0?'#A36B5E':p<0?'#4A5D4E':'#8A8378'}">${p>0?'+':''}${p}%</b>`;
+  setR('tlRefCostOrig', l.costOrig?`去年底價 ${sym}${parseInt(l.costOrig).toLocaleString()}${tag(rise(cur('costOrig'),l.costOrig))}`:'');
+  setR('tlRefQuoteOrig', l.quoteOrig?`去年報價 ${sym}${parseInt(l.quoteOrig).toLocaleString()}${tag(rise(cur('quoteOrig'),l.quoteOrig))}`:'');
+}
+function _tlFillOneYear(){
+  const s=document.querySelector('[data-tlf="startDate"]'), e=document.querySelector('[data-tlf="endDate"]');
+  if(!s?.value){ showToast('請先填訂期起始日','error'); return; }
+  const d=new Date(s.value+'T00:00:00'); d.setFullYear(d.getFullYear()+1); d.setDate(d.getDate()-1);
+  e.value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if(typeof updateRocHint==='function') updateRocHint(e);
+}
+function _tlNum(sel){ const el=document.querySelector(sel); if(!el) return 0; return parseFloat(String(el.value).replace(/[^0-9.\-]/g,''))||0; }
+function _tlToggleAuto(){ _tlPriceCalc(); }
+function _tlPriceCalc(){
+  const isTWD=(document.querySelector('[data-tlf="currency"]')||{}).value==='TWD';
+  const tax=document.querySelector('[data-tlf="taxIncluded"]')?.checked?1.05:1;
+  const qRate=isTWD?1:_tlNum('[data-tlf="quoteRate"]');
+  const dRate=isTWD?1:_tlNum('[data-tlf="dealRate"]');
+  const cRate=dRate||qRate;
+  const costOrig=_tlNum('[data-tlf="costOrig"]'), quoteOrig=_tlNum('[data-tlf="quoteOrig"]');
+  const fmt=v=>v?Math.round(v).toLocaleString('zh-TW'):'';
+  if(document.getElementById('tlCostAuto')?.checked){ const el=document.getElementById('tlCostTwd'); if(el){ el.readOnly=true; el.value=fmt((costOrig&&cRate)?costOrig*cRate*tax:0);} }
+  else { const el=document.getElementById('tlCostTwd'); if(el) el.readOnly=false; }
+  if(document.getElementById('tlQuoteAuto')?.checked){ const el=document.getElementById('tlQuoteTwd'); if(el){ el.readOnly=true; el.value=fmt((quoteOrig&&qRate)?quoteOrig*qRate*tax:0);} }
+  else { const el=document.getElementById('tlQuoteTwd'); if(el) el.readOnly=false; }
+  if(document.getElementById('tlDealAuto')?.checked){ const el=document.getElementById('tlDealTwd'); if(el){ el.readOnly=true; el.value=fmt((quoteOrig&&dRate)?quoteOrig*dRate*tax:0);} }
+  else { const el=document.getElementById('tlDealTwd'); if(el) el.readOnly=false; }
+  const dealTwd=_tlNum('#tlDealTwd'), quoteTwd=_tlNum('#tlQuoteTwd');
+  const bp=document.getElementById('tlBargainPct');
+  if(bp) bp.innerHTML=(dealTwd&&quoteTwd)?`議價率（成交／報價）：<b>${(dealTwd/quoteTwd*100).toFixed(1)}%</b>`:'';
+  _tlLinkedChange();
+}
+function _tlToggleSplit(){
+  const on=document.getElementById('tlSplitEnabled')?.checked;
+  document.getElementById('tlSplitWrap').style.display=on?'block':'none';
+  if(on && _tlSplit.length===0) _tlAddSplit(); else _tlRenderSplit();
+}
+function _tlAddSplit(){ _tlCollectSplit(); _tlSplit.push({productName:'',costTwd:'',quoteTwd:'',dealTwd:''}); _tlRenderSplit(); }
+function _tlRemoveSplit(i){ _tlCollectSplit(); _tlSplit.splice(i,1); _tlRenderSplit(); }
+function _tlCollectSplit(){
+  document.querySelectorAll('#tlSplitList [data-splitrow]').forEach(row=>{
+    const i=+row.dataset.splitrow; if(!_tlSplit[i]) return;
+    row.querySelectorAll('[data-sf]').forEach(inp=>{
+      const f=inp.dataset.sf;
+      _tlSplit[i][f]= f==='productName'?inp.value : (String(inp.value).replace(/[^0-9.\-]/g,''));
+    });
+  });
+}
+function _tlRenderSplit(){
+  const list=document.getElementById('tlSplitList'); if(!list) return;
+  if(_tlSplit.length===0){ list.innerHTML='<div class="hint">尚無拆項</div>'; return; }
+  list.innerHTML=_tlSplit.map((s,i)=>`
+    <div class="tl-split-row" data-splitrow="${i}">
+      <div class="tl-split-hd"><b>拆項 ${i+1}</b><button type="button" class="tl-mini-btn danger" onclick="_tlRemoveSplit(${i})">刪除</button></div>
+      <div class="tl-grid">
+        <div class="tl-f full"><label>項目名稱</label><input type="text" data-sf="productName" value="${s.productName||''}"/></div>
+        <div class="tl-f"><label>底價（台幣）</label><input type="text" data-sf="costTwd" value="${s.costTwd?parseInt(s.costTwd).toLocaleString():''}"/></div>
+        <div class="tl-f"><label>報價（台幣）</label><input type="text" data-sf="quoteTwd" value="${s.quoteTwd?parseInt(s.quoteTwd).toLocaleString():''}"/></div>
+        <div class="tl-f"><label>成交（台幣）</label><input type="text" data-sf="dealTwd" value="${s.dealTwd?parseInt(s.dealTwd).toLocaleString():''}"/></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── 採購議價（押標金）──
+function _tlBidPanel(o){
+  const has=!!o.hasBidBond;
+  const dv=v=>String(v||'').slice(0,10);
+  return `
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="hasBidBond" ${has?'checked':''} onchange="_tlBidToggle()"/><label>是否有押標金</label></div>
+    <div class="tl-f" id="tlBidD1"><label>押標金繳納截止日</label><input type="date" data-tlf="bidBondDeadline" value="${dv(o.bidBondDeadline)}" ${has?'':'disabled'}/></div>
+    <div class="tl-f" id="tlBidD2"><label>押標金申請時間（確認已送件）</label><input type="date" data-tlf="bidBondAppliedAt" value="${dv(o.bidBondAppliedAt)}" ${has?'':'disabled'}/></div>
+    <div class="tl-f full"><label>備註（議價／標案進度）</label><textarea data-tlf="__note">${(o.stageNotes||{})['採購議價']||''}</textarea></div>`;
+}
+function _tlBidToggle(){
+  const on=document.querySelector('[data-tlf="hasBidBond"]')?.checked;
+  ['bidBondDeadline','bidBondAppliedAt'].forEach(f=>{
+    const el=document.querySelector(`[data-tlf="${f}"]`); if(el){ el.disabled=!on; if(!on) el.value=''; }
+  });
+}
+
+// ── 驗收中（參與驗收＋啟用通知 checklist）──
+function _tlAcceptPanel(o){
+  const need=!!o.needAcceptance;
+  const dv=v=>String(v||'').slice(0,10);
+  const baseStart=dv(o.startDate);
+  return `
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="needAcceptance" ${need?'checked':''} onchange="_tlAcceptToggle()"/><label>是否需要參與驗收</label></div>
+    <div class="tl-f" id="tlAccBook"><label>預約驗收日</label><input type="date" data-tlf="acceptBookDate" value="${dv(o.acceptBookDate)}" ${need?'':'disabled'}/></div>
+    <div class="tl-f"><label>客戶驗收完成</label><input type="date" data-tlf="clientAcceptedAt" value="${dv(o.clientAcceptedAt)}"/></div>
+    <div class="tl-f full"><label>訂期起始日（鎖定，須至「訂單資料」修改）</label><input type="date" value="${baseStart}" disabled/><span class="hint">此欄強制帶入訂單資料的訂期起始日，無法在此變更。</span></div>
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="activationNoticeProvided" ${o.activationNoticeProvided?'checked':''} onchange="_tlActToggle()"/><label>是否提供啟用通知</label><span class="hint" id="tlActAt">${o.activationNoticeAt?('✅ '+fmtDate(o.activationNoticeAt)+' 已標記'):''}</span></div>
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['驗收中']||''}</textarea></div>`;
+}
+function _tlAcceptToggle(){
+  const on=document.querySelector('[data-tlf="needAcceptance"]')?.checked;
+  const el=document.querySelector('[data-tlf="acceptBookDate"]'); if(el){ el.disabled=!on; if(!on) el.value=''; }
+}
+function _tlActToggle(){
+  const on=document.querySelector('[data-tlf="activationNoticeProvided"]')?.checked;
+  const span=document.getElementById('tlActAt');
+  if(span) span.textContent = on ? ('✅ '+fmtDate(_isoDate(new Date()))+' 已標記') : '';
+}
+
+function _tlSetFu(n){
+  const el=document.querySelector('[data-tlfu]'); if(!el) return;
+  const d=new Date(); d.setDate(d.getDate()+n);
+  el.value=_isoDate(d);
+  if(typeof updateRocHint==='function') updateRocHint(el);
+}
+function _tlOpenQuote(){ if(typeof openQuoteModal==='function') openQuoteModal(_tlOrderId); }
+
 function _tlFieldHtml(o,fd){
   const val = fd.f==='__note' ? ((o.stageNotes||{})[_tlView]||'') : (o[fd.f]!=null?o[fd.f]:'');
   const cls = fd.full?'tl-f full':'tl-f';
@@ -8657,15 +8875,34 @@ function _tlFieldHtml(o,fd){
 function _tlSave(setStatus){
   const db=dbLoad(); const idx=db.orders.findIndex(x=>x.id===_tlOrderId); if(idx<0) return;
   const o=db.orders[idx]; const right=document.getElementById('tlRight');
+  const NUMF=['costOrig','quoteOrig','quoteTwd','costTwd','quoteRate','dealRate','dealTwd'];
   right.querySelectorAll('[data-tlf]').forEach(el=>{
     const f=el.dataset.tlf;
     if(f==='__note'){ o.stageNotes=o.stageNotes||{}; o.stageNotes[_tlView]=el.value; return; }
     if(el.type==='checkbox'){ o[f]=el.checked; return; }
     let v=el.value;
-    if(['costOrig','quoteOrig','quoteTwd','costTwd','quoteRate','dealRate','dealTwd'].includes(f)) v = v===''?0:parseFloat(v)||0;
+    if(NUMF.includes(f)){ const n=String(v).replace(/[^0-9.\-]/g,''); v = n===''?0:parseFloat(n)||0; }
     if(el.type==='date') v = v||null;
     o[f]=v;
   });
+  // 訂單資料：自動計算開關 + 拆項
+  if(_tlView==='__base__'){
+    const ca=document.getElementById('tlCostAuto'), qa=document.getElementById('tlQuoteAuto'), da=document.getElementById('tlDealAuto');
+    if(ca) o.costTwdAuto=ca.checked; if(qa) o.quoteTwdAuto=qa.checked; if(da) o.dealTwdAuto=da.checked;
+    _tlCollectSplit();
+    const splitOn=document.getElementById('tlSplitEnabled')?.checked;
+    o.splitItems = splitOn ? _tlSplit.map(s=>({
+      productName:s.productName||'',
+      costTwd:parseInt(String(s.costTwd).replace(/[^0-9.\-]/g,''))||0,
+      quoteTwd:parseInt(String(s.quoteTwd).replace(/[^0-9.\-]/g,''))||0,
+      dealTwd:parseInt(String(s.dealTwd).replace(/[^0-9.\-]/g,''))||0,
+    })).filter(s=>s.productName||s.costTwd||s.quoteTwd||s.dealTwd) : [];
+  }
+  // 驗收中：啟用通知打勾時記錄時間戳
+  if(_tlView==='驗收中'){
+    if(o.activationNoticeProvided && !o.activationNoticeAt) o.activationNoticeAt=_isoDate(new Date());
+    if(!o.activationNoticeProvided) o.activationNoticeAt=null;
+  }
   const fuEl=right.querySelector('[data-tlfu]');
   if(fuEl){ o.followUp=o.followUp||{}; o.followUp[_tlView]=fuEl.value||null; }
   o.updatedAt=new Date().toISOString();
@@ -8685,6 +8922,10 @@ function _tlSetStatus(key){
 }
 window._tlClose=_tlClose; window._tlSave=_tlSave; window._tlSetStatus=_tlSetStatus;
 window.openOrderTimeline=openOrderTimeline;
+window._tlFillOneYear=_tlFillOneYear; window._tlPriceCalc=_tlPriceCalc; window._tlToggleAuto=_tlToggleAuto;
+window._tlLinkedChange=_tlLinkedChange; window._tlToggleSplit=_tlToggleSplit; window._tlAddSplit=_tlAddSplit; window._tlRemoveSplit=_tlRemoveSplit;
+window._tlBidToggle=_tlBidToggle; window._tlAcceptToggle=_tlAcceptToggle; window._tlActToggle=_tlActToggle;
+window._tlSetFu=_tlSetFu; window._tlOpenQuote=_tlOpenQuote;
 // 🧪 原型測試模式：不同步到正式資料（編輯只在本機、重整還原）
 window.__ROLE_VIEWER__ = true;
 setTimeout(() => {
