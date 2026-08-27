@@ -536,6 +536,8 @@ ul { list-style: none; }
   gap: 14px 20px;
 }
 .form-group { display: flex; flex-direction: column; gap: 5px; }
+.roc-hint { font-size: 11px; color: var(--warm); font-weight: 600; margin-top: 2px; letter-spacing: 0.02em; }
+.roc-hint:empty { display: none; }
 .form-group.full { grid-column: 1 / -1; }
 .form-group label {
   font-size: 12.5px;
@@ -2884,13 +2886,15 @@ function saveContacts(clientId, contacts) {
 // ── Helpers ──
 function fmtDate(iso) {
   if (!iso) return '—';
-  return iso.slice(0, 10).replace(/-/g, '/');
+  const p = iso.slice(0, 10).split('-');
+  if (p.length < 3) return iso.slice(0,10).replace(/-/g,'/');
+  return `${parseInt(p[0]) - 1911}/${p[1]}/${p[2]}`;  // 民國年
 }
 
 function fmtDateTime(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  return `${d.getFullYear()-1911}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
 function fmtMoney(val) {
@@ -2911,8 +2915,35 @@ function fmtRate(val) {
 
 // ── Modal ──
 function openModal(id) {
-  document.getElementById(id).classList.add('open');
+  const el = document.getElementById(id);
+  el.classList.add('open');
+  refreshRocHints(el);   // 日期欄位補上民國對照
 }
+
+// ── 日期輸入欄位的民國年對照（日曆維持西元，旁邊顯示民國）──
+function _rocHintText(v) {
+  if (!v) return '';
+  const p = v.slice(0,10).split('-');
+  if (p.length < 3) return '';
+  return `民國 ${parseInt(p[0]) - 1911}/${p[1]}/${p[2]}`;
+}
+function updateRocHint(inp) {
+  if (!inp || inp.type !== 'date') return;
+  let hint = inp.nextElementSibling;
+  if (!hint || !hint.classList || !hint.classList.contains('roc-hint')) {
+    hint = document.createElement('span');
+    hint.className = 'roc-hint';
+    inp.insertAdjacentElement('afterend', hint);
+  }
+  hint.textContent = _rocHintText(inp.value);
+}
+function refreshRocHints(container) {
+  (container || document).querySelectorAll('input[type="date"]').forEach(updateRocHint);
+}
+document.addEventListener('input', e => {
+  if (e.target && e.target.matches && e.target.matches('input[type="date"]')) updateRocHint(e.target);
+});
+
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
@@ -7483,7 +7514,7 @@ document.getElementById('generateQuoteBtn')?.addEventListener('click', _generate
 function fmtDocDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
-  return `${d.getFullYear()}年${String(d.getMonth()+1).padStart(2,'0')}月${String(d.getDate()).padStart(2,'0')}日`;
+  return `${d.getFullYear()-1911}年${String(d.getMonth()+1).padStart(2,'0')}月${String(d.getDate()).padStart(2,'0')}日`;  // 民國年
 }
 
 function openDeliveryModal(clientId, orderId=null) {
@@ -7506,7 +7537,7 @@ function openDeliveryModal(clientId, orderId=null) {
   document.getElementById('dlvDealAmount').value  = o.dealTwd  ? `NT$ ${parseInt(o.dealTwd).toLocaleString('zh-TW')}` : '';
   document.getElementById('dlvDealRate').value    = o.dealRate || '';
   document.getElementById('dlvProductName').value = o.productName || '';
-  document.getElementById('dlvPeriod').value      = (o.startDate && o.endDate) ? `${o.startDate} ~ ${o.endDate}` : '';
+  document.getElementById('dlvPeriod').value      = (o.startDate && o.endDate) ? `${_rocSlash(o.startDate)} ~ ${_rocSlash(o.endDate)}` : '';
   document.getElementById('dlvCostTwd').value     = o.costTwd  ? `NT$ ${parseInt(o.costTwd).toLocaleString('zh-TW')}` : '';
   const _sym = o.currency === 'EUR' ? '€' : o.currency === 'TWD' ? 'NT$' : 'US$';
   document.getElementById('dlvCostOrig').value    = o.costOrig ? `${_sym}${parseInt(o.costOrig).toLocaleString('zh-TW')}` : '';
