@@ -1751,6 +1751,9 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-btn.ghost{background:var(--surface);border:1.5px solid var(--warm);color:var(--warm);}
 .tl-split-row{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;background:var(--surface);}
 .tl-split-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.tl-cal-btn{margin-top:6px;align-self:flex-start;font-size:11px;font-weight:600;padding:3px 10px;border:1px solid var(--warm);background:var(--surface);color:var(--warm);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}
+.tl-cal-btn:hover{background:var(--warm);color:#fff;}
+.tl-cal-btn.done{border-color:#4A5D4E;color:#4A5D4E;}
 .tl-acts{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
 .tl-btn{border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;}
 .tl-btn.primary{background:var(--navy);color:#fff;}
@@ -8615,6 +8618,7 @@ function _tlDetail(){
       <div class="tl-acts"><button class="tl-btn primary" onclick="_tlSave()">儲存</button></div>`;
     _tlBaseInit(o);
     refreshRocHints(right);
+    _tlDecorateCal();
     return;
   }
 
@@ -8678,6 +8682,7 @@ function _tlDetail(){
       ${o.status!==stage.key ? `<button class="tl-btn setcur" onclick="_tlSave(true)">儲存並設為目前狀態</button>`:''}
     </div>`;
   refreshRocHints(right);
+  _tlDecorateCal();
 }
 
 // ── 詢價中（已收到詢價 checkbox + 時間戳）──
@@ -8922,6 +8927,33 @@ function _tlOpenQuote(){ if(typeof openQuoteModal==='function') openQuoteModal(_
 function _tlOpenDelivery(){ const o=dbLoad().orders.find(x=>x.id===_tlOrderId); if(typeof openDeliveryModal==='function') openDeliveryModal(o?.clientId, _tlOrderId); }
 function _tlOpenInvoice(){ if(typeof openInvoiceModal==='function') openInvoiceModal(_tlOrderId); }
 
+// ── 加入 Google 日曆（透過後端 Apps Script CalendarApp）──
+function _tlDecorateCal(){
+  const right=document.getElementById('tlRight'); if(!right) return;
+  right.querySelectorAll('input[type="date"]').forEach(inp=>{
+    if(inp.disabled) return;
+    if(inp.nextElementSibling && inp.nextElementSibling.classList?.contains('tl-cal-btn')) return;
+    const labEl=inp.closest('.tl-f')?.querySelector('label');
+    const title=(labEl?labEl.textContent:'訂單日期').replace(/[（(].*$/,'').replace(/＋一年/,'').trim();
+    const btn=document.createElement('button');
+    btn.type='button'; btn.className='tl-cal-btn'; btn.textContent='📅 加入日曆';
+    btn.addEventListener('click',()=>_tlAddCal(inp.value, title, btn));
+    inp.insertAdjacentElement('afterend', btn);
+  });
+}
+async function _tlAddCal(dateVal, title, btn){
+  if(!dateVal){ showToast('這個欄位還沒填日期','error'); return; }
+  const o=dbLoad().orders.find(x=>x.id===_tlOrderId)||{}; const c=getClientById(o.clientId)||{};
+  const evTitle=`${title}｜${c.shortName||''} ${o.productName||''}`.trim();
+  const details=`訂單追蹤（工作管理系統）\n客戶：${c.fullName||c.shortName||''}\n產品：${o.productName||''}\n案號：${o.caseNo||''}`;
+  const old=btn?btn.textContent:''; if(btn){ btn.textContent='加入中…'; btn.disabled=true; }
+  try{
+    const res=await __api({ action:'calendar', event:{ title:evTitle, date:dateVal.slice(0,10), details } });
+    if(res && res.ok){ showToast('✅ 已加入 Google 日曆'); if(btn){ btn.textContent='✓ 已加入日曆'; btn.classList.add('done'); } }
+    else { showToast('加入失敗：'+((res&&res.error)||'後端尚未部署 calendar 功能'),'error'); if(btn){ btn.textContent=old; btn.disabled=false; } }
+  }catch(e){ showToast('加入失敗：'+e.message,'error'); if(btn){ btn.textContent=old; btn.disabled=false; } }
+}
+
 function _tlFieldHtml(o,fd){
   const val = fd.f==='__note' ? ((o.stageNotes||{})[_tlView]||'') : (o[fd.f]!=null?o[fd.f]:'');
   const cls = fd.full?'tl-f full':'tl-f';
@@ -9001,6 +9033,7 @@ window._tlBidToggle=_tlBidToggle; window._tlAcceptToggle=_tlAcceptToggle; window
 window._tlSetFu=_tlSetFu; window._tlOpenQuote=_tlOpenQuote;
 window._tlInquiryToggle=_tlInquiryToggle; window._tlContractToggle=_tlContractToggle; window._tlNoNoticeToggle=_tlNoNoticeToggle;
 window._tlOpenDelivery=_tlOpenDelivery; window._tlOpenInvoice=_tlOpenInvoice;
+window._tlAddCal=_tlAddCal; window._tlDecorateCal=_tlDecorateCal;
 // 🧪 原型測試模式：不同步到正式資料（編輯只在本機、重整還原）
 window.__ROLE_VIEWER__ = true;
 setTimeout(() => {
