@@ -683,7 +683,7 @@ ul { list-style: none; }
   position: fixed;
   inset: 0;
   background: rgba(30, 32, 41, 0.45);
-  z-index: 100;
+  z-index: 500;
   align-items: center;
   justify-content: center;
   padding: 20px;
@@ -1701,7 +1701,7 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-legend i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:middle;}
 .tl-item{position:relative;padding:11px 16px 11px 40px;cursor:pointer;border-left:3px solid transparent;}
 .tl-item:hover{background:rgba(0,0,0,.03);}
-.tl-item.viewing{background:var(--surface);border-left-color:var(--navy);}
+.tl-item.viewing{background:#ffffff;border-left-color:var(--navy);}
 .tl-node{position:absolute;left:15px;top:14px;width:13px;height:13px;border-radius:50%;border:2.5px solid #c9c4b4;background:var(--surface);z-index:2;}
 .tl-line{position:absolute;left:20.5px;top:27px;bottom:-11px;width:2px;background:var(--border);z-index:1;}
 .tl-item:last-child .tl-line{display:none;}
@@ -4251,8 +4251,6 @@ function renderOrdersGrid() {
           ${['發票確認中','履約期間'].includes(o.status) ? `<button data-milestone-contract-returned="${o.id}" title="${o.contractReturnedAt ? '✅ 合約簽回 '+fmtDate(o.contractReturnedAt) : '標記已收回客戶簽回合約'}" style="font-size:13px;${o.contractReturnedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">🔁</button>` : ''}
           ${o.status === '履約結束' && o.bondRefundStatus === 'pending' ? `<button data-bond-refund="${o.id}" title="履保金退款追蹤中 — 收到退款後點此，訂單正式結束" style="font-size:12px;background:#C06C4C;color:#fff;border-radius:5px;padding:1px 6px;">💰 追蹤退款</button>` : ''}
           ${o.status === '履約結束' && o.bondRefundStatus === 'refunded' ? `<button data-bond-refund="${o.id}" title="履保金已於 ${o.bondRefundedAt?fmtDate(o.bondRefundedAt):''} 退回（點此可還原追蹤）" style="font-size:12px;background:#4A5D4E;color:#fff;border-radius:5px;padding:1px 6px;cursor:pointer;">💰✓ 已退款</button>` : ''}
-          ${!isChild ? `<button data-delivery-order="${o.id}" title="生成出貨確認單">📄</button>` : ''}
-          ${!isChild ? `<button data-invoice-order="${o.id}" title="開發票申請">💰</button>` : ''}
           <button data-edit-order="${o.id}">✎ 編輯</button>
           ${!isChild ? `<button class="del" data-delete-order="${o.id}">✕</button>` : ''}
         </div>
@@ -7751,6 +7749,12 @@ document.getElementById('generateDeliveryBtn').addEventListener('click', async (
     a.href = url; a.download = fname; a.click();
     URL.revokeObjectURL(url);
     closeModal('deliveryModal');
+    // 記錄「已下載出貨單」日期到訂單（供時間軸「出貨中」顯示）
+    if (window._dlvOrderId) {
+      const _db=dbLoad(); const _o=_db.orders.find(x=>x.id===window._dlvOrderId);
+      if(_o){ _o.deliveryDownloadedAt=_isoDate(new Date()); _o.updatedAt=new Date().toISOString(); dbSave(_db);
+        if(typeof _tlOrderId!=='undefined' && _tlOrderId===window._dlvOrderId && document.getElementById('tlModal')?.classList.contains('open')) _tlRender(); }
+    }
     showToast('出貨確認單下載成功！');
   } catch(e) {
     console.error(e);
@@ -8228,6 +8232,12 @@ document.getElementById('invSubjectCopyBtn').addEventListener('click', () => {
 document.getElementById('invCopyBtn').addEventListener('click', () => {
   const ta = document.getElementById('invText');
   navigator.clipboard.writeText(ta.value).then(() => showToast('已複製到剪貼簿'));
+  // 記錄「申請開發票」時間到訂單（供時間軸「可開發票」顯示）
+  if (_invOrderId) {
+    const _db=dbLoad(); const _o=_db.orders.find(x=>x.id===_invOrderId);
+    if(_o){ _o.invoiceAppliedAt=_isoDate(new Date()); _o.updatedAt=new Date().toISOString(); dbSave(_db);
+      if(typeof _tlOrderId!=='undefined' && _tlOrderId===_invOrderId && document.getElementById('tlModal')?.classList.contains('open')) _tlRender(); }
+  }
 });
 document.getElementById('invEditTplBtn').addEventListener('click', () => {
   document.getElementById('invTplText').value = getInvTemplate();
@@ -8473,47 +8483,25 @@ document.addEventListener('mousemove', e => {
 // ══════════════ 訂單時間軸編輯器（原型）══════════════
 const TL_STAGES = [
   {key:'__base__', label:'訂單資料', grp:0},
-  {key:'詢價中', label:'詢價中', grp:1, fu3:true},
-  {key:'已提案/草報價', label:'已提案／草報價', grp:2, fu3:true, quote:true},
+  {key:'詢價中', label:'詢價中', grp:1, fu3:true, custom:'inquiry'},
+  {key:'已提案/草報價', label:'已提案／草報價', grp:2, fu3:true, quote:true, fuLabel:'預計追蹤客戶回覆時間'},
   {key:'採購議價', label:'採購議價', grp:3, custom:'bid'},
-  {key:'契約書簽訂中', label:'契約書簽訂中', grp:4, par:true},
-  {key:'出貨中', label:'出貨中', grp:4, par:true},
+  {key:'契約書簽訂中', label:'決標＆契約書簽訂中', grp:4, par:true, custom:'contract', fuLabel:'下次合約追回日'},
+  {key:'出貨中', label:'出貨中', grp:4, par:true, delivery:true},
   {key:'驗收中', label:'驗收中', grp:4, par:true, custom:'accept', noFu:true},
-  {key:'可開發票', label:'可開發票', grp:5},
-  {key:'發票確認中', label:'發票確認中', grp:6},
-  {key:'履約期間', label:'履約期間', grp:7},
-  {key:'申退履保金', label:'申退履保金', grp:8},
-  {key:'履約結束', label:'履約結束', grp:9},
+  {key:'可開發票', label:'可開發票', grp:5, invoice:true, custom:'invoice'},
+  {key:'履約期間', label:'履約期間', grp:6},
+  {key:'申退履保金', label:'申退履保金', grp:7},
+  {key:'履約結束', label:'履約結束', grp:8},
 ];
 const TL_FIELDS = {
-  '詢價中':[
-    {f:'inquirySentAt',l:'詢價信寄出日',t:'date',hint:'記錄後系統改為追蹤 PM 回覆'},
-    {f:'__note',l:'備註',t:'textarea',full:1},
-  ],
   '已提案/草報價':[
     {f:'quoteDate',l:'寄出報價日期',t:'date'},
     {f:'__note',l:'備註',t:'textarea',full:1},
   ],
-  '契約書簽訂中':[
-    {f:'contractReceivedAt',l:'收到客戶合約',t:'date'},
-    {f:'needsContract',l:'需做合約',t:'check'},
-    {f:'bondDeadline',l:'履保金繳納截止日',t:'date'},
-    {f:'deliveryOrderSubmittedAt',l:'出貨單完成',t:'date'},
-    {f:'contractReturnedAt',l:'合約簽回收回',t:'date'},
-    {f:'__note',l:'備註',t:'textarea',full:1},
-  ],
   '出貨中':[
     {f:'deliveryOrderSubmittedAt',l:'出貨單完成',t:'date'},
-    {f:'deliveryDate',l:'交貨日（交貨型客戶）',t:'date'},
     {f:'__note',l:'備註/卡住的點',t:'textarea',full:1},
-  ],
-  '可開發票':[
-    {f:'invoiceNoticeDoneAt',l:'開發票＋啟用通知完成',t:'date',hint:'完成後儀表板提醒消失'},
-    {f:'__note',l:'備註',t:'textarea',full:1},
-  ],
-  '發票確認中':[
-    {f:'contractReturnedAt',l:'合約簽回收回',t:'date'},
-    {f:'__note',l:'備註',t:'textarea',full:1},
   ],
   '履約期間':[
     {f:'contractReturnedAt',l:'合約簽回收回',t:'date'},
@@ -8587,7 +8575,11 @@ function _tlRender(){
       </div>
     </div>`;
   const m=document.getElementById('tlModal'); m.innerHTML=shell;
-  m.querySelectorAll('.tl-item').forEach(el=>el.addEventListener('click',()=>{ _tlView=el.dataset.key; _tlDetail(); }));
+  m.querySelectorAll('.tl-item').forEach(el=>el.addEventListener('click',()=>{
+    _tlView=el.dataset.key;
+    m.querySelectorAll('.tl-item').forEach(x=>x.classList.toggle('viewing', x===el));
+    _tlDetail();
+  }));
   _tlDetail();
   refreshRocHints(m);
 }
@@ -8637,37 +8629,109 @@ function _tlDetail(){
   let bodyInner='';
   if(stage.custom==='bid') bodyInner=_tlBidPanel(o);
   else if(stage.custom==='accept') bodyInner=_tlAcceptPanel(o);
+  else if(stage.custom==='inquiry') bodyInner=_tlInquiryPanel(o);
+  else if(stage.custom==='contract') bodyInner=_tlContractPanel(o);
+  else if(stage.custom==='invoice') bodyInner=_tlInvoicePanel(o);
   else bodyInner=(TL_FIELDS[stage.key]||[]).map(fd=>_tlFieldHtml(o,fd)).join('');
 
-  // 下次追蹤日（noFu 階段不顯示）＋快速追蹤按鈕
+  // 下次追蹤日（noFu 階段不顯示）＋快速追蹤按鈕；可用 fuLabel 客製標題
   const fu=(o.followUp||{})[stage.key]||'';
+  const fuLbl = stage.fuLabel || '下次追蹤日（可覆蓋系統預設提醒時間）';
+  const fuHint = stage.key==='已提案/草報價' ? '追蹤時間到當天，首頁總覽會自動排入「確認客戶對報價回覆」任務。'
+    : stage.key==='契約書簽訂中' ? '到期當天，首頁總覽會自動排入「追回合約」任務。' : '';
   const fuBlock = stage.noFu ? '' :
-    `<div class="tl-f full"><label>下次追蹤日（可覆蓋系統預設提醒時間）</label>
+    `<div class="tl-f full"><label>${fuLbl}</label>
       <input type="date" data-tlfu value="${fu}"/>
+      ${fuHint?`<span class="hint">${fuHint}</span>`:''}
       ${stage.fu3?`<div class="tl-fu-quick">快速設定：
         <button type="button" class="tl-fu-btn" onclick="_tlSetFu(3)">+3 天</button>
         <button type="button" class="tl-fu-btn" onclick="_tlSetFu(5)">+5 天</button>
         <button type="button" class="tl-fu-btn" onclick="_tlSetFu(7)">+7 天</button>
-        <span class="hint">（自動填入下次追蹤日，可再手動調整）</span></div>`:''}
+        <span class="hint">（自動填入，可再手動調整）</span></div>`:''}
     </div>`;
 
-  // 已提案／草報價：生成報價單
-  const quoteBlock = stage.quote ? `
+  // 文件生成按鈕（報價單／出貨單／開發票）——下載即記錄日期
+  let docBlock='';
+  if(stage.quote) docBlock=`
     <div class="tl-quote-box">
       <button type="button" class="tl-btn ghost" onclick="_tlOpenQuote()">📋 生成報價單（Excel）</button>
       <span class="tl-quote-status">${o.quoteDownloadedAt?('✅ 已於 '+fmtDate(o.quoteDownloadedAt)+' 下載報價單'):'尚未下載報價單'}</span>
-    </div>` : '';
+    </div>`;
+  else if(stage.delivery) docBlock=`
+    <div class="tl-quote-box">
+      <button type="button" class="tl-btn ghost" onclick="_tlOpenDelivery()">📄 生成出貨確認單</button>
+      <span class="tl-quote-status">${o.deliveryDownloadedAt?('✅ 已於 '+fmtDate(o.deliveryDownloadedAt)+' 下載出貨單'):'尚未下載出貨單'}</span>
+    </div>`;
+  else if(stage.invoice) docBlock=`
+    <div class="tl-quote-box">
+      <button type="button" class="tl-btn ghost" onclick="_tlOpenInvoice()">💰 開發票申請</button>
+      <span class="tl-quote-status">${o.invoiceAppliedAt?('✅ 已於 '+fmtDate(o.invoiceAppliedAt)+' 申請開發票'):'尚未申請開發票'}</span>
+    </div>`;
 
   right.innerHTML=`
     <div class="tl-dh"><h3>${stage.label}</h3><span class="tl-stag ${st}">${stagTxt}</span></div>
-    ${isPar?'<div class="tl-parbanner">「契約書簽訂中／出貨中／驗收中」沒有固定先後順序，可同時編輯、各自追蹤，不用等其中一個完成。</div>':''}
-    ${quoteBlock}
+    ${isPar?'<div class="tl-parbanner">「決標＆契約書簽訂中／出貨中／驗收中」沒有固定先後順序，可同時編輯、各自追蹤，不用等其中一個完成。</div>':''}
+    ${docBlock}
     <div class="tl-grid">${bodyInner}${fuBlock}</div>
     <div class="tl-acts">
       <button class="tl-btn primary" onclick="_tlSave()">儲存</button>
       ${o.status!==stage.key ? `<button class="tl-btn setcur" onclick="_tlSave(true)">儲存並設為目前狀態</button>`:''}
     </div>`;
   refreshRocHints(right);
+}
+
+// ── 詢價中（已收到詢價 checkbox + 時間戳）──
+function _tlInquiryPanel(o){
+  const dv=v=>String(v||'').slice(0,10);
+  return `
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="inquiryReceived" ${o.inquiryReceived?'checked':''} onchange="_tlInquiryToggle(this)"/><label>已收到詢價</label><span class="hint" id="tlInqAt">${o.inquiryReceivedAt?('✅ '+fmtDate(o.inquiryReceivedAt)+' 已標記'):''}</span></div>
+    <div class="tl-f"><label>詢價信寄出日</label><input type="date" data-tlf="inquirySentAt" value="${dv(o.inquirySentAt)}"/><span class="hint">記錄後系統改為追蹤 PM 回覆</span></div>
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['詢價中']||''}</textarea></div>`;
+}
+function _tlInquiryToggle(cb){
+  if(!cb.checked){
+    if(!confirm('確定要取消「已收到詢價」的標記嗎？')){ cb.checked=true; return; }
+  }
+  const span=document.getElementById('tlInqAt');
+  if(span) span.textContent = cb.checked ? ('✅ '+fmtDate(_isoDate(new Date()))+' 已標記') : '';
+}
+
+// ── 決標＆契約書簽訂中 ──
+function _tlContractPanel(o){
+  const need=!!o.needsContract;
+  const dv=v=>String(v||'').slice(0,10);
+  return `
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="needsContract" ${need?'checked':''} onchange="_tlContractToggle(this)"/><label>需做合約（勾選→自動建立「製作合約」任務；不勾則以下欄位免填）</label></div>
+    <div class="tl-f"><label>決標日期</label><input type="date" data-tlf="contractReceivedAt" value="${dv(o.contractReceivedAt)}" ${need?'':'disabled'}/></div>
+    <div class="tl-f"><label>交貨日（交貨型客戶）</label><input type="date" data-tlf="deliveryDate" value="${dv(o.deliveryDate)}" ${need?'':'disabled'}/></div>
+    <div class="tl-f"><label>履保金繳納截止日</label><input type="date" data-tlf="bondDeadline" value="${dv(o.bondDeadline)}" ${need?'':'disabled'}/></div>
+    <div class="tl-f tl-chk" style="align-self:end;"><input type="checkbox" data-tlf="contractReturnedFlag" ${o.contractReturnedFlag?'checked':''} ${need?'':'disabled'}/><label>是否已追回合約</label></div>
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note" ${need?'':'disabled'}>${(o.stageNotes||{})['契約書簽訂中']||''}</textarea></div>`;
+}
+function _tlContractToggle(cb){
+  if(!cb.checked){
+    if(!confirm('確定要取消「需做合約」嗎？取消後此階段其他欄位將鎖定免填。')){ cb.checked=true; return; }
+  }
+  const on=cb.checked;
+  document.querySelectorAll('#tlRight [data-tlf]').forEach(el=>{
+    if(el===cb) return;
+    el.disabled=!on;
+  });
+}
+
+// ── 可開發票（checklist）──
+function _tlInvoicePanel(o){
+  const noNeed=!!o.activationNoticeNotNeeded;
+  return `
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="invoiceReceived" ${o.invoiceReceived?'checked':''}/><label>已收到發票</label></div>
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="activationNoticeProvided" ${o.activationNoticeProvided?'checked':''} ${noNeed?'disabled':''} onchange="_tlActToggle()"/><label>已製作啟用通知</label><span class="hint" id="tlActAt">${o.activationNoticeAt?('✅ '+fmtDate(o.activationNoticeAt)+' 已標記'):''}</span></div>
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="activationNoticeNotNeeded" ${noNeed?'checked':''} onchange="_tlNoNoticeToggle(this)"/><label>無需提供啟用通知（此單不需啟用通知）</label></div>
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['可開發票']||''}</textarea></div>`;
+}
+function _tlNoNoticeToggle(cb){
+  const prov=document.querySelector('[data-tlf="activationNoticeProvided"]');
+  if(cb.checked && prov){ prov.checked=false; prov.disabled=true; const s=document.getElementById('tlActAt'); if(s) s.textContent=''; }
+  else if(prov){ prov.disabled=false; }
 }
 
 // ── 訂單資料面板（含價格資訊／成交資訊／拆項）──
@@ -8836,7 +8900,6 @@ function _tlAcceptPanel(o){
     <div class="tl-f" id="tlAccBook"><label>預約驗收日</label><input type="date" data-tlf="acceptBookDate" value="${dv(o.acceptBookDate)}" ${need?'':'disabled'}/></div>
     <div class="tl-f"><label>客戶驗收完成</label><input type="date" data-tlf="clientAcceptedAt" value="${dv(o.clientAcceptedAt)}"/></div>
     <div class="tl-f full"><label>訂期起始日（鎖定，須至「訂單資料」修改）</label><input type="date" value="${baseStart}" disabled/><span class="hint">此欄強制帶入訂單資料的訂期起始日，無法在此變更。</span></div>
-    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="activationNoticeProvided" ${o.activationNoticeProvided?'checked':''} onchange="_tlActToggle()"/><label>是否提供啟用通知</label><span class="hint" id="tlActAt">${o.activationNoticeAt?('✅ '+fmtDate(o.activationNoticeAt)+' 已標記'):''}</span></div>
     <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['驗收中']||''}</textarea></div>`;
 }
 function _tlAcceptToggle(){
@@ -8856,6 +8919,8 @@ function _tlSetFu(n){
   if(typeof updateRocHint==='function') updateRocHint(el);
 }
 function _tlOpenQuote(){ if(typeof openQuoteModal==='function') openQuoteModal(_tlOrderId); }
+function _tlOpenDelivery(){ const o=dbLoad().orders.find(x=>x.id===_tlOrderId); if(typeof openDeliveryModal==='function') openDeliveryModal(o?.clientId, _tlOrderId); }
+function _tlOpenInvoice(){ if(typeof openInvoiceModal==='function') openInvoiceModal(_tlOrderId); }
 
 function _tlFieldHtml(o,fd){
   const val = fd.f==='__note' ? ((o.stageNotes||{})[_tlView]||'') : (o[fd.f]!=null?o[fd.f]:'');
@@ -8898,10 +8963,18 @@ function _tlSave(setStatus){
       dealTwd:parseInt(String(s.dealTwd).replace(/[^0-9.\-]/g,''))||0,
     })).filter(s=>s.productName||s.costTwd||s.quoteTwd||s.dealTwd) : [];
   }
-  // 驗收中：啟用通知打勾時記錄時間戳
-  if(_tlView==='驗收中'){
-    if(o.activationNoticeProvided && !o.activationNoticeAt) o.activationNoticeAt=_isoDate(new Date());
-    if(!o.activationNoticeProvided) o.activationNoticeAt=null;
+  // 詢價中：已收到詢價打勾時記錄時間戳
+  if(_tlView==='詢價中'){
+    if(o.inquiryReceived && !o.inquiryReceivedAt) o.inquiryReceivedAt=_isoDate(new Date());
+    if(!o.inquiryReceived) o.inquiryReceivedAt=null;
+  }
+  // 可開發票：啟用通知打勾時記錄時間戳（無需通知則清空）
+  if(_tlView==='可開發票'){
+    if(o.activationNoticeNotNeeded){ o.activationNoticeProvided=false; o.activationNoticeAt=null; }
+    else {
+      if(o.activationNoticeProvided && !o.activationNoticeAt) o.activationNoticeAt=_isoDate(new Date());
+      if(!o.activationNoticeProvided) o.activationNoticeAt=null;
+    }
   }
   const fuEl=right.querySelector('[data-tlfu]');
   if(fuEl){ o.followUp=o.followUp||{}; o.followUp[_tlView]=fuEl.value||null; }
@@ -8926,6 +8999,8 @@ window._tlFillOneYear=_tlFillOneYear; window._tlPriceCalc=_tlPriceCalc; window._
 window._tlLinkedChange=_tlLinkedChange; window._tlToggleSplit=_tlToggleSplit; window._tlAddSplit=_tlAddSplit; window._tlRemoveSplit=_tlRemoveSplit;
 window._tlBidToggle=_tlBidToggle; window._tlAcceptToggle=_tlAcceptToggle; window._tlActToggle=_tlActToggle;
 window._tlSetFu=_tlSetFu; window._tlOpenQuote=_tlOpenQuote;
+window._tlInquiryToggle=_tlInquiryToggle; window._tlContractToggle=_tlContractToggle; window._tlNoNoticeToggle=_tlNoNoticeToggle;
+window._tlOpenDelivery=_tlOpenDelivery; window._tlOpenInvoice=_tlOpenInvoice;
 // 🧪 原型測試模式：不同步到正式資料（編輯只在本機、重整還原）
 window.__ROLE_VIEWER__ = true;
 setTimeout(() => {
