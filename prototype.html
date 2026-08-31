@@ -1759,6 +1759,9 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-bidclose label{font-size:15px !important;color:#A4472F !important;font-weight:800 !important;}
 .tl-bidclose input{border-color:#C56B54 !important;border-width:2px !important;font-size:16px !important;font-weight:700;color:#A4472F;}
 .tl-savestat{font-size:11px;color:#cfe3d4;font-weight:600;margin-left:14px;white-space:nowrap;}
+.tl-chk-done{font-size:11px;color:var(--text-secondary);font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+.tl-chk-done:empty{display:none;}
+.tl-chk-date{border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:11px;font-family:inherit;background:#fff;color:var(--text-primary);}
 .tl-money{width:160px !important;margin-left:8px;padding:9px 11px !important;font-size:14px !important;font-weight:600;text-align:right;}
 /* 客服／維護 打橫單列表格 */
 .tl-svc-wrap{grid-column:1/-1;}
@@ -4222,7 +4225,6 @@ function renderOrdersGrid() {
     { key:'productType', label:'類別' },
     { key:'productName', label:'產品名稱' },
     { key:'period',      label:'訂期' },
-    { key:'actions',     label:'操作' },
     { key:'quoteDate',   label:'報價日期' },
     { key:'currency',    label:'幣別' },
     { key:'dealTwd',     label:'成交金額(台幣)' },
@@ -4238,6 +4240,7 @@ function renderOrdersGrid() {
     { key:'caseNo',      label:'採購案號' },
     { key:'updatedAt',   label:'最近更新' },
     { key:'quoteNote',   label:'報價備註' },
+    { key:'del',         label:'' },
   ];
 
   const thead = cols.map(c => `<th>${c.label}</th>`).join('');
@@ -4272,19 +4275,6 @@ function renderOrdersGrid() {
       <td>${o.productType||'—'}</td>
       <td class="wrap-cell">${childLabel}${o.productName||'—'}</td>
       <td>${o.startDate ? fmtDate(o.startDate)+'～'+fmtDate(o.endDate) : '—'}</td>
-      <td>
-        <div class="row-actions">
-          ${o.status === '詢價中' ? `<button data-inquiry-sent="${o.id}" title="${o.inquirySentAt ? '已寄出詢價信 ' + fmtDate(o.inquirySentAt) : '標記詢價信已寄出'}" style="opacity:${o.inquirySentAt?'1':'0.45'};font-size:13px;">✉️</button>` : ''}
-          ${['採購議價','契約書簽訂中','出貨中'].includes(o.status) ? `<button data-milestone-contract-received="${o.id}" title="${o.contractReceivedAt ? '✅ 合約收到 '+fmtDate(o.contractReceivedAt) : '標記已收到客戶合約'}" style="font-size:13px;${o.contractReceivedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">📨</button>` : ''}
-          ${['契約書簽訂中','出貨中','驗收中'].includes(o.status) ? `<button data-milestone-delivery-order="${o.id}" title="${o.deliveryOrderSubmittedAt ? '✅ 出貨單完成 '+fmtDate(o.deliveryOrderSubmittedAt) : '標記出貨單已完成送出'}" style="font-size:13px;${o.deliveryOrderSubmittedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">📦</button>` : ''}
-          ${['驗收中','可開發票'].includes(o.status) ? `<button data-milestone-client-accepted="${o.id}" title="${o.clientAcceptedAt ? '✅ 驗收完成 '+fmtDate(o.clientAcceptedAt) : '標記客戶通知驗收完成'}" style="font-size:13px;${o.clientAcceptedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">🎯</button>` : ''}
-          ${['發票確認中','履約期間'].includes(o.status) ? `<button data-milestone-contract-returned="${o.id}" title="${o.contractReturnedAt ? '✅ 合約簽回 '+fmtDate(o.contractReturnedAt) : '標記已收回客戶簽回合約'}" style="font-size:13px;${o.contractReturnedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">🔁</button>` : ''}
-          ${o.status === '履約結束' && o.bondRefundStatus === 'pending' ? `<button data-bond-refund="${o.id}" title="履保金退款追蹤中 — 收到退款後點此，訂單正式結束" style="font-size:12px;background:#C06C4C;color:#fff;border-radius:5px;padding:1px 6px;">💰 追蹤退款</button>` : ''}
-          ${o.status === '履約結束' && o.bondRefundStatus === 'refunded' ? `<button data-bond-refund="${o.id}" title="履保金已於 ${o.bondRefundedAt?fmtDate(o.bondRefundedAt):''} 退回（點此可還原追蹤）" style="font-size:12px;background:#4A5D4E;color:#fff;border-radius:5px;padding:1px 6px;cursor:pointer;">💰✓ 已退款</button>` : ''}
-          <button data-edit-order="${o.id}">✎ 編輯</button>
-          ${!isChild ? `<button class="del" data-delete-order="${o.id}">✕</button>` : ''}
-        </div>
-      </td>
       <td>${fmtDate(o.quoteDate)}</td>
       <td>${sym}</td>
       <td style="text-align:right;">${o.dealTwd ? 'NT$ '+fmtMoney(o.dealTwd) : '—'}</td>
@@ -4300,6 +4290,11 @@ function renderOrdersGrid() {
       <td>${o.caseNo||'—'}</td>
       <td>${fmtDateTime(o.updatedAt)}</td>
       <td class="wrap-cell" style="max-width:180px;color:var(--text-secondary);font-size:12px;">${o.quoteNote||'—'}</td>
+      <td style="text-align:center;white-space:nowrap;">
+        ${o.status === '履約結束' && o.bondRefundStatus === 'pending' ? `<button data-bond-refund="${o.id}" title="履保金退款追蹤中 — 收到退款後點此" style="font-size:12px;background:#C06C4C;color:#fff;border-radius:5px;padding:1px 6px;margin-right:4px;">💰追蹤</button>` : ''}
+        ${o.status === '履約結束' && o.bondRefundStatus === 'refunded' ? `<button data-bond-refund="${o.id}" title="履保金已退回（點此可還原）" style="font-size:12px;background:#4A5D4E;color:#fff;border-radius:5px;padding:1px 6px;margin-right:4px;cursor:pointer;">💰✓</button>` : ''}
+        ${!isChild ? `<button class="del" data-delete-order="${o.id}" title="刪除訂單">✕</button>` : ''}
+      </td>
     </tr>`;
   }
 
@@ -4382,8 +4377,8 @@ function renderOrdersGrid() {
 
   // Events
   wrap.querySelectorAll('.order-status-tag[data-order-id]').forEach(tag => {
-    tag.addEventListener('click', () => openStatusModal(tag.dataset.orderId,
-      orders.find(o=>o.id===tag.dataset.orderId)?.status));
+    tag.title = '點擊進入訂單時間軸（狀態切換請於時間軸中確認）';
+    tag.addEventListener('click', () => openOrderTimeline(tag.dataset.orderId));
   });
 
   // 子訂單預設隱藏
@@ -4640,10 +4635,8 @@ function buildOrderCard(o) {
     </div>
   `;
 
-  // Status tag click
-  card.querySelector('.order-status-tag').addEventListener('click', () => {
-    openStatusModal(o.id, o.status);
-  });
+  // Status tag click → 進入時間軸（不再直接切換狀態）
+  card.querySelector('.order-status-tag').addEventListener('click', () => openOrderTimeline(o.id));
   card.querySelector(`[data-edit-order]`).addEventListener('click', () => openOrderTimeline(o.id));
   card.querySelector(`[data-delete-order]`).addEventListener('click', () => handleDeleteOrder(o.id));
 
@@ -5568,6 +5561,7 @@ function renderHomePage() {
           ⬇ 匯入備份
           <input type="file" accept=".json" id="importFileInput" style="display:none;" />
         </label>
+        <button class="btn btn-ghost btn-sm" onclick="migrateOrdersV2Run()" title="一次性：把舊訂單資料轉成新版時間軸的 checklist 與階段（用既有日期回填）">🔄 一次性資料轉換</button>
       </div>
     </div>
     <div id="orderDashboardSlot"></div>
@@ -5819,6 +5813,22 @@ function computeDashboardItems() {
       return;
     }
 
+    // 履約結束：強制結案 — 不再排出貨/啟用通知/追回等提醒，只保留申退履保金與退款追蹤
+    if (o.status === '履約結束') {
+      if (o.bondRefundStatus !== 'refunded') {
+        const base = _snoozeDate ? _isoDate(_snoozeDate) : (_fu || (o.endDate ? _isoDate(_dPlus(o.endDate, 30)) : null));
+        if (base) _pushItem(new Date(base), '申退履保金', '💰', 2, _snoozeHint);
+      }
+      if (o.bondRefundStatus === 'pending') {
+        const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        if (o.bondRefundSnoozedMonth !== ym) {
+          const d28 = new Date(today.getFullYear(), today.getMonth(), 28); d28.setHours(0, 0, 0, 0);
+          _pushItem(d28, '追蹤履保金退款是否入帳', '💰', 2, '打勾＝本月已追蹤/仍在等待，下個月再提醒', { bondSnoozeOrderId: o.id });
+        }
+      }
+      return;
+    }
+
     // ══ 平行群組（決標/出貨/驗收/可開發票，grp≥4）＋後段：改用「欄位＋checklist」觸發，不綁精確狀態 ══
 
     // 決標日 → 製作出貨單（決標隔天；超過3天未送出 → 🔥 逾期警示）
@@ -5856,20 +5866,6 @@ function computeDashboardItems() {
       o.serviceLog.forEach(r => {
         if (r.due && !r.replied) _pushItem(new Date(r.due), `${r.kind || '客服'}：${(r.issue || '').slice(0, 16)}`, r.kind === '維護' ? '🛠️' : '📞', 1);
       });
-    }
-    // 履約結束：申退履保金（履約結束後約一個月＝訂期結束+30，可 +3/+7）＋退款追蹤
-    if (o.status === '履約結束') {
-      if (o.bondRefundStatus !== 'refunded') {
-        const base = _snoozeDate ? _isoDate(_snoozeDate) : (_fu || (o.endDate ? _isoDate(_dPlus(o.endDate, 30)) : null));
-        if (base) _pushItem(new Date(base), '申退履保金', '💰', 2, _snoozeHint);
-      }
-      if (o.bondRefundStatus === 'pending') {
-        const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-        if (o.bondRefundSnoozedMonth !== ym) {
-          const d28 = new Date(today.getFullYear(), today.getMonth(), 28); d28.setHours(0, 0, 0, 0);
-          _pushItem(d28, '追蹤履保金退款是否入帳', '💰', 2, '打勾＝本月已追蹤/仍在等待，下個月再提醒', { bondSnoozeOrderId: o.id });
-        }
-      }
     }
 
   });
@@ -8113,6 +8109,47 @@ function renderProjectPage() {
 
 
 // ===== 警示 Snooze =====
+// ════════ 一次性資料轉換（舊訂單 → 新版時間軸模型）════════
+// 用「既有的日期欄位」回填 checklist 完成日，避免上線後手動補；沒有現成日期者以 updatedAt 近似（可再手動改）。
+function migrateOrdersV2(save){
+  const db=dbLoad();
+  const GRP={'詢價中':1,'已提案/草報價':2,'採購議價':3,'契約書簽訂中':4,'決標＆契約書簽訂中':4,'出貨中':4,'驗收中':4,'可開發票':4,'發票確認中':4,'履約期間':5,'申退履保金':6,'履約結束':6};
+  let changed=0;
+  (db.orders||[]).forEach(o=>{
+    let touched=false;
+    const fb=(o.updatedAt||o.createdAt||_isoDate(new Date())).slice(0,10);   // fallback 近似日
+    o.checks=o.checks||{};
+    const set=(k,date)=>{ if(o.checks[k]==null){ o.checks[k]=(date||fb); touched=true; } };
+    // 1) 狀態改名 / 合併
+    if(o.status==='發票確認中'){ o.status='可開發票'; touched=true; }
+    if(o.status==='申退履保金'){ o.status='履約結束'; touched=true; }
+    if(o.status==='契約書簽訂中'){ /* 內部值不變，顯示名已改 */ }
+    const g=GRP[o.status]||0;
+    // 2) 依既有日期欄位回填 checklist
+    if(o.inquirySentAt) set('inquirySent', o.inquirySentAt.slice(0,10));
+    if(g>=2){ set('inquirySent', (o.inquirySentAt||o.createdAt||fb).slice ? (o.inquirySentAt||o.createdAt||fb).slice(0,10):fb); set('inquiryReceived'); }
+    if(o.quoteDate){ set('quoteMade', o.quoteDate.slice(0,10)); set('quoteSent', o.quoteDate.slice(0,10)); }
+    else if(g>=3){ set('quoteMade'); set('quoteSent'); if(!o.quoteDate){ o.quoteDate=o.checks.quoteSent; } }
+    if(g>=4){ set('bidDocReceived'); set('bidDocSent'); }
+    if(o.deliveryOrderSubmittedAt) set('deliveryOrderSent', o.deliveryOrderSubmittedAt.slice(0,10));
+    if(o.contractReturnedAt) set('contractReturned', o.contractReturnedAt.slice(0,10));
+    if(o.invoiceNoticeDoneAt) set('activationNotice', o.invoiceNoticeDoneAt.slice(0,10));
+    if(touched) changed++;
+  });
+  if(save){ db._migratedV2=_isoDate(new Date()); dbSave(db); }
+  return { changed, total:(db.orders||[]).length, already:!!db._migratedV2 };
+}
+function migrateOrdersV2Run(){
+  const prev=migrateOrdersV2(false); // 預覽（不存）
+  if(prev.already && !confirm('偵測到先前已執行過轉換，仍要再跑一次嗎？（不會覆蓋已填的完成日）')) return;
+  if(!confirm(`一次性資料轉換\n\n將把 ${prev.total} 筆訂單轉成新版模型：\n・發票確認中 → 可開發票、申退履保金 → 履約結束\n・用既有日期回填 checklist 完成日（沒有日期的以最後更新日近似，可再手動改）\n\n預估會調整約 ${prev.changed} 筆。確定執行？`)) return;
+  const res=migrateOrdersV2(true);
+  renderOrdersGrid && renderOrdersGrid();
+  if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  showToast(`轉換完成：調整了 ${res.changed} / ${res.total} 筆`);
+}
+window.migrateOrdersV2=migrateOrdersV2; window.migrateOrdersV2Run=migrateOrdersV2Run;
+
 function snoozeOrderAlert(orderId, days) {
   const db = dbLoad();
   const idx = db.orders.findIndex(o => o.id === orderId);
@@ -8717,12 +8754,16 @@ function _tlChk(o,key,label,opt){
   const extra=opt.on?` onchange="${opt.on}"`:'';
   const dis=opt.disabled?' disabled':'';
   const word=opt.word||'完成';
-  return `<div class="tl-f full tl-chk"><input type="checkbox" data-check="${key}"${conf}${extra}${dis} ${done?'checked':''} onchange="_tlChkToggle(this)"/><label>${label}</label><span class="hint" data-checkat="${key}">${done?('✅ '+fmtDate(done)+' '+word):''}</span></div>`;
+  return `<div class="tl-f full tl-chk"><input type="checkbox" data-check="${key}"${conf}${extra}${dis} ${done?'checked':''} onchange="_tlChkToggle(this)"/><label>${label}</label><span class="tl-chk-done" data-checkat="${key}">${done?_tlChkDateHtml(key,done,word):''}</span></div>`;
+}
+// 完成日可手動修改的小輸入框
+function _tlChkDateHtml(key,val,word){
+  return `${word} <input type="date" class="tl-chk-date" data-nocal data-checkdate="${key}" value="${String(val).slice(0,10)}"/>`;
 }
 function _tlChkToggle(cb){
   if(!cb.checked && cb.dataset.confirm){ if(!confirm(cb.dataset.confirm)){ cb.checked=true; return; } }
   const key=cb.dataset.check; const span=document.querySelector(`[data-checkat="${key}"]`);
-  if(span) span.textContent = cb.checked ? ('✅ '+fmtDate(_isoDate(new Date()))+' 完成') : '';
+  if(span) span.innerHTML = cb.checked ? _tlChkDateHtml(key,_isoDate(new Date()),'完成') : '';
 }
 
 // ── 詢價中 ──
@@ -9142,8 +9183,10 @@ function _tlCollect(o, right){
   o.checks=o.checks||{};
   right.querySelectorAll('[data-check]').forEach(cb=>{
     const k=cb.dataset.check;
-    if(cb.checked){ if(!o.checks[k]) o.checks[k]=_isoDate(new Date()); }
-    else o.checks[k]=null;
+    if(cb.checked){
+      const di=right.querySelector(`[data-checkdate="${k}"]`);
+      o.checks[k]= (di && di.value) ? di.value : (o.checks[k] || _isoDate(new Date()));
+    } else o.checks[k]=null;
   });
   if(_tlView==='已提案/草報價'){
     if(o.checks.quoteSent && !o.quoteDate) o.quoteDate=_isoDate(new Date());
