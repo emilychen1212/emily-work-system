@@ -1794,6 +1794,12 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .om-card-tag{font-size:11px;font-weight:600;color:#fff;border-radius:20px;padding:2px 9px;white-space:nowrap;}
 .om-card-meta{font-size:11px;color:var(--text-muted);margin-top:6px;}
 .om-card-note{font-size:11.5px;color:var(--warm);margin-top:6px;background:var(--surface2);border-radius:6px;padding:3px 7px;line-height:1.4;}
+.om-card.alert-warn{border-color:#D9A491;background:#FBF0EA;}
+.om-card.alert-danger{border-color:#C56B54;background:#F6E4DE;}
+.om-card-alert{font-size:11.5px;font-weight:600;color:#A4472F;margin-top:7px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.om-card-snooze{display:flex;gap:5px;}
+.om-card-snooze button{font-size:10.5px;font-weight:600;border:1px solid #C56B54;background:#fff;color:#A4472F;border-radius:7px;padding:1px 7px;cursor:pointer;}
+.om-card-snooze button:hover{background:#A4472F;color:#fff;}
 .tl-dh{justify-content:flex-start !important;}
 .tl-note-btn{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px 8px;font-size:14px;cursor:pointer;line-height:1;}
 .tl-note-btn:hover{border-color:var(--warm);}
@@ -5463,11 +5469,6 @@ function renderOrderDashboard() {
       }).join('')
     : '<div class="dash-action-row"><span style="color:var(--text-muted);">目前無進行中訂單</span></div>';
 
-  // Warnings
-  const warningsHtml = alerts.length
-    ? alerts.map(a => `<div class="dash-warn-badge ${a.level}">${a.level === 'danger' ? '⚠' : '📋'} ${a.text}${a.canSnooze?`<span class="snooze-btns"><button onclick="snoozeOrderAlert('${a.orderId}',3)">+3天</button><button onclick="snoozeOrderAlert('${a.orderId}',7)">+7天</button></span>`:''}</div>`).join('')
-    : '<div class="dash-warn-badge ok">✓ 目前無逾期警示</div>';
-
   const dealWan = (monthDeal / 10000).toFixed(1);
   const dealCls = monthDeal > 0 ? 'ok' : '';
 
@@ -5486,8 +5487,6 @@ function renderOrderDashboard() {
         <div class="dash-ticker" id="orderTickerRows">${tickerHtml}</div>
       </div>
     </div>
-    <div class="dash-divider"></div>
-    <div class="dash-warnings" style="max-height:130px;overflow-y:auto;">${warningsHtml}</div>
   `;
 
   // 插入到預留的 slot
@@ -5584,19 +5583,27 @@ function renderOmOrders() {
   if (_omStage) orders = orders.filter(o => o.status === _omStage);
   orders.sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
   const title = _omStage ? `${_omStage}（${orders.length}）` : `全部訂單（${orders.length}）`;
+  // 需警示的訂單 → 卡片紅底標示（取代原本右欄的訂單警示）
+  let alertMap = {};
+  try { (computeOrderKPI().alerts || []).forEach(a => { alertMap[a.orderId] = a; }); } catch (e) {}
   if (!orders.length) { el.innerHTML = `<div class="om-orders-head">${title}</div><div class="om-empty">此階段目前沒有訂單</div>`; return; }
   el.innerHTML = `<div class="om-orders-head">${title}</div><div class="om-cards">` + orders.map(o => {
     const c = cmap[o.clientId] || {};
     const color = getOrderStatusColor(o.status);
     const period = o.startDate ? `${fmtDate(o.startDate)}~${o.endDate?fmtDate(o.endDate):''}` : '未設定訂期';
     const note = (o.statusNote && o.statusNote.trim()) ? `<div class="om-card-note">📝 ${o.statusNote.replace(/</g,'&lt;')}</div>` : '';
-    return `<div class="om-card" data-oid="${o.id}">
+    const al = alertMap[o.id];
+    const alertCls = al ? (al.level === 'danger' ? ' alert-danger' : ' alert-warn') : '';
+    const alertBadge = al ? `<div class="om-card-alert">⚠ ${(al.text.split('—')[1]||'需追蹤').trim()}
+      <span class="om-card-snooze"><button onclick="event.stopPropagation();snoozeOrderAlert('${o.id}',3)">+3天</button><button onclick="event.stopPropagation();snoozeOrderAlert('${o.id}',7)">+7天</button></span></div>` : '';
+    return `<div class="om-card${alertCls}" data-oid="${o.id}">
       <div class="om-card-top">
         <span class="om-card-prod"><b>${c.shortName||'—'}</b>｜${o.productName||'（未命名）'}</span>
         ${_omStage?'':`<span class="om-card-tag" style="background:${color};">${o.status||'未設定'}</span>`}
       </div>
       <div class="om-card-meta">訂期 ${period}　·　更新 ${fmtDateTime(o.updatedAt).slice(5,16)}</div>
       ${note}
+      ${alertBadge}
     </div>`;
   }).join('') + `</div>`;
   el.querySelectorAll('.om-card[data-oid]').forEach(card =>
@@ -8212,6 +8219,7 @@ function snoozeOrderAlert(orderId, days) {
   if (o.status) o.followUp[o.status] = _isoDate(untilDate);
   dbSave(db);
   renderOrderDashboard();
+  if (typeof renderOrderGrid === 'function') renderOrderGrid();
   refreshDashboardContent();
   if (currentClientId) renderClientDashboard(currentClientId);
   showToast(`已延後 ${days} 天提醒`);
