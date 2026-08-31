@@ -5848,8 +5848,8 @@ function computeDashboardItems() {
     if (o.contractReceivedAt && !CK.contractReturned) {
       _pushItem(_dPlus(o.contractReceivedAt, 30), '追回客戶回簽合約', '🔁', 2);
     }
-    // 製作啟用通知：已到平行群組(grp≥4) 且距訂期起始 ≤5 天才排；≤5天內 → 🔥 極緊急
-    if (curGrp >= 4 && o.startDate && !CK.activationNotice) {
+    // 製作啟用通知：已到平行群組(grp≥4) 且距訂期起始 ≤5 天才排；≤5天內 → 🔥 極緊急（子訂單不需啟用通知）
+    if (curGrp >= 4 && o.startDate && !o.parentOrderId && !CK.activationNotice) {
       const start = new Date(o.startDate); start.setHours(0,0,0,0);
       const daysToStart = Math.round((start - snapDate) / 86400000);
       if (daysToStart <= 5) {
@@ -9081,7 +9081,7 @@ function _tlAcceptPanel(o){
     <div class="tl-f" id="tlAccBook"><label>預約驗收日</label><input type="date" data-tlf="acceptBookDate" value="${dv(o.acceptBookDate)}" data-caltitle="驗收" ${need?'':'disabled'}/></div>
     <div class="tl-f"><label>客戶驗收完成（選填）</label><input type="date" data-tlf="clientAcceptedAt" value="${dv(o.clientAcceptedAt)}" data-nocal/></div>
     <div class="tl-f full"><label>訂期起始日（鎖定，須至「訂單資料」修改）</label><input type="date" value="${baseStart}" data-nocal disabled/><span class="hint">此欄強制帶入訂單資料的訂期起始日，無法在此變更。</span></div>
-    ${_tlChk(o,'activationNotice','已製作啟用通知',{word:'完成'})}
+    ${o.parentOrderId ? '' : _tlChk(o,'activationNotice','已製作啟用通知',{word:'完成'})}
     <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['驗收中']||''}</textarea></div>`;
 }
 function _tlAcceptToggle(){
