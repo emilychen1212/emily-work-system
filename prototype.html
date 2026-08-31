@@ -1760,21 +1760,24 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-bidclose input{border-color:#C56B54 !important;border-width:2px !important;font-size:16px !important;font-weight:700;color:#A4472F;}
 .tl-savestat{font-size:11px;color:#cfe3d4;font-weight:600;margin-left:14px;white-space:nowrap;}
 .tl-money{width:160px !important;margin-left:8px;padding:9px 11px !important;font-size:14px !important;font-weight:600;text-align:right;}
-/* 客服／維護 滿版橫列表格 */
-.tl-svc-tbl{border:1px solid var(--line);border-radius:10px;overflow:hidden;}
-.tl-svc-head,.tl-svc-line{display:grid;grid-template-columns:76px minmax(90px,1fr) minmax(120px,1.4fr) 78px 150px 36px;gap:8px;align-items:center;padding:8px 10px;}
-.tl-svc-head{background:var(--surface2);font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--line);}
+/* 客服／維護 打橫單列表格 */
+.tl-svc-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
+.tl-svc-add{margin:0;white-space:nowrap;}
+.tl-svc-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;}
+.tl-svc-tbl{min-width:820px;}
+.tl-svc-head,.tl-svc-line{display:grid;grid-template-columns:52px 74px 108px minmax(120px,1fr) 168px minmax(150px,1.3fr) 34px;gap:8px;align-items:center;padding:8px 10px;}
+.tl-svc-head{background:var(--surface2);font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--line);text-align:center;}
+.tl-svc-head span:nth-child(4),.tl-svc-head span:nth-child(6){text-align:left;}
 .tl-svc-line{border-top:1px solid var(--line-soft);}
 .tl-svc-line:first-of-type{border-top:none;}
-.tl-svc-line select,.tl-svc-line input[type="text"],.tl-svc-line input[type="date"]{border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text-primary);width:100%;}
-.tl-svc-chk{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text-secondary);}
-.tl-svc-chk input{width:15px;height:15px;}
+.tl-svc-line select,.tl-svc-line input[type="text"],.tl-svc-line input[type="date"],.tl-svc-issue{border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text-primary);width:100%;}
+.tl-svc-chk{display:flex;justify-content:center;}
+.tl-svc-chk input{width:16px;height:16px;}
 .tl-svc-date{display:flex;align-items:center;gap:4px;}
 .tl-svc-date .tl-cal-btn{margin-top:0;padding:5px 7px;flex:0 0 auto;}
-.tl-svc-del{background:none;border:none;cursor:pointer;font-size:15px;opacity:.65;padding:2px;}
+.tl-svc-issue{min-height:36px;resize:vertical;line-height:1.4;}
+.tl-svc-del{background:none;border:none;cursor:pointer;font-size:16px;opacity:.65;padding:2px;justify-self:center;}
 .tl-svc-del:hover{opacity:1;}
-.tl-svc-issue{grid-column:1/-1;}
-.tl-svc-issue textarea{width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 9px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text-primary);min-height:44px;resize:vertical;}
 .tl-svc-empty{padding:16px;text-align:center;color:var(--text-muted);font-size:12.5px;}
 .tl-acts{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
 .tl-btn{border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;}
@@ -8816,26 +8819,28 @@ function _tlSvcCats(){
 function _tlServicePanel(o){
   const rows=o.serviceLog||[];
   return `
-    <div class="tl-section-label" style="margin-top:0;">客服／維護紀錄</div>
-    <div class="tl-svc-tbl" id="tlSvcList">${_tlServiceRows(rows)}</div>
-    <button type="button" class="tl-btn ghost" style="margin-top:8px;" onclick="_tlAddSvc()">＋ 新增一筆</button>
+    <div class="tl-svc-top">
+      <div class="tl-section-label" style="margin:0;">客服／維護紀錄</div>
+      <button type="button" class="tl-btn ghost tl-svc-add" onclick="_tlAddSvc()">＋ 新增一筆</button>
+    </div>
+    <div class="tl-svc-scroll"><div class="tl-svc-tbl" id="tlSvcList">${_tlServiceRows(rows)}</div></div>
     <div class="tl-f full" style="margin-top:16px;"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['履約期間']||''}</textarea></div>`;
 }
 let _tlSvc=[];
 function _tlServiceRows(rows){
   const cats=_tlSvcCats();
   const head=`<div class="tl-svc-head">
-    <span>需求</span><span>任務類型</span><span>問題簡述</span><span>已回覆</span><span>預計完成日</span><span></span></div>`;
-  if(!rows.length) return head+'<div class="tl-svc-empty">尚無紀錄，點下方「＋ 新增一筆」開始</div>';
+    <span>已回覆</span><span>需求</span><span>任務類型</span><span>問題簡述</span><span>預計完成日</span><span>問題詳述</span><span></span></div>`;
+  if(!rows.length) return head+'<div class="tl-svc-empty">尚無紀錄，點右上「＋ 新增一筆」開始</div>';
   const body=rows.map((r,i)=>`
     <div class="tl-svc-line" data-svc="${i}">
+      <span class="tl-svc-chk"><input type="checkbox" data-sv="replied" ${r.replied?'checked':''}/></span>
       <select data-sv="kind">${['客服','維護'].map(x=>`<option ${r.kind===x?'selected':''}>${x}</option>`).join('')}</select>
       <select data-sv="cat">${cats.map(x=>`<option ${r.cat===x?'selected':''}>${x}</option>`).join('')}</select>
       <input type="text" data-sv="brief" placeholder="問題簡述" value="${(r.brief||'').replace(/"/g,'&quot;')}"/>
-      <label class="tl-svc-chk"><input type="checkbox" data-sv="replied" ${r.replied?'checked':''}/>已回覆</label>
       <span class="tl-svc-date"><input type="date" data-sv="due" value="${String(r.due||'').slice(0,10)}" data-nocal/><button type="button" class="tl-cal-btn" onclick="_tlSvcCal(${i},this)">📅</button></span>
+      <textarea data-sv="issue" class="tl-svc-issue" placeholder="問題描述（可換行）">${r.issue||''}</textarea>
       <button type="button" class="tl-svc-del" title="刪除這筆" onclick="_tlRmSvc(${i})">🗑</button>
-      <div class="tl-svc-issue"><textarea data-sv="issue" placeholder="問題描述（可換行）">${r.issue||''}</textarea></div>
     </div>`).join('');
   return head+body;
 }
