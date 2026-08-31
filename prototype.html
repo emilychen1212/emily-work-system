@@ -1761,8 +1761,10 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-savestat{font-size:11px;color:#cfe3d4;font-weight:600;margin-left:14px;white-space:nowrap;}
 .tl-money{width:160px !important;margin-left:8px;padding:9px 11px !important;font-size:14px !important;font-weight:600;text-align:right;}
 /* 客服／維護 打橫單列表格 */
-.tl-svc-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
-.tl-svc-add{margin:0;white-space:nowrap;}
+.tl-svc-wrap{grid-column:1/-1;}
+.tl-svc-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.tl-svc-add{white-space:nowrap;font-size:12px;font-weight:600;padding:5px 12px;border:1px solid var(--warm);background:var(--surface);color:var(--warm);border-radius:8px;cursor:pointer;}
+.tl-svc-add:hover{background:var(--warm);color:#fff;}
 .tl-svc-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;}
 .tl-svc-tbl{min-width:820px;}
 .tl-svc-head,.tl-svc-line{display:grid;grid-template-columns:52px 74px 108px minmax(120px,1fr) 168px minmax(150px,1.3fr) 34px;gap:8px;align-items:center;padding:8px 10px;}
@@ -8819,12 +8821,14 @@ function _tlSvcCats(){
 function _tlServicePanel(o){
   const rows=o.serviceLog||[];
   return `
-    <div class="tl-svc-top">
-      <div class="tl-section-label" style="margin:0;">客服／維護紀錄</div>
-      <button type="button" class="tl-btn ghost tl-svc-add" onclick="_tlAddSvc()">＋ 新增一筆</button>
-    </div>
-    <div class="tl-svc-scroll"><div class="tl-svc-tbl" id="tlSvcList">${_tlServiceRows(rows)}</div></div>
-    <div class="tl-f full" style="margin-top:16px;"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['履約期間']||''}</textarea></div>`;
+    <div class="tl-svc-wrap">
+      <div class="tl-svc-top">
+        <div class="tl-section-label" style="margin:0;">客服／維護紀錄</div>
+        <button type="button" class="tl-svc-add" onclick="_tlAddSvc()">＋ 新增一筆</button>
+      </div>
+      <div class="tl-svc-scroll"><div class="tl-svc-tbl" id="tlSvcList">${_tlServiceRows(rows)}</div></div>
+      <div class="tl-f full" style="margin-top:16px;"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['履約期間']||''}</textarea></div>
+    </div>`;
 }
 let _tlSvc=[];
 function _tlServiceRows(rows){
