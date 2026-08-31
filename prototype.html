@@ -1764,6 +1764,24 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-chk-date{border:1px solid var(--warm);border-radius:5px;padding:3px 7px;font-size:11px;font-family:inherit;background:#fff;color:var(--text-primary);cursor:pointer;}
 .tl-chk-date:hover{background:var(--surface2);}
 .tl-chk-roc{font-size:10.5px;color:var(--warm);font-weight:600;}
+/* 訂單管理主頁：左客戶卡片 / 右時間軸 */
+.om-split{display:flex;gap:16px;padding:6px 24px 24px;align-items:stretch;height:calc(100vh - 200px);min-height:480px;}
+.om-left{flex:0 0 40%;max-width:470px;overflow-y:auto;padding-right:4px;}
+.om-right{flex:1;min-width:0;overflow:hidden;}
+.om-empty{height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13.5px;border:1.5px dashed var(--border);border-radius:14px;background:var(--surface2);text-align:center;padding:20px;}
+.om-cgroup{margin-bottom:14px;}
+.om-cname{font-size:12.5px;font-weight:700;color:var(--navy);padding:2px 4px 6px;display:flex;align-items:center;gap:8px;}
+.om-cname span{font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:10px;padding:0 7px;}
+.om-card{border:1.5px solid var(--border);border-radius:11px;padding:10px 12px;margin-bottom:7px;background:var(--surface);cursor:pointer;transition:border-color .12s,background .12s;}
+.om-card:hover{border-color:var(--warm);}
+.om-card.active{border-color:var(--navy);background:var(--surface2);box-shadow:inset 3px 0 0 var(--navy);}
+.om-card.ended{opacity:.68;}
+.om-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.om-card-prod{font-size:13.5px;font-weight:600;color:var(--text-primary);line-height:1.35;}
+.om-card-tag{font-size:11px;font-weight:600;color:#fff;border-radius:20px;padding:2px 9px;white-space:nowrap;}
+.om-card-meta{font-size:11px;color:var(--text-muted);margin-top:5px;}
+.om-card-note{font-size:11.5px;color:var(--warm);margin-top:5px;background:var(--surface2);border-radius:6px;padding:3px 7px;line-height:1.4;}
+.tl-shell--embed{position:static;inset:auto;height:100%;border:1px solid var(--border);border-radius:14px;box-shadow:none;}
 .tl-dh{justify-content:flex-start !important;}
 .tl-note-btn{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px 8px;font-size:14px;cursor:pointer;line-height:1;}
 .tl-note-btn:hover{border-color:var(--warm);}
@@ -5516,48 +5534,52 @@ function buildOrderStatusTabs() {
 }
 
 function renderOrderGrid() {
-  const grid = document.getElementById('orderHomeGrid');
-  if (!grid) return;
+  const left = document.getElementById('omLeft');
+  if (!left) return;
   const allOrders = getOrders().filter(o => !o.parentOrderId);
-  const allClients = getClients();
-  const clientMap = {};
-  allClients.forEach(c => { clientMap[c.id] = c; });
-
-  // 「所有」分頁預設隱藏「履約結束」和「未開始」，也隱藏待確認狀態
-  const hiddenInAll = ['履約結束','未開始', ...STATUSES_PENDING];
-  let orders = currentOrderStatusTab === 'all'
-    ? allOrders.filter(o => !hiddenInAll.includes(o.status))
-    : currentOrderStatusTab === '__pending__'
-      ? allOrders.filter(o => STATUSES_PENDING.includes(o.status))
-      : allOrders.filter(o => o.status === currentOrderStatusTab);
-  orders = orders.sort((a, b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
+  const clients = getClients();
+  const byClient = {};
+  allOrders.forEach(o => { (byClient[o.clientId] = byClient[o.clientId] || []).push(o); });
 
   const countEl = document.getElementById('orderHomeCount');
-  if (countEl) countEl.textContent = `${orders.length} 筆`;
+  if (countEl) countEl.textContent = `${allOrders.length} 筆`;
 
-  if (!orders.length) {
-    grid.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13.5px;">此追蹤狀態目前無訂單</div>';
-    return;
-  }
+  const shownClients = clients.filter(c => byClient[c.id] && byClient[c.id].length);
+  if (!shownClients.length) { left.innerHTML = '<div class="om-empty">尚無訂單</div>'; return; }
 
-  grid.innerHTML = orders.map(o => {
-    const c = clientMap[o.clientId] || {};
-    const color = getStatusColor(o.status);
-    const cfg = ORDER_STATUS_ALERT[o.status];
-    const daysSince = o.updatedAt ? (new Date() - new Date(o.updatedAt)) / 86400000 : 0;
-    const isAlert = cfg && daysSince >= cfg.days;
-    return `<div class="home-q-row${isAlert ? ' order-row-alert' : ''}" data-client-id="${o.clientId}" style="padding:10px 14px;border-radius:8px;margin-bottom:6px;border:1.5px solid ${isAlert ? 'rgba(185,74,72,0.3)' : 'var(--border)'};background:${isAlert ? 'rgba(185,74,72,0.04)' : 'var(--surface)'};">
-      <span class="home-q-client">${c.shortName||'—'}</span>
-      <span class="home-q-product">${o.productName||'（未命名）'}</span>
-      <span class="home-q-tag" style="background:${getOrderStatusColor(o.status)};color:#fff;">${o.status}</span>
-      ${isAlert ? `<span style="font-size:11px;color:var(--danger);font-weight:600;">⚠ ${Math.floor(daysSince)}天</span>` : ''}
-      <span class="home-q-time" style="margin-left:auto;">${fmtDateTime(o.updatedAt).slice(5,16)}</span>
+  left.innerHTML = shownClients.map(c => {
+    const list = byClient[c.id].sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
+    return `<div class="om-cgroup">
+      <div class="om-cname">${c.shortName||c.fullName||'—'}<span>${list.length}</span></div>
+      ${list.map(o => {
+        const color = getOrderStatusColor(o.status);
+        const ended = ['履約結束','未開始'].includes(o.status);
+        const period = o.startDate ? `${fmtDate(o.startDate)}~${o.endDate?fmtDate(o.endDate):''}` : '未設定訂期';
+        const note = (o.statusNote && o.statusNote.trim()) ? `<div class="om-card-note">📝 ${o.statusNote.replace(/</g,'&lt;')}</div>` : '';
+        return `<div class="om-card${ended?' ended':''}" data-oid="${o.id}">
+          <div class="om-card-top">
+            <span class="om-card-prod">${o.productName||'（未命名）'}</span>
+            <span class="om-card-tag" style="background:${color};">${o.status||'未設定'}</span>
+          </div>
+          <div class="om-card-meta">訂期 ${period}　·　更新 ${fmtDateTime(o.updatedAt).slice(5,16)}</div>
+          ${note}
+        </div>`;
+      }).join('')}
     </div>`;
   }).join('');
 
-  grid.querySelectorAll('.home-q-row[data-client-id]').forEach(row => {
-    row.addEventListener('click', () => setActiveClient(row.dataset.clientId));
+  left.querySelectorAll('.om-card[data-oid]').forEach(card => {
+    card.addEventListener('click', () => {
+      left.querySelectorAll('.om-card.active').forEach(x => x.classList.remove('active'));
+      card.classList.add('active');
+      openOrderTimeline(card.dataset.oid, 'omRight');
+    });
   });
+  // 保留目前選取的訂單高亮
+  if (typeof _tlOrderId !== 'undefined' && _tlOrderId) {
+    const a = left.querySelector(`.om-card[data-oid="${_tlOrderId}"]`);
+    if (a) a.classList.add('active');
+  }
 }
 
 function renderHomePage() {
@@ -5579,19 +5601,12 @@ function renderHomePage() {
       </div>
     </div>
     <div id="orderDashboardSlot"></div>
-    <div class="stage-tabs" id="orderStatusTabs">${buildOrderStatusTabs()}</div>
-    <div style="padding:16px 24px 40px;overflow-y:auto;">
-      <div id="orderHomeGrid"></div>
+    <div class="om-split">
+      <div class="om-left" id="omLeft"></div>
+      <div class="om-right" id="omRight"><div class="om-empty">← 左側點一張訂單卡片，這裡顯示時間軸</div></div>
     </div>
   `;
 
-  page.querySelectorAll('[data-order-tab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      currentOrderStatusTab = btn.dataset.orderTab;
-      renderHomePage();
-      renderOrderDashboard();
-    });
-  });
   page.querySelector('#exportDataBtn').addEventListener('click', exportData);
   page.querySelector('#importFileInput').addEventListener('change', async e => {
     const file = e.target.files[0];
@@ -7599,7 +7614,7 @@ async function _generateQuote() {
     if (window._qtOrderId) {
       const _db = dbLoad(); const _o = _db.orders.find(x => x.id === window._qtOrderId);
       if (_o) { _o.quoteDownloadedAt = _isoDate(new Date()); _o.updatedAt = new Date().toISOString(); dbSave(_db);
-        if (typeof _tlOrderId !== 'undefined' && _tlOrderId === window._qtOrderId && document.getElementById('tlModal')?.classList.contains('open')) _tlRender(); }
+        if (typeof _tlOrderId !== 'undefined' && _tlOrderId === window._qtOrderId && (document.getElementById('tlModal')?.classList.contains('open') || _tlEmbed)) _tlRender(); }
     }
     showToast('報價單下載成功！');
   } catch(e) {
@@ -7777,7 +7792,7 @@ document.getElementById('generateDeliveryBtn').addEventListener('click', async (
     if (window._dlvOrderId) {
       const _db=dbLoad(); const _o=_db.orders.find(x=>x.id===window._dlvOrderId);
       if(_o){ _o.deliveryDownloadedAt=_isoDate(new Date()); _o.updatedAt=new Date().toISOString(); dbSave(_db);
-        if(typeof _tlOrderId!=='undefined' && _tlOrderId===window._dlvOrderId && document.getElementById('tlModal')?.classList.contains('open')) _tlRender(); }
+        if(typeof _tlOrderId!=='undefined' && _tlOrderId===window._dlvOrderId && (document.getElementById('tlModal')?.classList.contains('open') || _tlEmbed)) _tlRender(); }
     }
     showToast('出貨確認單下載成功！');
   } catch(e) {
@@ -8305,7 +8320,7 @@ document.getElementById('invCopyBtn').addEventListener('click', () => {
   if (_invOrderId) {
     const _db=dbLoad(); const _o=_db.orders.find(x=>x.id===_invOrderId);
     if(_o){ _o.invoiceAppliedAt=_isoDate(new Date()); _o.updatedAt=new Date().toISOString(); dbSave(_db);
-      if(typeof _tlOrderId!=='undefined' && _tlOrderId===_invOrderId && document.getElementById('tlModal')?.classList.contains('open')) _tlRender(); }
+      if(typeof _tlOrderId!=='undefined' && _tlOrderId===_invOrderId && (document.getElementById('tlModal')?.classList.contains('open') || _tlEmbed)) _tlRender(); }
   }
 });
 document.getElementById('invEditTplBtn').addEventListener('click', () => {
@@ -8604,23 +8619,33 @@ function _tlStatus(order, stage){
   return _tlOverdue(order, stage.key)?'overdue':'active';
 }
 
-function openOrderTimeline(orderId){
+let _tlHostId='tlModal', _tlEmbed=false;
+function openOrderTimeline(orderId, embedHostId){
   const db=dbLoad(); const o=db.orders.find(x=>x.id===orderId);
   if(!o){ showToast('找不到訂單','error'); return; }
   _tlOrderId=orderId; _tlView=o.status||'__base__';
   if(!TL_STAGES.find(s=>s.key===_tlView)) _tlView='__base__';
-  let m=document.getElementById('tlModal');
-  m.classList.add('open');
+  if(embedHostId){ _tlHostId=embedHostId; _tlEmbed=true; }
+  else { _tlHostId='tlModal'; _tlEmbed=false; document.getElementById('tlModal').classList.add('open'); }
   _tlRender();
 }
-function _tlClose(){ document.getElementById('tlModal').classList.remove('open'); }
+function _tlClose(){
+  if(_tlEmbed){
+    _tlOrderId=null;
+    const host=document.getElementById(_tlHostId);
+    if(host) host.innerHTML='<div class="om-empty">← 左側點一張訂單卡片，這裡顯示時間軸</div>';
+    document.querySelectorAll('.om-card.active').forEach(x=>x.classList.remove('active'));
+  } else {
+    document.getElementById('tlModal').classList.remove('open');
+  }
+}
 
 function _tlRender(){
   const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
   const c=getClientById(o.clientId)||{};
   const amt = (o.startDate||o.endDate) ? ('訂期 '+(o.startDate?_rocSlash(o.startDate):'—')+' ～ '+(o.endDate?_rocSlash(o.endDate):'—')) : '未設定訂期';
   const shell=`
-    <div class="tl-shell">
+    <div class="tl-shell${_tlEmbed?' tl-shell--embed':''}">
       <div class="tl-top">
         <div>
           <div class="tl-cli">${c.shortName||c.fullName||'客戶'}</div>
@@ -8643,7 +8668,7 @@ function _tlRender(){
         <div class="tl-right" id="tlRight"></div>
       </div>
     </div>`;
-  const m=document.getElementById('tlModal'); m.innerHTML=shell;
+  const m=document.getElementById(_tlHostId); m.innerHTML=shell;
   m.querySelectorAll('.tl-item').forEach(el=>el.addEventListener('click',()=>{
     _tlView=el.dataset.key;
     m.querySelectorAll('.tl-item').forEach(x=>x.classList.toggle('viewing', x===el));
@@ -9148,7 +9173,7 @@ function _tlSaveNote(){
   const ta=document.getElementById('tlNoteTa'); if(!ta) return;
   const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
   o.statusNote=ta.value.trim(); o.updatedAt=new Date().toISOString(); dbSave(db);
-  renderOrdersGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
   _tlCloseNote(); showToast('已更新狀態備註'); _tlRender();
 }
 function _tlOpenQuote(){ if(typeof openQuoteModal==='function') openQuoteModal(_tlOrderId); }
@@ -9268,7 +9293,7 @@ function _tlAutoSaveNow(){
   const right=document.getElementById('tlRight'); if(!right) return;
   _tlCollect(db.orders[idx], right);
   dbSave(db);
-  renderOrdersGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
   _tlMarkSaved();
 }
 function _tlSave(setStatus){
@@ -9278,7 +9303,7 @@ function _tlSave(setStatus){
   _tlCollect(o, right);
   if(setStatus && _tlView!=='__base__') o.status=_tlView;
   dbSave(db);
-  renderOrdersGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
   if(o.needsContract && typeof maybeCreateContractTask==='function') maybeCreateContractTask(o.id);
   _tlMarkSaved();
   if(setStatus) showToast(`已設為「${_tlView}」`);
@@ -9287,7 +9312,7 @@ function _tlSave(setStatus){
 function _tlSetStatus(key){
   const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
   o.status=key; o.updatedAt=new Date().toISOString(); dbSave(db);
-  renderOrdersGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
   _tlView=key; showToast('狀態已更新為「'+key+'」'); _tlRender();
 }
 window._tlClose=_tlClose; window._tlSave=_tlSave; window._tlSetStatus=_tlSetStatus;
