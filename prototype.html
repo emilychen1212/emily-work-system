@@ -1758,8 +1758,24 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-bidclose{grid-column:1/-1;}
 .tl-bidclose label{font-size:15px !important;color:#A4472F !important;font-weight:800 !important;}
 .tl-bidclose input{border-color:#C56B54 !important;border-width:2px !important;font-size:16px !important;font-weight:700;color:#A4472F;}
-.tl-svc-row{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;background:var(--surface2);}
-.tl-svc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.tl-savestat{font-size:11px;color:#cfe3d4;font-weight:600;margin-left:14px;white-space:nowrap;}
+.tl-money{width:160px !important;margin-left:8px;padding:9px 11px !important;font-size:14px !important;font-weight:600;text-align:right;}
+/* 客服／維護 滿版橫列表格 */
+.tl-svc-tbl{border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.tl-svc-head,.tl-svc-line{display:grid;grid-template-columns:76px minmax(90px,1fr) minmax(120px,1.4fr) 78px 150px 36px;gap:8px;align-items:center;padding:8px 10px;}
+.tl-svc-head{background:var(--surface2);font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--line);}
+.tl-svc-line{border-top:1px solid var(--line-soft);}
+.tl-svc-line:first-of-type{border-top:none;}
+.tl-svc-line select,.tl-svc-line input[type="text"],.tl-svc-line input[type="date"]{border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text-primary);width:100%;}
+.tl-svc-chk{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text-secondary);}
+.tl-svc-chk input{width:15px;height:15px;}
+.tl-svc-date{display:flex;align-items:center;gap:4px;}
+.tl-svc-date .tl-cal-btn{margin-top:0;padding:5px 7px;flex:0 0 auto;}
+.tl-svc-del{background:none;border:none;cursor:pointer;font-size:15px;opacity:.65;padding:2px;}
+.tl-svc-del:hover{opacity:1;}
+.tl-svc-issue{grid-column:1/-1;}
+.tl-svc-issue textarea{width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 9px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text-primary);min-height:44px;resize:vertical;}
+.tl-svc-empty{padding:16px;text-align:center;color:var(--text-muted);font-size:12.5px;}
 .tl-acts{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
 .tl-btn{border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;}
 .tl-btn.primary{background:var(--navy);color:#fff;}
@@ -8555,6 +8571,7 @@ function _tlRender(){
           <div class="tl-prod">${o.productName||'—'}</div>
         </div>
         <div class="tl-amt">${amt}</div>
+        <span class="tl-savestat" id="tlSaveStatus">自動儲存已開啟</span>
         <button class="tl-x" onclick="_tlClose()">✕</button>
       </div>
       <div class="tl-body">
@@ -8576,6 +8593,10 @@ function _tlRender(){
     m.querySelectorAll('.tl-item').forEach(x=>x.classList.toggle('viewing', x===el));
     _tlDetail();
   }));
+  // 自動儲存：右側任何欄位變動 → 防抖後靜默存檔（不重繪、不干擾輸入）
+  const rightEl=document.getElementById('tlRight');
+  rightEl.oninput = _tlAutoSaveScheduled;
+  rightEl.onchange = _tlAutoSaveScheduled;
   _tlDetail();
   refreshRocHints(m);
 }
@@ -8742,7 +8763,7 @@ function _tlContractPanel(o){
     <div class="tl-f"><label>履保金繳納截止日</label><input type="date" data-tlf="bondDeadline" value="${dv(o.bondDeadline)}" data-nocal/></div>
     ${hasBid?_tlChk(o,'bidToPerf','押標金已轉履保金'+(bidAmt?('，金額 NT$ '+bidAmt):'')):`
       <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="hasPerfBond" ${hasBond?'checked':''} onchange="_tlPerfBondToggle(this)"/><label>是否有履保金</label>
-        <input type="text" data-tlf="perfBondAmount" placeholder="金額" value="${o.perfBondAmount?parseInt(o.perfBondAmount).toLocaleString():''}" style="width:120px;margin-left:8px;" ${hasBond?'':'disabled'}/></div>`}
+        <input type="text" class="tl-money" data-tlf="perfBondAmount" placeholder="NT$ 金額" value="${o.perfBondAmount?('NT$ '+parseInt(o.perfBondAmount).toLocaleString('zh-TW')):''}" oninput="_tlFmtMoney(this)" ${hasBond?'':'disabled'}/></div>`}
     ${(hasBid||hasBond)?_tlChk(o,'perfBondApplied','已申請履保金'):''}
     ${_tlChk(o,'perfBondReceipt','是否取得履保金收據')}
     ${_tlChk(o,'contractReturned','是否已追回客戶回簽合約',{word:'追回'})}
@@ -8785,30 +8806,38 @@ function _tlMissingBase(o){
   return miss;
 }
 
-// ── 履約期間（客服／維護小表格）──
+// ── 履約期間（客服／維護：橫列表格，滿版）──
+function _tlSvcCats(){
+  let list=[];
+  try{ list=(workLoad().categories||[]).map(c=>typeof c==='string'?c:c.name).filter(Boolean); }catch(e){}
+  if(!list.length) list=['客服','設計','客戶溝通','文書作業','跑統計','個人','其他'];
+  return list;
+}
 function _tlServicePanel(o){
   const rows=o.serviceLog||[];
   return `
     <div class="tl-section-label" style="margin-top:0;">客服／維護紀錄</div>
-    <div id="tlSvcList">${_tlServiceRows(rows)}</div>
-    <button type="button" class="tl-btn ghost" style="margin-top:6px;" onclick="_tlAddSvc()">＋ 新增一筆</button>
-    <div class="tl-f full" style="margin-top:14px;"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['履約期間']||''}</textarea></div>`;
+    <div class="tl-svc-tbl" id="tlSvcList">${_tlServiceRows(rows)}</div>
+    <button type="button" class="tl-btn ghost" style="margin-top:8px;" onclick="_tlAddSvc()">＋ 新增一筆</button>
+    <div class="tl-f full" style="margin-top:16px;"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['履約期間']||''}</textarea></div>`;
 }
 let _tlSvc=[];
 function _tlServiceRows(rows){
-  if(!rows.length) return '<div class="hint">尚無紀錄</div>';
-  const cats=(typeof TASK_CATEGORIES!=='undefined'&&Array.isArray(TASK_CATEGORIES))?TASK_CATEGORIES:['客服','文書作業','跑統計','個人','其他'];
-  return rows.map((r,i)=>`
-    <div class="tl-svc-row" data-svc="${i}">
-      <div class="tl-svc-hd"><b>#${i+1}</b><button type="button" class="tl-mini-btn danger" onclick="_tlRmSvc(${i})">刪除</button></div>
-      <div class="tl-grid">
-        <div class="tl-f"><label>需求</label><select data-sv="kind">${['客服','維護'].map(x=>`<option ${r.kind===x?'selected':''}>${x}</option>`).join('')}</select></div>
-        <div class="tl-f"><label>任務類型</label><select data-sv="cat">${cats.map(x=>`<option ${r.cat===x?'selected':''}>${x}</option>`).join('')}</select></div>
-        <div class="tl-f tl-chk" style="align-self:end;"><input type="checkbox" data-sv="replied" ${r.replied?'checked':''}/><label>已回覆</label></div>
-        <div class="tl-f"><label>預計完成日期</label><input type="date" data-sv="due" value="${String(r.due||'').slice(0,10)}" data-caltitle="客服"/></div>
-        <div class="tl-f full"><label>問題描述</label><textarea data-sv="issue">${r.issue||''}</textarea></div>
-      </div>
+  const cats=_tlSvcCats();
+  const head=`<div class="tl-svc-head">
+    <span>需求</span><span>任務類型</span><span>問題簡述</span><span>已回覆</span><span>預計完成日</span><span></span></div>`;
+  if(!rows.length) return head+'<div class="tl-svc-empty">尚無紀錄，點下方「＋ 新增一筆」開始</div>';
+  const body=rows.map((r,i)=>`
+    <div class="tl-svc-line" data-svc="${i}">
+      <select data-sv="kind">${['客服','維護'].map(x=>`<option ${r.kind===x?'selected':''}>${x}</option>`).join('')}</select>
+      <select data-sv="cat">${cats.map(x=>`<option ${r.cat===x?'selected':''}>${x}</option>`).join('')}</select>
+      <input type="text" data-sv="brief" placeholder="問題簡述" value="${(r.brief||'').replace(/"/g,'&quot;')}"/>
+      <label class="tl-svc-chk"><input type="checkbox" data-sv="replied" ${r.replied?'checked':''}/>已回覆</label>
+      <span class="tl-svc-date"><input type="date" data-sv="due" value="${String(r.due||'').slice(0,10)}" data-nocal/><button type="button" class="tl-cal-btn" onclick="_tlSvcCal(${i},this)">📅</button></span>
+      <button type="button" class="tl-svc-del" title="刪除這筆" onclick="_tlRmSvc(${i})">🗑</button>
+      <div class="tl-svc-issue"><textarea data-sv="issue" placeholder="問題描述（可換行）">${r.issue||''}</textarea></div>
     </div>`).join('');
+  return head+body;
 }
 function _tlCollectSvc(){
   document.querySelectorAll('#tlSvcList [data-svc]').forEach(row=>{
@@ -8819,9 +8848,22 @@ function _tlCollectSvc(){
     });
   });
 }
-function _tlAddSvc(){ _tlCollectSvc(); _tlSvc.push({kind:'客服',cat:'客服',replied:false,issue:'',due:''}); _tlRenderSvc(); }
-function _tlRmSvc(i){ _tlCollectSvc(); _tlSvc.splice(i,1); _tlRenderSvc(); }
-function _tlRenderSvc(){ const l=document.getElementById('tlSvcList'); if(l){ l.innerHTML=_tlServiceRows(_tlSvc); refreshRocHints(l); _tlDecorateCal(); } }
+function _tlAddSvc(){ _tlCollectSvc(); _tlSvc.push({kind:'客服',cat:_tlSvcCats()[0]||'客服',brief:'',replied:false,issue:'',due:''}); _tlRenderSvc(); _tlAutoSaveScheduled(); }
+function _tlRmSvc(i){
+  _tlCollectSvc();
+  const r=_tlSvc[i]||{};
+  if((r.brief||r.issue||r.due) && !confirm('確定要刪除這筆客服／維護紀錄嗎？')) return;
+  _tlSvc.splice(i,1); _tlRenderSvc(); _tlAutoSaveScheduled();
+}
+function _tlRenderSvc(){ const l=document.getElementById('tlSvcList'); if(l){ l.innerHTML=_tlServiceRows(_tlSvc); refreshRocHints(l); } }
+function _tlSvcCal(i, btn){
+  _tlCollectSvc(); const r=_tlSvc[i]||{};
+  if(!r.due){ showToast('請先填預計完成日','error'); return; }
+  const o=dbLoad().orders.find(x=>x.id===_tlOrderId)||{}; const c=getClientById(o.clientId)||{};
+  const title=`[客服／維護] ${c.shortName||''} ${r.brief||''}`.trim();
+  const details=`客服／維護紀錄（工作管理系統）\n客戶：${c.fullName||c.shortName||''}\n類型：${r.kind||''}／${r.cat||''}\n問題：${r.issue||r.brief||''}`;
+  _tlAddCalRaw(r.due, title, details, btn);
+}
 
 // ── 訂單資料面板（含價格資訊／成交資訊／拆項）──
 function _tlBasePanel(o){
@@ -8971,7 +9013,7 @@ function _tlBidPanel(o){
     ${_tlChk(o,'bidDocReceived','已收到議價文件',{word:'收到'})}
     ${_tlChk(o,'bidDocSent','已送出／寄出標案文件',{word:'送出'})}
     <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="hasBidBond" ${has?'checked':''} onchange="_tlBidToggle(this)"/><label>是否有押標金</label>
-      <input type="text" data-tlf="bidBondAmount" placeholder="金額" value="${o.bidBondAmount?parseInt(o.bidBondAmount).toLocaleString():''}" style="width:120px;margin-left:8px;" ${has?'':'disabled'}/></div>
+      <input type="text" class="tl-money" data-tlf="bidBondAmount" placeholder="NT$ 金額" value="${o.bidBondAmount?('NT$ '+parseInt(o.bidBondAmount).toLocaleString('zh-TW')):''}" oninput="_tlFmtMoney(this)" ${has?'':'disabled'}/></div>
     ${has?_tlChk(o,'bidBondApplied','已申請押標金',{word:'申請'}):''}
     <div class="tl-f full"><label>備註（議價／標案進度）</label><textarea data-tlf="__note">${(o.stageNotes||{})['採購議價']||''}</textarea></div>`;
 }
@@ -9003,6 +9045,7 @@ function _tlSetFu(n){
   el.value=_isoDate(d);
   if(typeof updateRocHint==='function') updateRocHint(el);
 }
+function _tlFmtMoney(el){ const n=String(el.value).replace(/[^0-9]/g,''); el.value = n?('NT$ '+parseInt(n).toLocaleString('zh-TW')):''; }
 function _tlOpenQuote(){ if(typeof openQuoteModal==='function') openQuoteModal(_tlOrderId); }
 function _tlOpenDelivery(){ const o=dbLoad().orders.find(x=>x.id===_tlOrderId); if(typeof openDeliveryModal==='function') openDeliveryModal(o?.clientId, _tlOrderId); }
 function _tlOpenInvoice(){ if(typeof openInvoiceModal==='function') openInvoiceModal(_tlOrderId); }
@@ -9029,15 +9072,19 @@ function _tlDecorateCal(){
     inp.insertAdjacentElement('afterend', btn);
   });
 }
-async function _tlAddCal(dateVal, title, btn){
+function _tlAddCal(dateVal, title, btn){
   if(!dateVal){ showToast('這個欄位還沒填日期','error'); return; }
   const o=dbLoad().orders.find(x=>x.id===_tlOrderId)||{}; const c=getClientById(o.clientId)||{};
   const evTitle=`[${title}] ${c.shortName||''} ${o.productName||''}`.trim();
   const details=`訂單追蹤（工作管理系統）\n客戶：${c.fullName||c.shortName||''}\n產品：${o.productName||''}\n案號：${o.caseNo||''}`;
+  _tlAddCalRaw(dateVal, evTitle, details, btn);
+}
+async function _tlAddCalRaw(dateVal, evTitle, details, btn){
+  if(!dateVal){ showToast('這個欄位還沒填日期','error'); return; }
   const old=btn?btn.textContent:''; if(btn){ btn.textContent='加入中…'; btn.disabled=true; }
   try{
-    const res=await __api({ action:'calendar', event:{ title:evTitle, date:dateVal.slice(0,10), details } });
-    if(res && res.ok){ showToast('✅ 已加入 Google 日曆'); if(btn){ btn.textContent='✓ 已加入日曆'; btn.classList.add('done'); } }
+    const res=await __api({ action:'calendar', event:{ title:evTitle, date:String(dateVal).slice(0,10), details } });
+    if(res && res.ok){ showToast('✅ 已加入 Google 日曆'); if(btn){ btn.textContent='✓ 已加入'; btn.classList.add('done'); } }
     else { showToast('加入失敗：'+((res&&res.error)||'後端尚未部署 calendar 功能'),'error'); if(btn){ btn.textContent=old; btn.disabled=false; } }
   }catch(e){ showToast('加入失敗：'+e.message,'error'); if(btn){ btn.textContent=old; btn.disabled=false; } }
 }
@@ -9057,20 +9104,20 @@ function _tlFieldHtml(o,fd){
   const v = fd.t==='date'? String(val).slice(0,10) : val;
   return `<div class="${cls}"><label>${fd.l}</label><input type="${fd.t}" data-tlf="${fd.f}" value="${v}"/>${fd.hint?`<span class="hint">${fd.hint}</span>`:''}</div>`;
 }
-function _tlSave(setStatus){
-  const db=dbLoad(); const idx=db.orders.findIndex(x=>x.id===_tlOrderId); if(idx<0) return;
-  const o=db.orders[idx]; const right=document.getElementById('tlRight');
+// 把畫面欄位收集進訂單物件（_tlSave 與自動儲存共用）
+function _tlCollect(o, right){
   const NUMF=['costOrig','quoteOrig','quoteTwd','costTwd','quoteRate','dealRate','dealTwd'];
+  const MONEYF=['bidBondAmount','perfBondAmount'];
   right.querySelectorAll('[data-tlf]').forEach(el=>{
     const f=el.dataset.tlf;
     if(f==='__note'){ o.stageNotes=o.stageNotes||{}; o.stageNotes[_tlView]=el.value; return; }
     if(el.type==='checkbox'){ o[f]=el.checked; return; }
     let v=el.value;
     if(NUMF.includes(f)){ const n=String(v).replace(/[^0-9.\-]/g,''); v = n===''?0:parseFloat(n)||0; }
+    else if(MONEYF.includes(f)){ const n=String(v).replace(/[^0-9]/g,''); v = n===''?0:parseInt(n); }
     if(el.type==='date') v = v||null;
     o[f]=v;
   });
-  // 訂單資料：自動計算開關 + 拆項
   if(_tlView==='__base__'){
     const ca=document.getElementById('tlCostAuto'), qa=document.getElementById('tlQuoteAuto'), da=document.getElementById('tlDealAuto');
     if(ca) o.costTwdAuto=ca.checked; if(qa) o.quoteTwdAuto=qa.checked; if(da) o.dealTwdAuto=da.checked;
@@ -9083,32 +9130,51 @@ function _tlSave(setStatus){
       dealTwd:parseInt(String(s.dealTwd).replace(/[^0-9.\-]/g,''))||0,
     })).filter(s=>s.productName||s.costTwd||s.quoteTwd||s.dealTwd) : [];
   }
-  // 共用 checklist：收集所有 data-check → o.checks[key]=完成日
   o.checks=o.checks||{};
   right.querySelectorAll('[data-check]').forEach(cb=>{
     const k=cb.dataset.check;
     if(cb.checked){ if(!o.checks[k]) o.checks[k]=_isoDate(new Date()); }
     else o.checks[k]=null;
   });
-  // 已提案：已寄出報價單 ↔ 訂單資料報價日期 同步（以訂單資料為主）
   if(_tlView==='已提案/草報價'){
     if(o.checks.quoteSent && !o.quoteDate) o.quoteDate=_isoDate(new Date());
     if(o.checks.quoteSent && o.quoteDate) o.checks.quoteSent=o.quoteDate;
   }
-  // 履約期間：客服／維護小表格
   if(_tlView==='履約期間'){
     _tlCollectSvc();
-    o.serviceLog=_tlSvc.filter(r=>r.issue||r.due).map(r=>({kind:r.kind||'客服',cat:r.cat||'客服',replied:!!r.replied,issue:r.issue||'',due:r.due||null}));
+    o.serviceLog=_tlSvc.filter(r=>r.issue||r.brief||r.due).map(r=>({kind:r.kind||'客服',cat:r.cat||'',brief:r.brief||'',replied:!!r.replied,issue:r.issue||'',due:r.due||null}));
   }
   const fuEl=right.querySelector('[data-tlfu]');
   if(fuEl){ o.followUp=o.followUp||{}; o.followUp[_tlView]=fuEl.value||null; }
   o.updatedAt=new Date().toISOString();
+}
+function _tlMarkSaved(){
+  const el=document.getElementById('tlSaveStatus'); if(!el) return;
+  const t=new Date();
+  el.textContent='自動儲存 ✓ '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+}
+let _tlAutoTimer=null;
+function _tlAutoSaveScheduled(){ clearTimeout(_tlAutoTimer); _tlAutoTimer=setTimeout(_tlAutoSaveNow, 700); }
+function _tlAutoSaveNow(){
+  if(!_tlOrderId) return;
+  const db=dbLoad(); const idx=db.orders.findIndex(x=>x.id===_tlOrderId); if(idx<0) return;
+  const right=document.getElementById('tlRight'); if(!right) return;
+  _tlCollect(db.orders[idx], right);
+  dbSave(db);
+  renderOrdersGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  _tlMarkSaved();
+}
+function _tlSave(setStatus){
+  clearTimeout(_tlAutoTimer);
+  const db=dbLoad(); const idx=db.orders.findIndex(x=>x.id===_tlOrderId); if(idx<0) return;
+  const o=db.orders[idx]; const right=document.getElementById('tlRight');
+  _tlCollect(o, right);
   if(setStatus && _tlView!=='__base__') o.status=_tlView;
   dbSave(db);
   renderOrdersGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
-  // 需做合約 → 建任務
   if(o.needsContract && typeof maybeCreateContractTask==='function') maybeCreateContractTask(o.id);
-  showToast(setStatus?`已儲存並設為「${_tlView}」`:'已儲存');
+  _tlMarkSaved();
+  if(setStatus) showToast(`已設為「${_tlView}」`);
   _tlRender();
 }
 function _tlSetStatus(key){
@@ -9125,7 +9191,8 @@ window._tlBidToggle=_tlBidToggle; window._tlAcceptToggle=_tlAcceptToggle;
 window._tlSetFu=_tlSetFu; window._tlOpenQuote=_tlOpenQuote;
 window._tlContractToggle=_tlContractToggle; window._tlPerfBondToggle=_tlPerfBondToggle;
 window._tlChkToggle=_tlChkToggle; window._tlInquiryReceived=_tlInquiryReceived;
-window._tlAddSvc=_tlAddSvc; window._tlRmSvc=_tlRmSvc;
+window._tlAddSvc=_tlAddSvc; window._tlRmSvc=_tlRmSvc; window._tlSvcCal=_tlSvcCal;
+window._tlFmtMoney=_tlFmtMoney; window._tlAddCalRaw=_tlAddCalRaw; window._tlAutoSaveScheduled=_tlAutoSaveScheduled;
 window._tlOpenDelivery=_tlOpenDelivery; window._tlOpenInvoice=_tlOpenInvoice; window._tlResetInvoice=_tlResetInvoice;
 window._tlAddCal=_tlAddCal; window._tlDecorateCal=_tlDecorateCal;
 // 🧪 原型測試模式：不同步到正式資料（編輯只在本機、重整還原）
