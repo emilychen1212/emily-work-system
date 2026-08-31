@@ -5546,7 +5546,10 @@ function buildOrderStatusTabs() {
 }
 
 let _omStage = null; // null = 全部；否則為某階段 key
-function renderOrderGrid() { renderOmStages(); renderOmOrders(); }
+function renderOrderGrid() {
+  // 初始化早期可能在 TL_STAGES(const) 定義前被呼叫 → 用 try 保護，稍後會再重繪
+  try { renderOmStages(); renderOmOrders(); } catch (e) { /* deferred until TL_STAGES ready */ }
+}
 
 // 左側：時間軸階段框架（每階段顯示停在該階段的訂單數）
 function renderOmStages() {
@@ -9370,6 +9373,8 @@ window.toggleSplitItems = toggleSplitItems;
 window.updateBargainPct = updateBargainPct;
 window.updateSplitTotal = updateSplitTotal;
 window.fillOneYearEnd = fillOneYearEnd;
+// TL_STAGES 此時已定義，補繪一次訂單管理主頁（避免早期 TDZ 導致的空白）
+try { renderOrderGrid(); } catch (e) {}
 }
 </script>
 <div id="tlModal"></div>
