@@ -1764,24 +1764,36 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-chk-date{border:1px solid var(--warm);border-radius:5px;padding:3px 7px;font-size:11px;font-family:inherit;background:#fff;color:var(--text-primary);cursor:pointer;}
 .tl-chk-date:hover{background:var(--surface2);}
 .tl-chk-roc{font-size:10.5px;color:var(--warm);font-weight:600;}
-/* 訂單管理主頁：左客戶卡片 / 右時間軸 */
-.om-split{display:flex;gap:16px;padding:6px 24px 24px;align-items:stretch;height:calc(100vh - 200px);min-height:480px;}
-.om-left{flex:0 0 40%;max-width:470px;overflow-y:auto;padding-right:4px;}
-.om-right{flex:1;min-width:0;overflow:hidden;}
-.om-empty{height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13.5px;border:1.5px dashed var(--border);border-radius:14px;background:var(--surface2);text-align:center;padding:20px;}
-.om-cgroup{margin-bottom:14px;}
-.om-cname{font-size:12.5px;font-weight:700;color:var(--navy);padding:2px 4px 6px;display:flex;align-items:center;gap:8px;}
-.om-cname span{font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:10px;padding:0 7px;}
-.om-card{border:1.5px solid var(--border);border-radius:11px;padding:10px 12px;margin-bottom:7px;background:var(--surface);cursor:pointer;transition:border-color .12s,background .12s;}
-.om-card:hover{border-color:var(--warm);}
-.om-card.active{border-color:var(--navy);background:var(--surface2);box-shadow:inset 3px 0 0 var(--navy);}
-.om-card.ended{opacity:.68;}
+/* 訂單管理主頁：左時間軸階段框架 / 右該階段的訂單卡片 */
+.om-split{display:flex;gap:20px;padding:6px 24px 24px;align-items:stretch;height:calc(100vh - 200px);min-height:480px;}
+.om-stages{flex:0 0 260px;overflow-y:auto;padding:8px 0;background:var(--surface2);border:1px solid var(--border);border-radius:14px;}
+.om-orders{flex:1;min-width:0;overflow-y:auto;}
+.om-empty{display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13.5px;border:1.5px dashed var(--border);border-radius:14px;background:var(--surface2);text-align:center;padding:40px 20px;margin-top:8px;}
+/* 左：垂直階段時間軸 */
+.om-stage-item{position:relative;display:flex;align-items:center;gap:10px;padding:10px 16px 10px 40px;cursor:pointer;border-left:3px solid transparent;}
+.om-stage-item:hover{background:rgba(0,0,0,.03);}
+.om-stage-item.active{background:var(--surface);border-left-color:var(--navy);}
+.om-stage-node{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:12px;height:12px;border-radius:50%;border:2.5px solid #c9c4b4;background:var(--surface);z-index:2;}
+.om-stage-item.active .om-stage-node{border-color:var(--navy);background:var(--navy);box-shadow:0 0 0 4px rgba(43,58,66,.14);}
+.om-stage-node.all{border-color:var(--warm);background:var(--warm);}
+.om-stage-line{position:absolute;left:21px;top:-50%;height:100%;width:2px;background:var(--border);z-index:1;}
+.om-stage-lbl{font-size:13px;font-weight:600;color:var(--text-primary);flex:1;line-height:1.3;}
+.om-stage-item.empty .om-stage-lbl{color:var(--text-muted);font-weight:500;}
+.om-par{font-size:9px;font-weight:600;color:var(--accent,#2E6B5E);background:var(--surface2);border-radius:6px;padding:1px 5px;margin-left:5px;}
+.om-stage-cnt{font-size:12px;font-weight:700;color:#fff;background:var(--navy);border-radius:11px;min-width:22px;text-align:center;padding:1px 7px;}
+.om-stage-item.empty .om-stage-cnt{background:#c9c4b4;}
+.om-stage-item.all .om-stage-cnt{background:var(--warm);}
+/* 右：訂單卡片 */
+.om-orders-head{font-size:15px;font-weight:700;color:var(--navy);margin:2px 2px 12px;font-family:"Noto Serif TC",serif;}
+.om-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+.om-card{border:1.5px solid var(--border);border-radius:11px;padding:11px 13px;background:var(--surface);cursor:pointer;transition:border-color .12s,box-shadow .12s;}
+.om-card:hover{border-color:var(--warm);box-shadow:0 3px 10px rgba(0,0,0,.06);}
 .om-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.om-card-prod{font-size:13.5px;font-weight:600;color:var(--text-primary);line-height:1.35;}
+.om-card-prod{font-size:13px;font-weight:500;color:var(--text-primary);line-height:1.4;}
+.om-card-prod b{font-weight:700;}
 .om-card-tag{font-size:11px;font-weight:600;color:#fff;border-radius:20px;padding:2px 9px;white-space:nowrap;}
-.om-card-meta{font-size:11px;color:var(--text-muted);margin-top:5px;}
-.om-card-note{font-size:11.5px;color:var(--warm);margin-top:5px;background:var(--surface2);border-radius:6px;padding:3px 7px;line-height:1.4;}
-.tl-shell--embed{position:static;inset:auto;height:100%;border:1px solid var(--border);border-radius:14px;box-shadow:none;}
+.om-card-meta{font-size:11px;color:var(--text-muted);margin-top:6px;}
+.om-card-note{font-size:11.5px;color:var(--warm);margin-top:6px;background:var(--surface2);border-radius:6px;padding:3px 7px;line-height:1.4;}
 .tl-dh{justify-content:flex-start !important;}
 .tl-note-btn{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px 8px;font-size:14px;cursor:pointer;line-height:1;}
 .tl-note-btn:hover{border-color:var(--warm);}
@@ -5533,53 +5545,59 @@ function buildOrderStatusTabs() {
   ).join('');
 }
 
-function renderOrderGrid() {
-  const left = document.getElementById('omLeft');
-  if (!left) return;
-  const allOrders = getOrders().filter(o => !o.parentOrderId);
-  const clients = getClients();
-  const byClient = {};
-  allOrders.forEach(o => { (byClient[o.clientId] = byClient[o.clientId] || []).push(o); });
+let _omStage = null; // null = 全部；否則為某階段 key
+function renderOrderGrid() { renderOmStages(); renderOmOrders(); }
 
+// 左側：時間軸階段框架（每階段顯示停在該階段的訂單數）
+function renderOmStages() {
+  const el = document.getElementById('omStages'); if (!el) return;
+  const orders = getOrders().filter(o => !o.parentOrderId);
+  const countOf = key => orders.filter(o => o.status === key).length;
+  const stages = TL_STAGES.filter(s => s.key !== '__base__');
   const countEl = document.getElementById('orderHomeCount');
-  if (countEl) countEl.textContent = `${allOrders.length} 筆`;
+  if (countEl) countEl.textContent = `${orders.length} 筆`;
 
-  const shownClients = clients.filter(c => byClient[c.id] && byClient[c.id].length);
-  if (!shownClients.length) { left.innerHTML = '<div class="om-empty">尚無訂單</div>'; return; }
-
-  left.innerHTML = shownClients.map(c => {
-    const list = byClient[c.id].sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
-    return `<div class="om-cgroup">
-      <div class="om-cname">${c.shortName||c.fullName||'—'}<span>${list.length}</span></div>
-      ${list.map(o => {
-        const color = getOrderStatusColor(o.status);
-        const ended = ['履約結束','未開始'].includes(o.status);
-        const period = o.startDate ? `${fmtDate(o.startDate)}~${o.endDate?fmtDate(o.endDate):''}` : '未設定訂期';
-        const note = (o.statusNote && o.statusNote.trim()) ? `<div class="om-card-note">📝 ${o.statusNote.replace(/</g,'&lt;')}</div>` : '';
-        return `<div class="om-card${ended?' ended':''}" data-oid="${o.id}">
-          <div class="om-card-top">
-            <span class="om-card-prod">${o.productName||'（未命名）'}</span>
-            <span class="om-card-tag" style="background:${color};">${o.status||'未設定'}</span>
-          </div>
-          <div class="om-card-meta">訂期 ${period}　·　更新 ${fmtDateTime(o.updatedAt).slice(5,16)}</div>
-          ${note}
-        </div>`;
-      }).join('')}
-    </div>`;
+  let html = `<div class="om-stage-item all ${_omStage===null?'active':''}" data-stage="__all__">
+      <div class="om-stage-node all"></div><div class="om-stage-lbl">全部訂單</div><div class="om-stage-cnt">${orders.length}</div></div>`;
+  html += stages.map(s => {
+    const c = countOf(s.key);
+    return `<div class="om-stage-item ${_omStage===s.key?'active':''} ${c?'':'empty'}" data-stage="${s.key}">
+      <div class="om-stage-line"></div><div class="om-stage-node"></div>
+      <div class="om-stage-lbl">${s.label}${s.par?'<span class="om-par">可平行</span>':''}</div>
+      <div class="om-stage-cnt">${c}</div></div>`;
   }).join('');
+  el.innerHTML = html;
+  el.querySelectorAll('.om-stage-item').forEach(it => it.addEventListener('click', () => {
+    _omStage = it.dataset.stage === '__all__' ? null : it.dataset.stage;
+    renderOmStages(); renderOmOrders();
+  }));
+}
 
-  left.querySelectorAll('.om-card[data-oid]').forEach(card => {
-    card.addEventListener('click', () => {
-      left.querySelectorAll('.om-card.active').forEach(x => x.classList.remove('active'));
-      card.classList.add('active');
-      openOrderTimeline(card.dataset.oid, 'omRight');
-    });
-  });
-  // 保留目前選取的訂單高亮
-  if (typeof _tlOrderId !== 'undefined' && _tlOrderId) {
-    const a = left.querySelector(`.om-card[data-oid="${_tlOrderId}"]`);
-    if (a) a.classList.add('active');
-  }
+// 右側：停在所選階段的客戶訂單卡片
+function renderOmOrders() {
+  const el = document.getElementById('omOrders'); if (!el) return;
+  const clients = getClients(); const cmap = {}; clients.forEach(c => cmap[c.id] = c);
+  let orders = getOrders().filter(o => !o.parentOrderId);
+  if (_omStage) orders = orders.filter(o => o.status === _omStage);
+  orders.sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
+  const title = _omStage ? `${_omStage}（${orders.length}）` : `全部訂單（${orders.length}）`;
+  if (!orders.length) { el.innerHTML = `<div class="om-orders-head">${title}</div><div class="om-empty">此階段目前沒有訂單</div>`; return; }
+  el.innerHTML = `<div class="om-orders-head">${title}</div><div class="om-cards">` + orders.map(o => {
+    const c = cmap[o.clientId] || {};
+    const color = getOrderStatusColor(o.status);
+    const period = o.startDate ? `${fmtDate(o.startDate)}~${o.endDate?fmtDate(o.endDate):''}` : '未設定訂期';
+    const note = (o.statusNote && o.statusNote.trim()) ? `<div class="om-card-note">📝 ${o.statusNote.replace(/</g,'&lt;')}</div>` : '';
+    return `<div class="om-card" data-oid="${o.id}">
+      <div class="om-card-top">
+        <span class="om-card-prod"><b>${c.shortName||'—'}</b>｜${o.productName||'（未命名）'}</span>
+        ${_omStage?'':`<span class="om-card-tag" style="background:${color};">${o.status||'未設定'}</span>`}
+      </div>
+      <div class="om-card-meta">訂期 ${period}　·　更新 ${fmtDateTime(o.updatedAt).slice(5,16)}</div>
+      ${note}
+    </div>`;
+  }).join('') + `</div>`;
+  el.querySelectorAll('.om-card[data-oid]').forEach(card =>
+    card.addEventListener('click', () => openOrderTimeline(card.dataset.oid)));
 }
 
 function renderHomePage() {
@@ -5602,8 +5620,8 @@ function renderHomePage() {
     </div>
     <div id="orderDashboardSlot"></div>
     <div class="om-split">
-      <div class="om-left" id="omLeft"></div>
-      <div class="om-right" id="omRight"><div class="om-empty">← 左側點一張訂單卡片，這裡顯示時間軸</div></div>
+      <div class="om-stages" id="omStages"></div>
+      <div class="om-orders" id="omOrders"></div>
     </div>
   `;
 
