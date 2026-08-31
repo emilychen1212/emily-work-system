@@ -5761,111 +5761,95 @@ function computeDashboardItems() {
       ? (() => { const d = new Date(o.alertSnoozedUntil); d.setHours(0,0,0,0); return d; })()
       : null;
 
-    // ── 詢價中：雙階段邏輯 ──
-    if (o.status === '詢價中') {
-      const hardLimit = new Date(new Date(o.updatedAt).getTime() + 21*86400000);
-      const forced    = now >= hardLimit.getTime();
-      const snoozeHint = _snoozeDate ? `已延後至 ${fmtDate(_isoDate(_snoozeDate))}` : null;
+    // ══════ 訂單任務判斷（新版：依時間軸階段與 checklist）══════
+    const CK = o.checks || {};
+    const _GRP = {'詢價中':1,'已提案/草報價':2,'採購議價':3,'契約書簽訂中':4,'出貨中':4,'驗收中':4,'可開發票':4,'履約期間':5,'履約結束':6};
+    const curGrp = _GRP[o.status] || 0;
+    const _snoozeHint = _snoozeDate ? `已延後至 ${fmtDate(_isoDate(_snoozeDate))}` : null;
+    const _fu = (o.followUp || {})[o.status] || null;   // 該階段手動追蹤日
+    const _dPlus = (ds, n) => { const d = new Date(ds); d.setHours(0,0,0,0); d.setDate(d.getDate() + n); return d; };
 
-      if (!o.inquirySentAt) {
-        // 階段一：詢價信還沒寄 → 狀態更新後2天內要寫信
-        const base = new Date(o.updatedAt); base.setHours(0,0,0,0);
-        let actionDate = new Date(base); actionDate.setDate(base.getDate() + 2);
-        if (_snoozeDate && !forced) actionDate = _snoozeDate;
-        _pushItem(actionDate, '撰寫詢價信給PM', '📝', 0, snoozeHint); // 🔥 極緊急
-      } else {
-        // 階段二：詢價信已寄 → 5天後追蹤PM回覆
-        const base = new Date(o.inquirySentAt); base.setHours(0,0,0,0);
-        let actionDate = new Date(base); actionDate.setDate(base.getDate() + 5);
-        if (_snoozeDate && !forced) actionDate = _snoozeDate;
-        const sentLabel = `詢價信已於 ${fmtDate(o.inquirySentAt)} 寄出`;
-        _pushItem(actionDate, '追蹤PM詢價回覆', '📞', 1, [sentLabel, snoozeHint].filter(Boolean).join('\n')); // 🔴 高優先
+    // 詢價中：寫詢價信 → 追蹤詢價（已收到詢價則消失）→ 製作報價單
+    if (o.status === '詢價中') {
+      const _sent = CK.inquirySent || (o.inquirySentAt ? o.inquirySentAt.slice(0,10) : null);
+      if (!_sent) {
+        const a = _snoozeDate || (_fu ? new Date(_fu) : _dPlus(o.createdAt || o.updatedAt, 0));
+        _pushItem(a, '撰寫詢價信給PM', '📝', 1, _snoozeHint);
+      } else if (!CK.inquiryReceived) {
+        const a = _snoozeDate || (_fu ? new Date(_fu) : _dPlus(_sent, 5));
+        _pushItem(a, '追蹤詢價回覆', '📞', 1, [`詢價信已於 ${fmtDate(_sent)} 寄出`, _snoozeHint].filter(Boolean).join('\n'));
       }
+      if (CK.inquiryReceived && !CK.quoteMade) _pushItem(_dPlus(CK.inquiryReceived, 0), '製作報價單', '📋', 1);
       return;
     }
 
-    // ── 里程碑規則（獨立於狀態規則，按欄位是否存在觸發）──
-
-    // 1. 收到客戶合約 → 當天提醒完成出貨單＋合約審閱表
-    if (o.contractReceivedAt && !o.deliveryOrderSubmittedAt) {
-      const base = new Date(o.contractReceivedAt); base.setHours(0,0,0,0);
-      _pushItem(base, '完成出貨單＋合約審閱表', '📝', 0);
-      _pushItem(base, '申請履保金＋申請印花稅', '🔐', 1);
+    // 已提案／草報價：製作報價單 → 依「預計追蹤客戶回覆時間」提醒
+    if (o.status === '已提案/草報價') {
+      if (!CK.quoteMade) _pushItem(_dPlus(o.updatedAt, 0), '製作報價單', '📋', 1);
+      const fu2 = _snoozeDate ? _isoDate(_snoozeDate) : _fu;
+      if (fu2) _pushItem(new Date(fu2), '確認客戶對報價回覆', '📋', 2, _snoozeHint);
+      return;
     }
 
-    // 2. 履保金繳納截止日 − 2天 / 當天
-    if (o.bondDeadline) {
-      const dl = new Date(o.bondDeadline); dl.setHours(0,0,0,0);
-      const warn = new Date(dl); warn.setDate(dl.getDate() - 2);
-      _pushItem(warn, `確認履保金繳納準備（截止 ${fmtDate(o.bondDeadline)}）`, '💰', 0);
-      _pushItem(dl,   '🚨 今日截止！繳納履保金', '💰', 0);
+    // 採購議價：製作標案文件（截標前5天）、申請押標金（截標前7天）
+    if (o.status === '採購議價') {
+      if (o.bidCloseDate && !CK.bidDocSent) _pushItem(_dPlus(o.bidCloseDate, -5), `製作標案文件（截標 ${fmtDate(o.bidCloseDate)}）`, '📝', 0, _snoozeHint);
+      if (o.hasBidBond && o.bidCloseDate && !CK.bidBondApplied) _pushItem(_dPlus(o.bidCloseDate, -7), '申請押標金', '🔐', 1);
+      return;
     }
 
-    // 3. 出貨單完成 + 3天 → 可申請開立發票
-    if (o.deliveryOrderSubmittedAt && !o.clientAcceptedAt) {
-      const base = new Date(o.deliveryOrderSubmittedAt); base.setHours(0,0,0,0);
-      const inv = new Date(base); inv.setDate(base.getDate() + 3);
-      _pushItem(inv, '可申請開立發票（行政建案完成）', '🧾', 1);
-    }
+    // ══ 平行群組（決標/出貨/驗收/可開發票，grp≥4）＋後段：改用「欄位＋checklist」觸發，不綁精確狀態 ══
 
-    // 4. 交貨日（長庚/明志型）
-    if (o.deliveryDate) {
-      const dd = new Date(o.deliveryDate); dd.setHours(0,0,0,0);
-      const prep = new Date(dd); prep.setDate(dd.getDate() - 5);
-      const check = new Date(dd); check.setDate(dd.getDate() - 2);
-      _pushItem(prep,  `完成出貨單（交貨日 ${fmtDate(o.deliveryDate)}，建案需3天）`, '📦', 0);
-      _pushItem(check, '確認發票＋啟用通知＋交貨文件齊備', '✅', 1);
-      _pushItem(dd,    '🚚 交貨日', '🚚', 0);
+    // 決標日 → 製作出貨單（決標隔天；超過3天未送出 → 🔥 逾期警示）
+    if (o.contractReceivedAt && !CK.deliveryOrderSent) {
+      const overdue3 = now >= _dPlus(o.contractReceivedAt, 3).getTime();
+      _pushItem(_dPlus(o.contractReceivedAt, 1), overdue3 ? '⚠️ 逾期：製作出貨單' : '製作出貨單', '📦', overdue3 ? 0 : 1);
     }
-
-    // 5. 客戶驗收完成 → 當天提醒申請開發票＋製作啟用通知（打勾標記完成後不再顯示）
-    if (o.clientAcceptedAt && !o.invoiceNoticeDoneAt) {
-      const base = new Date(o.clientAcceptedAt); base.setHours(0,0,0,0);
-      _pushItem(base, '申請開發票＋製作啟用通知', '🧾', 0, '打勾＝已完成，訂單狀態照常往下走', { invoiceNoticeOrderId: o.id });
+    // 有履保金 → 申請履保金（履保金繳納截止前7天）
+    if (o.bondDeadline && (o.hasPerfBond || o.hasBidBond) && !CK.perfBondApplied) {
+      _pushItem(_dPlus(o.bondDeadline, -7), '申請履保金', '🔐', 1, `履保金截止 ${fmtDate(o.bondDeadline)}`);
     }
-
-    // 6. 追回簽回合約（驗收完成後30天，仍無 contractReturnedAt）
-    if (!o.contractReturnedAt && o.clientAcceptedAt) {
-      const base = new Date(o.clientAcceptedAt); base.setHours(0,0,0,0);
-      const remind = new Date(base); remind.setDate(base.getDate() + 30);
-      _pushItem(remind, '追回客戶簽回合約', '🔁', 2);
+    // 需做合約 → 繳交合約（預計繳交合約日前3天）
+    if (o.needsContract && o.contractDueDate) {
+      _pushItem(_dPlus(o.contractDueDate, -3), '繳交合約', '✍️', 1, `預計繳交 ${fmtDate(o.contractDueDate)}`);
     }
-
-    // 7. 履保金退款追蹤（履約結束但退款未收到）→ 每月 28 號提醒；本月已略過則不顯示
-    if (o.status === '履約結束' && o.bondRefundStatus === 'pending') {
-      const ym = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
-      if (o.bondRefundSnoozedMonth !== ym) {
-        const d28 = new Date(today.getFullYear(), today.getMonth(), 28); d28.setHours(0,0,0,0);
-        _pushItem(d28, '追蹤履保金退款是否入帳', '💰', 2, '打勾＝本月已追蹤/仍在等待，下個月再提醒', { bondSnoozeOrderId: o.id });
+    // 決標日 + 30天 仍未追回回簽合約 → 追回合約
+    if (o.contractReceivedAt && !CK.contractReturned) {
+      _pushItem(_dPlus(o.contractReceivedAt, 30), '追回客戶回簽合約', '🔁', 2);
+    }
+    // 製作啟用通知：已到平行群組(grp≥4) 且距訂期起始 ≤5 天才排；≤5天內 → 🔥 極緊急
+    if (curGrp >= 4 && o.startDate && !CK.activationNotice) {
+      const start = new Date(o.startDate); start.setHours(0,0,0,0);
+      const daysToStart = Math.round((start - snapDate) / 86400000);
+      if (daysToStart <= 5) {
+        const target = _dPlus(o.startDate, -5);
+        _pushItem(target < snapDate ? snapDate : target, '製作啟用通知', '📬', 0, `訂期起始 ${fmtDate(o.startDate)}`);
       }
     }
-
-    // ── 其他狀態：一般規則 ──
-    const rule = DASH_ORDER_RULES[o.status];
-    if (!rule) return;
-
-    let actionDate;
-    if (rule.base === 'updatedAt') {
-      const base = new Date(o.updatedAt); base.setHours(0,0,0,0);
-      const targetDay = rule.alertDay - rule.advanceDays;
-      actionDate = new Date(base); actionDate.setDate(base.getDate() + targetDay);
-    } else if (rule.base === 'startDate' && o.startDate) {
-      const base = new Date(o.startDate); base.setHours(0,0,0,0);
-      actionDate = new Date(base); actionDate.setDate(base.getDate() - (Math.abs(rule.alertDay) + rule.advanceDays));
-    } else if (rule.base === 'endDate' && o.endDate) {
-      const base = new Date(o.endDate); base.setHours(0,0,0,0);
-      actionDate = new Date(base); actionDate.setDate(base.getDate() + rule.alertDay - rule.advanceDays);
-    } else if (rule.base === 'endDate' && !o.endDate) {
-      const base = new Date(o.updatedAt); base.setHours(0,0,0,0);
-      actionDate = new Date(base); actionDate.setDate(base.getDate() + rule.alertDay - rule.advanceDays);
+    // 可開發票 → 今日申請開發票
+    if (o.status === '可開發票' && !o.invoiceAppliedAt) {
+      _pushItem(_dPlus(o.updatedAt, 1), '今日申請開發票', '🧾', 1, _snoozeHint);
     }
-    if (!actionDate) return;
-
-    // 延後中：改排到延後到期日（落在本週→主格、下週→下週預告；不再完全隱藏）
-    const _snoozeHint = _snoozeDate ? `已延後至 ${fmtDate(_isoDate(_snoozeDate))}` : null;
-    if (_snoozeDate) actionDate = _snoozeDate;
-
-    _pushItem(actionDate, rule.label, rule.icon, rule.priW, _snoozeHint);
+    // 履約期間：客服／維護（依預計完成日；未回覆才提醒）
+    if (o.status === '履約期間' && Array.isArray(o.serviceLog)) {
+      o.serviceLog.forEach(r => {
+        if (r.due && !r.replied) _pushItem(new Date(r.due), `${r.kind || '客服'}：${(r.issue || '').slice(0, 16)}`, r.kind === '維護' ? '🛠️' : '📞', 1);
+      });
+    }
+    // 履約結束：申退履保金（履約結束後約一個月＝訂期結束+30，可 +3/+7）＋退款追蹤
+    if (o.status === '履約結束') {
+      if (o.bondRefundStatus !== 'refunded') {
+        const base = _snoozeDate ? _isoDate(_snoozeDate) : (_fu || (o.endDate ? _isoDate(_dPlus(o.endDate, 30)) : null));
+        if (base) _pushItem(new Date(base), '申退履保金', '💰', 2, _snoozeHint);
+      }
+      if (o.bondRefundStatus === 'pending') {
+        const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        if (o.bondRefundSnoozedMonth !== ym) {
+          const d28 = new Date(today.getFullYear(), today.getMonth(), 28); d28.setHours(0, 0, 0, 0);
+          _pushItem(d28, '追蹤履保金退款是否入帳', '💰', 2, '打勾＝本月已追蹤/仍在等待，下個月再提醒', { bondSnoozeOrderId: o.id });
+        }
+      }
+    }
 
   });
 
@@ -8112,8 +8096,12 @@ function snoozeOrderAlert(orderId, days) {
   const db = dbLoad();
   const idx = db.orders.findIndex(o => o.id === orderId);
   if (idx < 0) return;
-  const until = new Date(Date.now() + days * 86400000).toISOString();
-  db.orders[idx].alertSnoozedUntil = until;
+  const untilDate = new Date(Date.now() + days * 86400000);
+  const o = db.orders[idx];
+  o.alertSnoozedUntil = untilDate.toISOString();
+  // 同步回訂單的「該階段追蹤日」（所有有追蹤日的階段一起放）
+  o.followUp = o.followUp || {};
+  if (o.status) o.followUp[o.status] = _isoDate(untilDate);
   dbSave(db);
   renderOrderDashboard();
   refreshDashboardContent();
