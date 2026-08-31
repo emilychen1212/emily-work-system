@@ -5581,11 +5581,13 @@ function renderOmOrders() {
   const clients = getClients(); const cmap = {}; clients.forEach(c => cmap[c.id] = c);
   let orders = getOrders().filter(o => !o.parentOrderId);
   if (_omStage) orders = orders.filter(o => o.status === _omStage);
-  orders.sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
-  const title = _omStage ? `${_omStage}（${orders.length}）` : `全部訂單（${orders.length}）`;
   // 需警示的訂單 → 卡片紅底標示（取代原本右欄的訂單警示）
   let alertMap = {};
   try { (computeOrderKPI().alerts || []).forEach(a => { alertMap[a.orderId] = a; }); } catch (e) {}
+  // 排序：紅色警示優先（danger → warn → 一般），同級再依最近更新
+  const rank = o => { const a = alertMap[o.id]; return a ? (a.level === 'danger' ? 2 : 1) : 0; };
+  orders.sort((a,b) => (rank(b) - rank(a)) || (b.updatedAt||'').localeCompare(a.updatedAt||''));
+  const title = _omStage ? `${_omStage}（${orders.length}）` : `全部訂單（${orders.length}）`;
   if (!orders.length) { el.innerHTML = `<div class="om-orders-head">${title}</div><div class="om-empty">此階段目前沒有訂單</div>`; return; }
   el.innerHTML = `<div class="om-orders-head">${title}</div><div class="om-cards">` + orders.map(o => {
     const c = cmap[o.clientId] || {};
