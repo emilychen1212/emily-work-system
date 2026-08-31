@@ -1761,7 +1761,9 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-savestat{font-size:11px;color:#cfe3d4;font-weight:600;margin-left:14px;white-space:nowrap;}
 .tl-chk-done{font-size:11px;color:var(--text-secondary);font-weight:600;display:inline-flex;align-items:center;gap:5px;}
 .tl-chk-done:empty{display:none;}
-.tl-chk-date{border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:11px;font-family:inherit;background:#fff;color:var(--text-primary);}
+.tl-chk-date{border:1px solid var(--warm);border-radius:5px;padding:3px 7px;font-size:11px;font-family:inherit;background:#fff;color:var(--text-primary);cursor:pointer;}
+.tl-chk-date:hover{background:var(--surface2);}
+.tl-chk-roc{font-size:10.5px;color:var(--warm);font-weight:600;}
 .tl-dh{justify-content:flex-start !important;}
 .tl-note-btn{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px 8px;font-size:14px;cursor:pointer;line-height:1;}
 .tl-note-btn:hover{border-color:var(--warm);}
@@ -8763,20 +8765,32 @@ function _tlChk(o,key,label,opt){
   opt=opt||{};
   const done=_tlChkDone(o,key);
   const conf=opt.confirm?` data-confirm="${opt.confirm}"`:'';
-  const extra=opt.on?` onchange="${opt.on}"`:'';
   const dis=opt.disabled?' disabled':'';
   const word=opt.word||'完成';
-  return `<div class="tl-f full tl-chk"><input type="checkbox" data-check="${key}"${conf}${extra}${dis} ${done?'checked':''} onchange="_tlChkToggle(this)"/><label>${label}</label><span class="tl-chk-done" data-checkat="${key}">${done?_tlChkDateHtml(key,done,word):''}</span></div>`;
+  // 單一 onchange：先跑完成日切換，再跑額外處理（避免重複 onchange 屬性只認第一個）
+  const onAttr=`onchange="_tlChkToggle(this)${opt.on?';'+opt.on:''}"`;
+  return `<div class="tl-f full tl-chk"><input type="checkbox" data-check="${key}"${conf}${dis} ${done?'checked':''} ${onAttr}/><label>${label}</label><span class="tl-chk-done" data-checkat="${key}" data-word="${word}">${done?_tlChkDateHtml(key,done,word):''}</span></div>`;
 }
-// 完成日可手動修改的小輸入框
+// 完成日：可點擊修改的小日期框（顯示民國對照）
 function _tlChkDateHtml(key,val,word){
-  return `${word} <input type="date" class="tl-chk-date" data-nocal data-checkdate="${key}" value="${String(val).slice(0,10)}"/>`;
+  const iso=String(val).slice(0,10);
+  const p=iso.split('-');
+  const roc=(p.length>=3)?`（民國 ${parseInt(p[0])-1911}/${p[1]}/${p[2]}）`:'';
+  return `✅ ${word}於 <input type="date" class="tl-chk-date" data-nocal data-checkdate="${key}" title="點這裡可修改完成日期" value="${iso}"/> <span class="tl-chk-roc">${roc}</span>`;
 }
 function _tlChkToggle(cb){
   if(!cb.checked && cb.dataset.confirm){ if(!confirm(cb.dataset.confirm)){ cb.checked=true; return; } }
   const key=cb.dataset.check; const span=document.querySelector(`[data-checkat="${key}"]`);
-  if(span) span.innerHTML = cb.checked ? _tlChkDateHtml(key,_isoDate(new Date()),'完成') : '';
+  if(span){ const word=span.dataset.word||'完成'; span.innerHTML = cb.checked ? _tlChkDateHtml(key,_isoDate(new Date()),word) : ''; }
 }
+// 完成日框被改動 → 即時更新旁邊的民國對照
+document.addEventListener('input', e => {
+  if(e.target && e.target.matches && e.target.matches('.tl-chk-date')){
+    const roc=e.target.parentElement?.querySelector('.tl-chk-roc');
+    const p=String(e.target.value||'').split('-');
+    if(roc) roc.textContent=(p.length>=3)?`（民國 ${parseInt(p[0])-1911}/${p[1]}/${p[2]}）`:'';
+  }
+});
 
 // ── 詢價中 ──
 function _tlInquiryPanel(o){
