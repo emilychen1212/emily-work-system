@@ -1754,6 +1754,12 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-cal-btn{margin-top:6px;align-self:flex-start;font-size:11px;font-weight:600;padding:3px 10px;border:1px solid var(--warm);background:var(--surface);color:var(--warm);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}
 .tl-cal-btn:hover{background:var(--warm);color:#fff;}
 .tl-cal-btn.done{border-color:#4A5D4E;color:#4A5D4E;}
+.tl-alert{grid-column:1/-1;background:#F6E4DE;border:1px solid #D9A491;color:#8A3B28;border-radius:9px;padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:4px;}
+.tl-bidclose{grid-column:1/-1;}
+.tl-bidclose label{font-size:15px !important;color:#A4472F !important;font-weight:800 !important;}
+.tl-bidclose input{border-color:#C56B54 !important;border-width:2px !important;font-size:16px !important;font-weight:700;color:#A4472F;}
+.tl-svc-row{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;background:var(--surface2);}
+.tl-svc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .tl-acts{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
 .tl-btn{border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;}
 .tl-btn.primary{background:var(--navy);color:#fff;}
@@ -8487,15 +8493,14 @@ document.addEventListener('mousemove', e => {
 const TL_STAGES = [
   {key:'__base__', label:'訂單資料', grp:0},
   {key:'詢價中', label:'詢價中', grp:1, fu3:true, custom:'inquiry'},
-  {key:'已提案/草報價', label:'已提案／草報價', grp:2, fu3:true, quote:true, fuLabel:'預計追蹤客戶回覆時間'},
-  {key:'採購議價', label:'採購議價', grp:3, custom:'bid'},
-  {key:'契約書簽訂中', label:'決標＆契約書簽訂中', grp:4, par:true, custom:'contract', fuLabel:'下次合約追回日'},
-  {key:'出貨中', label:'出貨中', grp:4, par:true, delivery:true},
+  {key:'已提案/草報價', label:'已提案／草報價', grp:2, fu3:true, quote:true, custom:'proposal', fuLabel:'預計追蹤客戶回覆時間'},
+  {key:'採購議價', label:'採購議價', grp:3, custom:'bid', noFu:true},
+  {key:'契約書簽訂中', label:'決標＆契約書簽訂中', grp:4, par:true, custom:'contract', noFu:true},
+  {key:'出貨中', label:'出貨中', grp:4, par:true, custom:'delivery', delivery:true, noFu:true},
   {key:'驗收中', label:'驗收中', grp:4, par:true, custom:'accept', noFu:true},
-  {key:'可開發票', label:'可開發票', grp:5, invoice:true, custom:'invoice'},
-  {key:'履約期間', label:'履約期間', grp:6},
-  {key:'申退履保金', label:'申退履保金', grp:7},
-  {key:'履約結束', label:'履約結束', grp:8},
+  {key:'可開發票', label:'可開發票', grp:4, par:true, invoice:true, custom:'invoice', noFu:true},
+  {key:'履約期間', label:'履約期間', grp:5, custom:'service', noFu:true},
+  {key:'履約結束', label:'履約結束', grp:6, fuLabel:'申退履保金追蹤日'},
 ];
 const TL_FIELDS = {
   '已提案/草報價':[
@@ -8553,7 +8558,7 @@ function _tlClose(){ document.getElementById('tlModal').classList.remove('open')
 function _tlRender(){
   const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
   const c=getClientById(o.clientId)||{};
-  const amt = o.quoteTwd ? 'NT$ '+parseInt(o.quoteTwd).toLocaleString('zh-TW') : (o.quoteOrig ? '報價 '+(o.currency||'')+' '+parseInt(o.quoteOrig).toLocaleString('zh-TW') : '—');
+  const amt = (o.startDate||o.endDate) ? ('訂期 '+(o.startDate?_rocSlash(o.startDate):'—')+' ～ '+(o.endDate?_rocSlash(o.endDate):'—')) : '未設定訂期';
   const shell=`
     <div class="tl-shell">
       <div class="tl-top">
@@ -8636,16 +8641,19 @@ function _tlDetail(){
   else if(stage.custom==='inquiry') bodyInner=_tlInquiryPanel(o);
   else if(stage.custom==='contract') bodyInner=_tlContractPanel(o);
   else if(stage.custom==='invoice') bodyInner=_tlInvoicePanel(o);
+  else if(stage.custom==='proposal') bodyInner=_tlProposalPanel(o);
+  else if(stage.custom==='delivery') bodyInner=_tlDeliveryPanel(o);
+  else if(stage.custom==='service'){ _tlSvc=(o.serviceLog||[]).map(r=>({...r})); bodyInner=_tlServicePanel(o); }
   else bodyInner=(TL_FIELDS[stage.key]||[]).map(fd=>_tlFieldHtml(o,fd)).join('');
 
   // 下次追蹤日（noFu 階段不顯示）＋快速追蹤按鈕；可用 fuLabel 客製標題
   const fu=(o.followUp||{})[stage.key]||'';
   const fuLbl = stage.fuLabel || '下次追蹤日（可覆蓋系統預設提醒時間）';
   const fuHint = stage.key==='已提案/草報價' ? '追蹤時間到當天，首頁總覽會自動排入「確認客戶對報價回覆」任務。'
-    : stage.key==='契約書簽訂中' ? '到期當天，首頁總覽會自動排入「追回合約」任務。' : '';
+    : stage.key==='履約結束' ? '履約結束後約一個月自動提醒「申退履保金」，可 +3／+7 延後。' : '';
   const fuBlock = stage.noFu ? '' :
     `<div class="tl-f full"><label>${fuLbl}</label>
-      <input type="date" data-tlfu value="${fu}"/>
+      <input type="date" data-tlfu data-nocal value="${fu}"/>
       ${fuHint?`<span class="hint">${fuHint}</span>`:''}
       ${stage.fu3?`<div class="tl-fu-quick">快速設定：
         <button type="button" class="tl-fu-btn" onclick="_tlSetFu(3)">+3 天</button>
@@ -8670,11 +8678,12 @@ function _tlDetail(){
     <div class="tl-quote-box">
       <button type="button" class="tl-btn ghost" onclick="_tlOpenInvoice()">💰 開發票申請</button>
       <span class="tl-quote-status">${o.invoiceAppliedAt?('✅ 已於 '+fmtDate(o.invoiceAppliedAt)+' 申請開發票'):'尚未申請開發票'}</span>
+      ${o.invoiceAppliedAt?`<button type="button" class="tl-mini-btn danger" onclick="_tlResetInvoice()">復原（重設時間）</button>`:''}
     </div>`;
 
   right.innerHTML=`
     <div class="tl-dh"><h3>${stage.label}</h3><span class="tl-stag ${st}">${stagTxt}</span></div>
-    ${isPar?'<div class="tl-parbanner">「決標＆契約書簽訂中／出貨中／驗收中」沒有固定先後順序，可同時編輯、各自追蹤，不用等其中一個完成。</div>':''}
+    ${isPar?'<div class="tl-parbanner">「決標＆契約書簽訂中／出貨中／驗收中／可開發票」沒有固定先後順序，可同時編輯、各自追蹤，不用等其中一個完成。</div>':''}
     ${docBlock}
     <div class="tl-grid">${bodyInner}${fuBlock}</div>
     <div class="tl-acts">
@@ -8685,59 +8694,146 @@ function _tlDetail(){
   _tlDecorateCal();
 }
 
-// ── 詢價中（已收到詢價 checkbox + 時間戳）──
+// ══ 共用 checklist：o.checks[key] = 完成日 'YYYY-MM-DD' 或 null ══
+function _tlChkDone(o,key){ return (o.checks||{})[key]||''; }
+function _tlChk(o,key,label,opt){
+  opt=opt||{};
+  const done=_tlChkDone(o,key);
+  const conf=opt.confirm?` data-confirm="${opt.confirm}"`:'';
+  const extra=opt.on?` onchange="${opt.on}"`:'';
+  const dis=opt.disabled?' disabled':'';
+  const word=opt.word||'完成';
+  return `<div class="tl-f full tl-chk"><input type="checkbox" data-check="${key}"${conf}${extra}${dis} ${done?'checked':''} onchange="_tlChkToggle(this)"/><label>${label}</label><span class="hint" data-checkat="${key}">${done?('✅ '+fmtDate(done)+' '+word):''}</span></div>`;
+}
+function _tlChkToggle(cb){
+  if(!cb.checked && cb.dataset.confirm){ if(!confirm(cb.dataset.confirm)){ cb.checked=true; return; } }
+  const key=cb.dataset.check; const span=document.querySelector(`[data-checkat="${key}"]`);
+  if(span) span.textContent = cb.checked ? ('✅ '+fmtDate(_isoDate(new Date()))+' 完成') : '';
+}
+
+// ── 詢價中 ──
 function _tlInquiryPanel(o){
-  const dv=v=>String(v||'').slice(0,10);
   return `
-    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="inquiryReceived" ${o.inquiryReceived?'checked':''} onchange="_tlInquiryToggle(this)"/><label>已收到詢價</label><span class="hint" id="tlInqAt">${o.inquiryReceivedAt?('✅ '+fmtDate(o.inquiryReceivedAt)+' 已標記'):''}</span></div>
-    <div class="tl-f"><label>詢價信寄出日</label><input type="date" data-tlf="inquirySentAt" value="${dv(o.inquirySentAt)}"/><span class="hint">記錄後系統改為追蹤 PM 回覆</span></div>
+    ${_tlChk(o,'inquirySent','已寄出詢價信',{word:'寄出'})}
+    ${_tlChk(o,'inquiryReceived','已收到詢價（PM 回覆）',{confirm:'確定取消「已收到詢價」嗎？',on:'_tlInquiryReceived(this)'})}
     <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['詢價中']||''}</textarea></div>`;
 }
-function _tlInquiryToggle(cb){
-  if(!cb.checked){
-    if(!confirm('確定要取消「已收到詢價」的標記嗎？')){ cb.checked=true; return; }
+function _tlInquiryReceived(cb){
+  if(cb.checked){
+    setTimeout(()=>{
+      if(confirm('已收到詢價 — 是否進入「已提案／草報價」開始製作報價單？')){
+        _tlSave(); _tlSetStatus('已提案/草報價');
+      }
+    },50);
   }
-  const span=document.getElementById('tlInqAt');
-  if(span) span.textContent = cb.checked ? ('✅ '+fmtDate(_isoDate(new Date()))+' 已標記') : '';
+}
+
+// ── 已提案／草報價 ──
+function _tlProposalPanel(o){
+  const qs=(o.checks||{}).quoteSent;
+  return `
+    ${_tlChk(o,'quoteMade','製作報價單')}
+    <div class="tl-f full tl-chk"><input type="checkbox" data-check="quoteSent" ${qs?'checked':''} onchange="_tlChkToggle(this)"/><label>已寄出報價單</label><span class="hint" data-checkat="quoteSent">${o.quoteDate?('✅ '+fmtDate(o.quoteDate)+' 寄出（同訂單資料報價日期）'):''}</span></div>
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['已提案/草報價']||''}</textarea></div>`;
 }
 
 // ── 決標＆契約書簽訂中 ──
 function _tlContractPanel(o){
   const need=!!o.needsContract;
   const dv=v=>String(v||'').slice(0,10);
+  const bidAmt=o.bidBondAmount?parseInt(o.bidBondAmount).toLocaleString('zh-TW'):'';
+  const hasBid=!!o.hasBidBond;
+  const hasBond=!!o.hasPerfBond;
+  const bidBanner = hasBid ? `<div class="tl-alert warn">⚠️ 此案有押標金 ${bidAmt?('NT$ '+bidAmt):''}，記得確認是否轉為履保金。</div>` : '';
   return `
-    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="needsContract" ${need?'checked':''} onchange="_tlContractToggle(this)"/><label>需做合約（勾選→自動建立「製作合約」任務；不勾則以下欄位免填）</label></div>
-    <div class="tl-f"><label>決標日期</label><input type="date" data-tlf="contractReceivedAt" value="${dv(o.contractReceivedAt)}" ${need?'':'disabled'}/></div>
-    <div class="tl-f"><label>交貨日（交貨型客戶）</label><input type="date" data-tlf="deliveryDate" value="${dv(o.deliveryDate)}" ${need?'':'disabled'}/></div>
-    <div class="tl-f"><label>履保金繳納截止日</label><input type="date" data-tlf="bondDeadline" value="${dv(o.bondDeadline)}" ${need?'':'disabled'}/></div>
-    <div class="tl-f tl-chk" style="align-self:end;"><input type="checkbox" data-tlf="contractReturnedFlag" ${o.contractReturnedFlag?'checked':''} ${need?'':'disabled'}/><label>是否已追回合約</label></div>
-    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note" ${need?'':'disabled'}>${(o.stageNotes||{})['契約書簽訂中']||''}</textarea></div>`;
+    ${bidBanner}
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="needsContract" ${need?'checked':''} onchange="_tlContractToggle(this)"/><label>需做合約</label></div>
+    <div class="tl-f"><label>決標日期</label><input type="date" data-tlf="contractReceivedAt" value="${dv(o.contractReceivedAt)}" data-caltitle="決標" ${need?'':'disabled'}/></div>
+    <div class="tl-f"><label>預計繳交合約日</label><input type="date" data-tlf="contractDueDate" value="${dv(o.contractDueDate)}" data-nocal ${need?'':'disabled'}/></div>
+    <div class="tl-f"><label>交貨日（交貨型客戶）</label><input type="date" data-tlf="deliveryDate" value="${dv(o.deliveryDate)}" data-caltitle="交貨"/></div>
+    <div class="tl-f"><label>履保金繳納截止日</label><input type="date" data-tlf="bondDeadline" value="${dv(o.bondDeadline)}" data-nocal/></div>
+    ${hasBid?_tlChk(o,'bidToPerf','押標金已轉履保金'+(bidAmt?('，金額 NT$ '+bidAmt):'')):`
+      <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="hasPerfBond" ${hasBond?'checked':''} onchange="_tlPerfBondToggle(this)"/><label>是否有履保金</label>
+        <input type="text" data-tlf="perfBondAmount" placeholder="金額" value="${o.perfBondAmount?parseInt(o.perfBondAmount).toLocaleString():''}" style="width:120px;margin-left:8px;" ${hasBond?'':'disabled'}/></div>`}
+    ${(hasBid||hasBond)?_tlChk(o,'perfBondApplied','已申請履保金'):''}
+    ${_tlChk(o,'perfBondReceipt','是否取得履保金收據')}
+    ${_tlChk(o,'contractReturned','是否已追回客戶回簽合約',{word:'追回'})}
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['契約書簽訂中']||''}</textarea></div>`;
 }
 function _tlContractToggle(cb){
   if(!cb.checked){
-    if(!confirm('確定要取消「需做合約」嗎？取消後此階段其他欄位將鎖定免填。')){ cb.checked=true; return; }
+    if(!confirm('確定要取消「需做合約」嗎？取消後合約相關欄位將鎖定免填。')){ cb.checked=true; return; }
   }
   const on=cb.checked;
-  document.querySelectorAll('#tlRight [data-tlf]').forEach(el=>{
-    if(el===cb) return;
-    el.disabled=!on;
-  });
+  ['contractReceivedAt','contractDueDate'].forEach(f=>{ const el=document.querySelector(`[data-tlf="${f}"]`); if(el) el.disabled=!on; });
+}
+function _tlPerfBondToggle(cb){
+  const amt=document.querySelector('[data-tlf="perfBondAmount"]'); if(amt) amt.disabled=!cb.checked;
 }
 
-// ── 可開發票（checklist）──
+// ── 可開發票 ──
 function _tlInvoicePanel(o){
-  const noNeed=!!o.activationNoticeNotNeeded;
   return `
-    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="invoiceReceived" ${o.invoiceReceived?'checked':''}/><label>已收到發票</label></div>
-    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="activationNoticeProvided" ${o.activationNoticeProvided?'checked':''} ${noNeed?'disabled':''} onchange="_tlActToggle()"/><label>已製作啟用通知</label><span class="hint" id="tlActAt">${o.activationNoticeAt?('✅ '+fmtDate(o.activationNoticeAt)+' 已標記'):''}</span></div>
-    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="activationNoticeNotNeeded" ${noNeed?'checked':''} onchange="_tlNoNoticeToggle(this)"/><label>無需提供啟用通知（此單不需啟用通知）</label></div>
+    ${_tlChk(o,'invoiceReceived','已收到發票',{word:'收到'})}
+    ${_tlChk(o,'invoiceSent','已寄出發票',{word:'寄出'})}
     <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['可開發票']||''}</textarea></div>`;
 }
-function _tlNoNoticeToggle(cb){
-  const prov=document.querySelector('[data-tlf="activationNoticeProvided"]');
-  if(cb.checked && prov){ prov.checked=false; prov.disabled=true; const s=document.getElementById('tlActAt'); if(s) s.textContent=''; }
-  else if(prov){ prov.disabled=false; }
+
+// ── 出貨中 ──
+function _tlDeliveryPanel(o){
+  const miss=_tlMissingBase(o);
+  const missBanner = miss.length ? `<div class="tl-alert warn">⚠️ 記得補齊訂單資料：${miss.join('、')}（請至「訂單資料」填寫）</div>` : '';
+  return `
+    ${missBanner}
+    ${_tlChk(o,'deliveryOrderSent','已送出貨單',{word:'送出'})}
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['出貨中']||''}</textarea></div>`;
 }
+function _tlMissingBase(o){
+  const miss=[];
+  if(!o.caseNo) miss.push('採購案號');
+  if(!o.quoteTwd && !o.quoteOrig) miss.push('報價金額');
+  if(!o.dealTwd) miss.push('成交金額');
+  if(!o.startDate) miss.push('訂期起始日');
+  return miss;
+}
+
+// ── 履約期間（客服／維護小表格）──
+function _tlServicePanel(o){
+  const rows=o.serviceLog||[];
+  return `
+    <div class="tl-section-label" style="margin-top:0;">客服／維護紀錄</div>
+    <div id="tlSvcList">${_tlServiceRows(rows)}</div>
+    <button type="button" class="tl-btn ghost" style="margin-top:6px;" onclick="_tlAddSvc()">＋ 新增一筆</button>
+    <div class="tl-f full" style="margin-top:14px;"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['履約期間']||''}</textarea></div>`;
+}
+let _tlSvc=[];
+function _tlServiceRows(rows){
+  if(!rows.length) return '<div class="hint">尚無紀錄</div>';
+  const cats=(typeof TASK_CATEGORIES!=='undefined'&&Array.isArray(TASK_CATEGORIES))?TASK_CATEGORIES:['客服','文書作業','跑統計','個人','其他'];
+  return rows.map((r,i)=>`
+    <div class="tl-svc-row" data-svc="${i}">
+      <div class="tl-svc-hd"><b>#${i+1}</b><button type="button" class="tl-mini-btn danger" onclick="_tlRmSvc(${i})">刪除</button></div>
+      <div class="tl-grid">
+        <div class="tl-f"><label>需求</label><select data-sv="kind">${['客服','維護'].map(x=>`<option ${r.kind===x?'selected':''}>${x}</option>`).join('')}</select></div>
+        <div class="tl-f"><label>任務類型</label><select data-sv="cat">${cats.map(x=>`<option ${r.cat===x?'selected':''}>${x}</option>`).join('')}</select></div>
+        <div class="tl-f tl-chk" style="align-self:end;"><input type="checkbox" data-sv="replied" ${r.replied?'checked':''}/><label>已回覆</label></div>
+        <div class="tl-f"><label>預計完成日期</label><input type="date" data-sv="due" value="${String(r.due||'').slice(0,10)}" data-caltitle="客服"/></div>
+        <div class="tl-f full"><label>問題描述</label><textarea data-sv="issue">${r.issue||''}</textarea></div>
+      </div>
+    </div>`).join('');
+}
+function _tlCollectSvc(){
+  document.querySelectorAll('#tlSvcList [data-svc]').forEach(row=>{
+    const i=+row.dataset.svc; if(!_tlSvc[i]) return;
+    row.querySelectorAll('[data-sv]').forEach(el=>{
+      const f=el.dataset.sv;
+      _tlSvc[i][f]= el.type==='checkbox'?el.checked:el.value;
+    });
+  });
+}
+function _tlAddSvc(){ _tlCollectSvc(); _tlSvc.push({kind:'客服',cat:'客服',replied:false,issue:'',due:''}); _tlRenderSvc(); }
+function _tlRmSvc(i){ _tlCollectSvc(); _tlSvc.splice(i,1); _tlRenderSvc(); }
+function _tlRenderSvc(){ const l=document.getElementById('tlSvcList'); if(l){ l.innerHTML=_tlServiceRows(_tlSvc); refreshRocHints(l); _tlDecorateCal(); } }
 
 // ── 訂單資料面板（含價格資訊／成交資訊／拆項）──
 function _tlBasePanel(o){
@@ -8752,10 +8848,10 @@ function _tlBasePanel(o){
     <div class="tl-f"><label>採購案名稱</label><input type="text" data-tlf="caseName" value="${o.caseName||''}"/></div>
     <div class="tl-f"><label>採購案號</label><input type="text" data-tlf="caseNo" value="${o.caseNo||''}"/></div>
 
-    <div class="tl-f"><label>訂期起始日</label><input type="date" data-tlf="startDate" value="${dv(o.startDate)}"/></div>
-    <div class="tl-f"><label>訂期結束日 <button type="button" class="tl-mini-btn" onclick="_tlFillOneYear()">＋一年</button></label><input type="date" data-tlf="endDate" value="${dv(o.endDate)}"/></div>
+    <div class="tl-f"><label>訂期起始日 <button type="button" class="tl-mini-btn" onclick="_tlFillOneYear()">＋一年</button></label><input type="date" data-tlf="startDate" value="${dv(o.startDate)}" data-nocal/></div>
+    <div class="tl-f"><label>訂期結束日</label><input type="date" data-tlf="endDate" value="${dv(o.endDate)}" data-nocal/></div>
 
-    <div class="tl-f"><label>報價日期</label><input type="date" data-tlf="quoteDate" value="${dv(o.quoteDate)}"/></div>
+    <div class="tl-f"><label>報價日期</label><input type="date" data-tlf="quoteDate" value="${dv(o.quoteDate)}" data-nocal/></div>
     <div class="tl-f"><label>原幣別</label><select data-tlf="currency" onchange="_tlPriceCalc()">${opts(['USD','EUR','TWD'],cur)}</select></div>
     <div class="tl-f full"><label>關聯去年訂單（顯示去年價格與漲幅）</label><select data-tlf="linkedOrderId" id="tlLinkedId" onchange="_tlLinkedChange()"></select></div>
   </div>
@@ -8878,21 +8974,21 @@ function _tlRenderSplit(){
     </div>`).join('');
 }
 
-// ── 採購議價（押標金）──
+// ── 採購議價（截標日＋checklist＋押標金）──
 function _tlBidPanel(o){
   const has=!!o.hasBidBond;
   const dv=v=>String(v||'').slice(0,10);
   return `
-    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="hasBidBond" ${has?'checked':''} onchange="_tlBidToggle()"/><label>是否有押標金</label></div>
-    <div class="tl-f" id="tlBidD1"><label>押標金繳納截止日</label><input type="date" data-tlf="bidBondDeadline" value="${dv(o.bidBondDeadline)}" ${has?'':'disabled'}/></div>
-    <div class="tl-f" id="tlBidD2"><label>押標金申請時間（確認已送件）</label><input type="date" data-tlf="bidBondAppliedAt" value="${dv(o.bidBondAppliedAt)}" ${has?'':'disabled'}/></div>
+    <div class="tl-f full tl-bidclose"><label>截標日</label><input type="date" data-tlf="bidCloseDate" value="${dv(o.bidCloseDate)}" data-caltitle="截標"/></div>
+    ${_tlChk(o,'bidDocReceived','已收到議價文件',{word:'收到'})}
+    ${_tlChk(o,'bidDocSent','已送出／寄出標案文件',{word:'送出'})}
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="hasBidBond" ${has?'checked':''} onchange="_tlBidToggle(this)"/><label>是否有押標金</label>
+      <input type="text" data-tlf="bidBondAmount" placeholder="金額" value="${o.bidBondAmount?parseInt(o.bidBondAmount).toLocaleString():''}" style="width:120px;margin-left:8px;" ${has?'':'disabled'}/></div>
+    ${has?_tlChk(o,'bidBondApplied','已申請押標金',{word:'申請'}):''}
     <div class="tl-f full"><label>備註（議價／標案進度）</label><textarea data-tlf="__note">${(o.stageNotes||{})['採購議價']||''}</textarea></div>`;
 }
-function _tlBidToggle(){
-  const on=document.querySelector('[data-tlf="hasBidBond"]')?.checked;
-  ['bidBondDeadline','bidBondAppliedAt'].forEach(f=>{
-    const el=document.querySelector(`[data-tlf="${f}"]`); if(el){ el.disabled=!on; if(!on) el.value=''; }
-  });
+function _tlBidToggle(cb){
+  const amt=document.querySelector('[data-tlf="bidBondAmount"]'); if(amt) amt.disabled=!cb.checked;
 }
 
 // ── 驗收中（參與驗收＋啟用通知 checklist）──
@@ -8902,19 +8998,15 @@ function _tlAcceptPanel(o){
   const baseStart=dv(o.startDate);
   return `
     <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="needAcceptance" ${need?'checked':''} onchange="_tlAcceptToggle()"/><label>是否需要參與驗收</label></div>
-    <div class="tl-f" id="tlAccBook"><label>預約驗收日</label><input type="date" data-tlf="acceptBookDate" value="${dv(o.acceptBookDate)}" ${need?'':'disabled'}/></div>
-    <div class="tl-f"><label>客戶驗收完成</label><input type="date" data-tlf="clientAcceptedAt" value="${dv(o.clientAcceptedAt)}"/></div>
-    <div class="tl-f full"><label>訂期起始日（鎖定，須至「訂單資料」修改）</label><input type="date" value="${baseStart}" disabled/><span class="hint">此欄強制帶入訂單資料的訂期起始日，無法在此變更。</span></div>
+    <div class="tl-f" id="tlAccBook"><label>預約驗收日</label><input type="date" data-tlf="acceptBookDate" value="${dv(o.acceptBookDate)}" data-caltitle="驗收" ${need?'':'disabled'}/></div>
+    <div class="tl-f"><label>客戶驗收完成（選填）</label><input type="date" data-tlf="clientAcceptedAt" value="${dv(o.clientAcceptedAt)}" data-nocal/></div>
+    <div class="tl-f full"><label>訂期起始日（鎖定，須至「訂單資料」修改）</label><input type="date" value="${baseStart}" data-nocal disabled/><span class="hint">此欄強制帶入訂單資料的訂期起始日，無法在此變更。</span></div>
+    ${_tlChk(o,'activationNotice','已製作啟用通知',{word:'完成'})}
     <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['驗收中']||''}</textarea></div>`;
 }
 function _tlAcceptToggle(){
   const on=document.querySelector('[data-tlf="needAcceptance"]')?.checked;
   const el=document.querySelector('[data-tlf="acceptBookDate"]'); if(el){ el.disabled=!on; if(!on) el.value=''; }
-}
-function _tlActToggle(){
-  const on=document.querySelector('[data-tlf="activationNoticeProvided"]')?.checked;
-  const span=document.getElementById('tlActAt');
-  if(span) span.textContent = on ? ('✅ '+fmtDate(_isoDate(new Date()))+' 已標記') : '';
 }
 
 function _tlSetFu(n){
@@ -8926,15 +9018,23 @@ function _tlSetFu(n){
 function _tlOpenQuote(){ if(typeof openQuoteModal==='function') openQuoteModal(_tlOrderId); }
 function _tlOpenDelivery(){ const o=dbLoad().orders.find(x=>x.id===_tlOrderId); if(typeof openDeliveryModal==='function') openDeliveryModal(o?.clientId, _tlOrderId); }
 function _tlOpenInvoice(){ if(typeof openInvoiceModal==='function') openInvoiceModal(_tlOrderId); }
+function _tlResetInvoice(){
+  if(!confirm('確定要重設「申請開發票」的時間嗎？')) return;
+  const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
+  o.invoiceAppliedAt=null; o.updatedAt=new Date().toISOString(); dbSave(db);
+  showToast('已重設申請開發票時間'); _tlRender();
+}
 
 // ── 加入 Google 日曆（透過後端 Apps Script CalendarApp）──
 function _tlDecorateCal(){
   const right=document.getElementById('tlRight'); if(!right) return;
   right.querySelectorAll('input[type="date"]').forEach(inp=>{
     if(inp.disabled) return;
+    if(inp.hasAttribute('data-nocal')) return;
     if(inp.nextElementSibling && inp.nextElementSibling.classList?.contains('tl-cal-btn')) return;
     const labEl=inp.closest('.tl-f')?.querySelector('label');
-    const title=(labEl?labEl.textContent:'訂單日期').replace(/[（(].*$/,'').replace(/＋一年/,'').trim();
+    const rawTitle=(labEl?labEl.textContent:'訂單日期').replace(/[（(].*$/,'').replace(/＋一年/,'').trim();
+    const title=inp.getAttribute('data-caltitle')||rawTitle;  // 指定標題前綴（截標/交貨/驗收/決標/客服）
     const btn=document.createElement('button');
     btn.type='button'; btn.className='tl-cal-btn'; btn.textContent='📅 加入日曆';
     btn.addEventListener('click',()=>_tlAddCal(inp.value, title, btn));
@@ -8944,7 +9044,7 @@ function _tlDecorateCal(){
 async function _tlAddCal(dateVal, title, btn){
   if(!dateVal){ showToast('這個欄位還沒填日期','error'); return; }
   const o=dbLoad().orders.find(x=>x.id===_tlOrderId)||{}; const c=getClientById(o.clientId)||{};
-  const evTitle=`${title}｜${c.shortName||''} ${o.productName||''}`.trim();
+  const evTitle=`[${title}] ${c.shortName||''} ${o.productName||''}`.trim();
   const details=`訂單追蹤（工作管理系統）\n客戶：${c.fullName||c.shortName||''}\n產品：${o.productName||''}\n案號：${o.caseNo||''}`;
   const old=btn?btn.textContent:''; if(btn){ btn.textContent='加入中…'; btn.disabled=true; }
   try{
@@ -8995,18 +9095,22 @@ function _tlSave(setStatus){
       dealTwd:parseInt(String(s.dealTwd).replace(/[^0-9.\-]/g,''))||0,
     })).filter(s=>s.productName||s.costTwd||s.quoteTwd||s.dealTwd) : [];
   }
-  // 詢價中：已收到詢價打勾時記錄時間戳
-  if(_tlView==='詢價中'){
-    if(o.inquiryReceived && !o.inquiryReceivedAt) o.inquiryReceivedAt=_isoDate(new Date());
-    if(!o.inquiryReceived) o.inquiryReceivedAt=null;
+  // 共用 checklist：收集所有 data-check → o.checks[key]=完成日
+  o.checks=o.checks||{};
+  right.querySelectorAll('[data-check]').forEach(cb=>{
+    const k=cb.dataset.check;
+    if(cb.checked){ if(!o.checks[k]) o.checks[k]=_isoDate(new Date()); }
+    else o.checks[k]=null;
+  });
+  // 已提案：已寄出報價單 ↔ 訂單資料報價日期 同步（以訂單資料為主）
+  if(_tlView==='已提案/草報價'){
+    if(o.checks.quoteSent && !o.quoteDate) o.quoteDate=_isoDate(new Date());
+    if(o.checks.quoteSent && o.quoteDate) o.checks.quoteSent=o.quoteDate;
   }
-  // 可開發票：啟用通知打勾時記錄時間戳（無需通知則清空）
-  if(_tlView==='可開發票'){
-    if(o.activationNoticeNotNeeded){ o.activationNoticeProvided=false; o.activationNoticeAt=null; }
-    else {
-      if(o.activationNoticeProvided && !o.activationNoticeAt) o.activationNoticeAt=_isoDate(new Date());
-      if(!o.activationNoticeProvided) o.activationNoticeAt=null;
-    }
+  // 履約期間：客服／維護小表格
+  if(_tlView==='履約期間'){
+    _tlCollectSvc();
+    o.serviceLog=_tlSvc.filter(r=>r.issue||r.due).map(r=>({kind:r.kind||'客服',cat:r.cat||'客服',replied:!!r.replied,issue:r.issue||'',due:r.due||null}));
   }
   const fuEl=right.querySelector('[data-tlfu]');
   if(fuEl){ o.followUp=o.followUp||{}; o.followUp[_tlView]=fuEl.value||null; }
@@ -9029,10 +9133,12 @@ window._tlClose=_tlClose; window._tlSave=_tlSave; window._tlSetStatus=_tlSetStat
 window.openOrderTimeline=openOrderTimeline;
 window._tlFillOneYear=_tlFillOneYear; window._tlPriceCalc=_tlPriceCalc; window._tlToggleAuto=_tlToggleAuto;
 window._tlLinkedChange=_tlLinkedChange; window._tlToggleSplit=_tlToggleSplit; window._tlAddSplit=_tlAddSplit; window._tlRemoveSplit=_tlRemoveSplit;
-window._tlBidToggle=_tlBidToggle; window._tlAcceptToggle=_tlAcceptToggle; window._tlActToggle=_tlActToggle;
+window._tlBidToggle=_tlBidToggle; window._tlAcceptToggle=_tlAcceptToggle;
 window._tlSetFu=_tlSetFu; window._tlOpenQuote=_tlOpenQuote;
-window._tlInquiryToggle=_tlInquiryToggle; window._tlContractToggle=_tlContractToggle; window._tlNoNoticeToggle=_tlNoNoticeToggle;
-window._tlOpenDelivery=_tlOpenDelivery; window._tlOpenInvoice=_tlOpenInvoice;
+window._tlContractToggle=_tlContractToggle; window._tlPerfBondToggle=_tlPerfBondToggle;
+window._tlChkToggle=_tlChkToggle; window._tlInquiryReceived=_tlInquiryReceived;
+window._tlAddSvc=_tlAddSvc; window._tlRmSvc=_tlRmSvc;
+window._tlOpenDelivery=_tlOpenDelivery; window._tlOpenInvoice=_tlOpenInvoice; window._tlResetInvoice=_tlResetInvoice;
 window._tlAddCal=_tlAddCal; window._tlDecorateCal=_tlDecorateCal;
 // 🧪 原型測試模式：不同步到正式資料（編輯只在本機、重整還原）
 window.__ROLE_VIEWER__ = true;
