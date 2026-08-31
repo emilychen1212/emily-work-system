@@ -1762,6 +1762,18 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-chk-done{font-size:11px;color:var(--text-secondary);font-weight:600;display:inline-flex;align-items:center;gap:5px;}
 .tl-chk-done:empty{display:none;}
 .tl-chk-date{border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:11px;font-family:inherit;background:#fff;color:var(--text-primary);}
+.tl-dh{justify-content:flex-start !important;}
+.tl-note-btn{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px 8px;font-size:14px;cursor:pointer;line-height:1;}
+.tl-note-btn:hover{border-color:var(--warm);}
+.tl-note-btn.has{border-color:var(--warm);background:var(--surface2);}
+.tl-note-btn.has i{position:absolute;top:-3px;right:-3px;width:8px;height:8px;background:var(--warm);border-radius:50%;}
+.tl-note-pop{position:fixed;inset:0;z-index:700;background:rgba(30,32,41,.4);display:flex;align-items:center;justify-content:center;padding:20px;}
+.tl-note-card{background:var(--surface);border-radius:14px;padding:20px;width:min(460px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.tl-note-h{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px;display:flex;flex-direction:column;gap:2px;}
+.tl-note-h span{font-size:11px;font-weight:500;color:var(--text-muted);}
+.tl-note-card textarea{width:100%;min-height:120px;border:1.5px solid var(--border);border-radius:9px;padding:10px 12px;font-size:13.5px;font-family:inherit;background:#fff;color:var(--text-primary);resize:vertical;line-height:1.6;}
+.tl-note-card textarea:focus{outline:none;border-color:var(--warm);}
+.tl-note-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
 .tl-money{width:160px !important;margin-left:8px;padding:9px 11px !important;font-size:14px !important;font-weight:600;text-align:right;}
 /* 客服／維護 打橫單列表格 */
 .tl-svc-wrap{grid-column:1/-1;}
@@ -8669,7 +8681,7 @@ function _tlDetail(){
   // ── 訂單資料（基本＋價格＋成交＋拆項）──
   if(stage.key==='__base__'){
     right.innerHTML=`
-      <div class="tl-dh"><h3>訂單資料</h3><span class="tl-stag done">基本資料</span></div>
+      <div class="tl-dh"><h3>訂單資料</h3><span class="tl-stag done">基本資料</span>${_tlNoteBtn(o)}</div>
       ${_tlBasePanel(o)}
       <div class="tl-acts"><button class="tl-btn primary" onclick="_tlSave()">儲存</button></div>`;
     _tlBaseInit(o);
@@ -8733,7 +8745,7 @@ function _tlDetail(){
     </div>`;
 
   right.innerHTML=`
-    <div class="tl-dh"><h3>${stage.label}</h3><span class="tl-stag ${st}">${stagTxt}</span></div>
+    <div class="tl-dh"><h3>${stage.label}</h3><span class="tl-stag ${st}">${stagTxt}</span>${_tlNoteBtn(o)}</div>
     ${isPar?'<div class="tl-parbanner">「決標＆契約書簽訂中／出貨中／驗收中／可開發票」沒有固定先後順序，可同時編輯、各自追蹤，不用等其中一個完成。</div>':''}
     ${docBlock}
     <div class="tl-grid">${bodyInner}${fuBlock}</div>
@@ -9096,6 +9108,35 @@ function _tlSetFu(n){
   if(typeof updateRocHint==='function') updateRocHint(el);
 }
 function _tlFmtMoney(el){ const n=String(el.value).replace(/[^0-9]/g,''); el.value = n?('NT$ '+parseInt(n).toLocaleString('zh-TW')):''; }
+// ── 狀態備註（便條紙）：編輯 o.statusNote，顯示在訂單狀態標籤／儀表板 ──
+function _tlNoteBtn(o){
+  const has=!!(o.statusNote&&o.statusNote.trim());
+  const tip=has?('狀態備註：'+o.statusNote.replace(/"/g,'&quot;')):'新增狀態備註';
+  return `<button type="button" class="tl-note-btn ${has?'has':''}" onclick="_tlEditStatusNote()" title="${tip}">📝${has?'<i></i>':''}</button>`;
+}
+function _tlEditStatusNote(){
+  const o=dbLoad().orders.find(x=>x.id===_tlOrderId); if(!o) return;
+  document.getElementById('tlNotePop')?.remove();
+  const pop=document.createElement('div'); pop.id='tlNotePop'; pop.className='tl-note-pop';
+  pop.innerHTML=`<div class="tl-note-card">
+    <div class="tl-note-h">📝 狀態備註<span>會顯示在訂單狀態標籤與儀表板（最近一次）</span></div>
+    <textarea id="tlNoteTa" placeholder="快速記一下這個狀態的近況／卡住的點…">${(o.statusNote||'').replace(/</g,'&lt;')}</textarea>
+    <div class="tl-note-acts">
+      <button type="button" class="tl-btn" onclick="_tlCloseNote()">取消</button>
+      <button type="button" class="tl-btn primary" onclick="_tlSaveNote()">儲存備註</button>
+    </div></div>`;
+  pop.addEventListener('click',e=>{ if(e.target===pop) _tlCloseNote(); });
+  document.body.appendChild(pop);
+  setTimeout(()=>document.getElementById('tlNoteTa')?.focus(),30);
+}
+function _tlCloseNote(){ document.getElementById('tlNotePop')?.remove(); }
+function _tlSaveNote(){
+  const ta=document.getElementById('tlNoteTa'); if(!ta) return;
+  const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
+  o.statusNote=ta.value.trim(); o.updatedAt=new Date().toISOString(); dbSave(db);
+  renderOrdersGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  _tlCloseNote(); showToast('已更新狀態備註'); _tlRender();
+}
 function _tlOpenQuote(){ if(typeof openQuoteModal==='function') openQuoteModal(_tlOrderId); }
 function _tlOpenDelivery(){ const o=dbLoad().orders.find(x=>x.id===_tlOrderId); if(typeof openDeliveryModal==='function') openDeliveryModal(o?.clientId, _tlOrderId); }
 function _tlOpenInvoice(){ if(typeof openInvoiceModal==='function') openInvoiceModal(_tlOrderId); }
@@ -9245,6 +9286,7 @@ window._tlContractToggle=_tlContractToggle; window._tlPerfBondToggle=_tlPerfBond
 window._tlChkToggle=_tlChkToggle; window._tlInquiryReceived=_tlInquiryReceived;
 window._tlAddSvc=_tlAddSvc; window._tlRmSvc=_tlRmSvc; window._tlSvcCal=_tlSvcCal;
 window._tlFmtMoney=_tlFmtMoney; window._tlAddCalRaw=_tlAddCalRaw; window._tlAutoSaveScheduled=_tlAutoSaveScheduled;
+window._tlEditStatusNote=_tlEditStatusNote; window._tlCloseNote=_tlCloseNote; window._tlSaveNote=_tlSaveNote;
 window._tlOpenDelivery=_tlOpenDelivery; window._tlOpenInvoice=_tlOpenInvoice; window._tlResetInvoice=_tlResetInvoice;
 window._tlAddCal=_tlAddCal; window._tlDecorateCal=_tlDecorateCal;
 // 🧪 原型測試模式：不同步到正式資料（編輯只在本機、重整還原）
