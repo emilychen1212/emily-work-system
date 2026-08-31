@@ -683,7 +683,7 @@ ul { list-style: none; }
   position: fixed;
   inset: 0;
   background: rgba(30, 32, 41, 0.45);
-  z-index: 100;
+  z-index: 500;
   align-items: center;
   justify-content: center;
   padding: 20px;
@@ -1685,6 +1685,160 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
   padding:6px 10px;background:rgba(63,79,113,0.06);
   border-radius:6px;margin-top:4px;text-align:right;
 }
+
+/* ── 訂單時間軸編輯器（原型）── */
+#tlModal{position:fixed;inset:0;z-index:200;background:rgba(30,32,41,.5);display:none;}
+#tlModal.open{display:block;}
+.tl-shell{position:absolute;inset:24px;background:var(--surface,#fff);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;overflow:hidden;}
+.tl-top{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--navy);color:#fff;flex-shrink:0;}
+.tl-top .tl-cli{font-family:"Noto Serif TC","Songti TC",serif;font-size:17px;font-weight:600;}
+.tl-top .tl-prod{font-size:12.5px;color:rgba(255,255,255,.7);}
+.tl-top .tl-amt{font-size:13px;color:#cfe3d4;font-weight:700;margin-left:auto;}
+.tl-top .tl-x{background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;flex-shrink:0;}
+.tl-body{flex:1;display:flex;overflow:hidden;}
+.tl-left{width:290px;min-width:290px;border-right:1px solid var(--border);overflow-y:auto;padding:14px 0;background:var(--surface2);}
+.tl-legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:0 18px 12px;font-size:10.5px;color:var(--text-muted);}
+.tl-legend i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:middle;}
+.tl-item{position:relative;padding:11px 16px 11px 40px;cursor:pointer;border-left:3px solid transparent;}
+.tl-item:hover{background:rgba(0,0,0,.03);}
+.tl-item.viewing{background:#ffffff;border-left-color:var(--navy);}
+.tl-node{position:absolute;left:15px;top:14px;width:13px;height:13px;border-radius:50%;border:2.5px solid #c9c4b4;background:var(--surface);z-index:2;}
+.tl-line{position:absolute;left:20.5px;top:27px;bottom:-11px;width:2px;background:var(--border);z-index:1;}
+.tl-item:last-child .tl-line{display:none;}
+.tl-item.done .tl-node{border-color:#4A5D4E;background:#4A5D4E;}
+.tl-item.done .tl-line{background:#4A5D4E;}
+.tl-item.active .tl-node{border-color:var(--navy);background:var(--navy);box-shadow:0 0 0 4px rgba(43,58,66,.14);}
+.tl-item.overdue .tl-node{border-color:#A94E3E;background:#A94E3E;box-shadow:0 0 0 4px rgba(169,78,62,.16);}
+.tl-ttl{font-size:13px;font-weight:600;color:var(--text-primary);}
+.tl-item.pending .tl-ttl{color:var(--text-muted);font-weight:500;}
+.tl-meta{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.tl-item.overdue .tl-meta{color:#A94E3E;font-weight:600;}
+.tl-par-tag{font-size:9px;font-weight:700;color:var(--warm);background:rgba(166,138,109,.14);border-radius:8px;padding:1px 6px;margin-left:5px;vertical-align:middle;}
+.tl-badge{display:inline-block;font-size:9.5px;padding:1px 7px;border-radius:10px;margin-top:3px;background:#A94E3E;color:#fff;font-weight:700;}
+.tl-right{flex:1;overflow-y:auto;padding:22px 26px;}
+.tl-dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap;}
+.tl-dh h3{font-family:"Noto Serif TC","Songti TC",serif;font-size:19px;color:var(--navy);margin:0;}
+.tl-stag{font-size:11.5px;padding:3px 11px;border-radius:20px;font-weight:700;}
+.tl-stag.done{background:rgba(74,93,78,.14);color:#4A5D4E;}
+.tl-stag.active{background:rgba(43,58,66,.12);color:var(--navy);}
+.tl-stag.overdue{background:rgba(169,78,62,.14);color:#A94E3E;}
+.tl-stag.pending{background:rgba(138,133,120,.14);color:var(--text-muted);}
+.tl-parbanner{font-size:12px;color:var(--warm);background:rgba(166,138,109,.1);border:1px solid rgba(166,138,109,.25);border-radius:10px;padding:9px 13px;margin-bottom:14px;}
+.tl-notreach{border:1px dashed var(--border);border-radius:12px;padding:38px;text-align:center;color:var(--text-muted);font-size:13px;}
+.tl-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;}
+.tl-f{display:flex;flex-direction:column;gap:5px;}
+.tl-f.full{grid-column:1/-1;}
+.tl-f label{font-size:12px;color:var(--text-secondary);font-weight:600;}
+.tl-f input,.tl-f select,.tl-f textarea{border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit;background:#ffffff;color:var(--text-primary);}
+.tl-f input:focus,.tl-f select:focus,.tl-f textarea:focus{outline:none;border-color:var(--warm);background:#ffffff;}
+.tl-f input[readonly]{background:#f4f2ec;color:var(--text-secondary);}
+.tl-f textarea{min-height:60px;resize:vertical;}
+.tl-f .roc{font-size:10.5px;color:var(--warm);font-weight:600;}
+.tl-f .hint{font-size:10.5px;color:var(--text-muted);}
+.tl-chk{flex-direction:row;align-items:center;gap:8px;}
+.tl-chk input{width:16px;height:16px;}
+.tl-section-label{font-size:12.5px;font-weight:700;color:var(--navy);margin:16px 2px 8px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.tl-grid + .tl-grid{margin-top:2px;}
+.tl-mini-btn{font-size:10px;font-weight:600;padding:1px 7px;margin-left:6px;border:1px solid var(--warm);background:var(--surface);color:var(--warm);border-radius:8px;cursor:pointer;}
+.tl-mini-btn.danger{border-color:#A94E3E;color:#A94E3E;}
+.tl-auto{font-size:10px;font-weight:500;color:var(--text-muted);margin-left:6px;display:inline-flex;align-items:center;gap:3px;cursor:pointer;}
+.tl-auto input{width:13px;height:13px;}
+.tl-fu-quick{margin-top:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--text-secondary);}
+.tl-fu-btn{font-size:11px;font-weight:600;padding:3px 10px;border:1px solid var(--navy);background:var(--surface);color:var(--navy);border-radius:8px;cursor:pointer;}
+.tl-fu-btn:hover{background:var(--navy);color:#fff;}
+.tl-quote-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:12px;}
+.tl-quote-status{font-size:12px;color:var(--text-secondary);}
+.tl-btn.ghost{background:var(--surface);border:1.5px solid var(--warm);color:var(--warm);}
+.tl-split-row{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;background:var(--surface);}
+.tl-split-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.tl-cal-btn{margin-top:6px;align-self:flex-start;font-size:11px;font-weight:600;padding:3px 10px;border:1px solid var(--warm);background:var(--surface);color:var(--warm);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}
+.tl-cal-btn:hover{background:var(--warm);color:#fff;}
+.tl-cal-btn.done{border-color:#4A5D4E;color:#4A5D4E;}
+.tl-alert{grid-column:1/-1;background:#F6E4DE;border:1px solid #D9A491;color:#8A3B28;border-radius:9px;padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:4px;}
+.tl-bidclose{grid-column:1/-1;}
+.tl-bidclose label{font-size:15px !important;color:#A4472F !important;font-weight:800 !important;}
+.tl-bidclose input{border-color:#C56B54 !important;border-width:2px !important;font-size:16px !important;font-weight:700;color:#A4472F;}
+.tl-savestat{font-size:11px;color:#cfe3d4;font-weight:600;margin-left:14px;white-space:nowrap;}
+.tl-chk-done{font-size:11px;color:var(--text-secondary);font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+.tl-chk-done:empty{display:none;}
+.tl-chk-date{border:1px solid var(--warm);border-radius:5px;padding:3px 7px;font-size:11px;font-family:inherit;background:#fff;color:var(--text-primary);cursor:pointer;}
+.tl-chk-date:hover{background:var(--surface2);}
+.tl-chk-roc{font-size:10.5px;color:var(--warm);font-weight:600;}
+/* 訂單管理主頁：左時間軸階段框架 / 右該階段的訂單卡片 */
+.om-split{display:flex;gap:20px;padding:6px 24px 24px;align-items:stretch;height:calc(100vh - 200px);min-height:480px;}
+.om-stages{flex:0 0 260px;overflow-y:auto;padding:8px 0;background:var(--surface2);border:1px solid var(--border);border-radius:14px;}
+.om-orders{flex:1;min-width:0;overflow-y:auto;}
+.om-empty{display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13.5px;border:1.5px dashed var(--border);border-radius:14px;background:var(--surface2);text-align:center;padding:40px 20px;margin-top:8px;}
+/* 左：垂直階段時間軸 */
+.om-stage-item{position:relative;display:flex;align-items:center;gap:10px;padding:10px 16px 10px 40px;cursor:pointer;border-left:3px solid transparent;}
+.om-stage-item:hover{background:rgba(0,0,0,.03);}
+.om-stage-item.active{background:var(--surface);border-left-color:var(--navy);}
+.om-stage-node{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:12px;height:12px;border-radius:50%;border:2.5px solid #c9c4b4;background:var(--surface);z-index:2;}
+.om-stage-item.active .om-stage-node{border-color:var(--navy);background:var(--navy);box-shadow:0 0 0 4px rgba(43,58,66,.14);}
+.om-stage-node.all{border-color:var(--warm);background:var(--warm);}
+.om-stage-line{position:absolute;left:21px;top:-50%;height:100%;width:2px;background:var(--border);z-index:1;}
+.om-stage-lbl{font-size:13px;font-weight:600;color:var(--text-primary);flex:1;line-height:1.3;}
+.om-stage-item.empty .om-stage-lbl{color:var(--text-muted);font-weight:500;}
+.om-par{font-size:9px;font-weight:600;color:var(--accent,#2E6B5E);background:var(--surface2);border-radius:6px;padding:1px 5px;margin-left:5px;}
+.om-stage-cnt{font-size:12px;font-weight:700;color:#fff;background:var(--navy);border-radius:11px;min-width:22px;text-align:center;padding:1px 7px;}
+.om-stage-item.empty .om-stage-cnt{background:#c9c4b4;}
+.om-stage-item.all .om-stage-cnt{background:var(--warm);}
+/* 右：訂單卡片 */
+.om-orders-head{font-size:15px;font-weight:700;color:var(--navy);margin:2px 2px 12px;font-family:"Noto Serif TC",serif;}
+.om-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+.om-card{border:1.5px solid var(--border);border-radius:11px;padding:11px 13px;background:var(--surface);cursor:pointer;transition:border-color .12s,box-shadow .12s;}
+.om-card:hover{border-color:var(--warm);box-shadow:0 3px 10px rgba(0,0,0,.06);}
+.om-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.om-card-prod{font-size:13px;font-weight:500;color:var(--text-primary);line-height:1.4;}
+.om-card-prod b{font-weight:700;}
+.om-card-tag{font-size:11px;font-weight:600;color:#fff;border-radius:20px;padding:2px 9px;white-space:nowrap;}
+.om-card-meta{font-size:11px;color:var(--text-muted);margin-top:6px;}
+.om-card-note{font-size:11.5px;color:var(--warm);margin-top:6px;background:var(--surface2);border-radius:6px;padding:3px 7px;line-height:1.4;}
+.om-card.alert-warn{border-color:#D9A491;background:#FBF0EA;}
+.om-card.alert-danger{border-color:#C56B54;background:#F6E4DE;}
+.om-card-alert{font-size:11.5px;font-weight:600;color:#A4472F;margin-top:7px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.om-card-snooze{display:flex;gap:5px;}
+.om-card-snooze button{font-size:10.5px;font-weight:600;border:1px solid #C56B54;background:#fff;color:#A4472F;border-radius:7px;padding:1px 7px;cursor:pointer;}
+.om-card-snooze button:hover{background:#A4472F;color:#fff;}
+.tl-dh{justify-content:flex-start !important;}
+.tl-note-btn{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px 8px;font-size:14px;cursor:pointer;line-height:1;}
+.tl-note-btn:hover{border-color:var(--warm);}
+.tl-note-btn.has{border-color:var(--warm);background:var(--surface2);}
+.tl-note-btn.has i{position:absolute;top:-3px;right:-3px;width:8px;height:8px;background:var(--warm);border-radius:50%;}
+.tl-note-pop{position:fixed;inset:0;z-index:700;background:rgba(30,32,41,.4);display:flex;align-items:center;justify-content:center;padding:20px;}
+.tl-note-card{background:var(--surface);border-radius:14px;padding:20px;width:min(460px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.tl-note-h{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px;display:flex;flex-direction:column;gap:2px;}
+.tl-note-h span{font-size:11px;font-weight:500;color:var(--text-muted);}
+.tl-note-card textarea{width:100%;min-height:120px;border:1.5px solid var(--border);border-radius:9px;padding:10px 12px;font-size:13.5px;font-family:inherit;background:#fff;color:var(--text-primary);resize:vertical;line-height:1.6;}
+.tl-note-card textarea:focus{outline:none;border-color:var(--warm);}
+.tl-note-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+.tl-money{width:160px !important;margin-left:8px;padding:9px 11px !important;font-size:14px !important;font-weight:600;text-align:right;}
+/* 客服／維護 打橫單列表格 */
+.tl-svc-wrap{grid-column:1/-1;}
+.tl-svc-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.tl-svc-add{white-space:nowrap;font-size:12px;font-weight:600;padding:5px 12px;border:1px solid var(--warm);background:var(--surface);color:var(--warm);border-radius:8px;cursor:pointer;}
+.tl-svc-add:hover{background:var(--warm);color:#fff;}
+.tl-svc-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;}
+.tl-svc-tbl{min-width:820px;}
+.tl-svc-head,.tl-svc-line{display:grid;grid-template-columns:52px 74px 108px minmax(120px,1fr) 168px minmax(150px,1.3fr) 34px;gap:8px;align-items:center;padding:8px 10px;}
+.tl-svc-head{background:var(--surface2);font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--line);text-align:center;}
+.tl-svc-head span:nth-child(4),.tl-svc-head span:nth-child(6){text-align:left;}
+.tl-svc-line{border-top:1px solid var(--line-soft);}
+.tl-svc-line:first-of-type{border-top:none;}
+.tl-svc-line select,.tl-svc-line input[type="text"],.tl-svc-line input[type="date"],.tl-svc-issue{border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text-primary);width:100%;}
+.tl-svc-chk{display:flex;justify-content:center;}
+.tl-svc-chk input{width:16px;height:16px;}
+.tl-svc-date{display:flex;align-items:center;gap:4px;}
+.tl-svc-date .tl-cal-btn{margin-top:0;padding:5px 7px;flex:0 0 auto;}
+.tl-svc-issue{min-height:36px;resize:vertical;line-height:1.4;}
+.tl-svc-del{background:none;border:none;cursor:pointer;font-size:16px;opacity:.65;padding:2px;justify-self:center;}
+.tl-svc-del:hover{opacity:1;}
+.tl-svc-empty{padding:16px;text-align:center;color:var(--text-muted);font-size:12.5px;}
+.tl-acts{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+.tl-btn{border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;}
+.tl-btn.primary{background:var(--navy);color:#fff;}
+.tl-btn.ghost{background:var(--surface2);color:var(--text-secondary);border:1px solid var(--border);}
+.tl-btn.setcur{background:#4A5D4E;color:#fff;}
 
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -4121,7 +4275,6 @@ function renderOrdersGrid() {
     { key:'productType', label:'類別' },
     { key:'productName', label:'產品名稱' },
     { key:'period',      label:'訂期' },
-    { key:'actions',     label:'操作' },
     { key:'quoteDate',   label:'報價日期' },
     { key:'currency',    label:'幣別' },
     { key:'dealTwd',     label:'成交金額(台幣)' },
@@ -4137,6 +4290,7 @@ function renderOrdersGrid() {
     { key:'caseNo',      label:'採購案號' },
     { key:'updatedAt',   label:'最近更新' },
     { key:'quoteNote',   label:'報價備註' },
+    { key:'del',         label:'' },
   ];
 
   const thead = cols.map(c => `<th>${c.label}</th>`).join('');
@@ -4171,22 +4325,6 @@ function renderOrdersGrid() {
       <td>${o.productType||'—'}</td>
       <td class="wrap-cell">${childLabel}${o.productName||'—'}</td>
       <td>${o.startDate ? fmtDate(o.startDate)+'～'+fmtDate(o.endDate) : '—'}</td>
-      <td>
-        <div class="row-actions">
-          ${o.status === '詢價中' ? `<button data-inquiry-sent="${o.id}" title="${o.inquirySentAt ? '已寄出詢價信 ' + fmtDate(o.inquirySentAt) : '標記詢價信已寄出'}" style="opacity:${o.inquirySentAt?'1':'0.45'};font-size:13px;">✉️</button>` : ''}
-          ${['採購議價','契約書簽訂中','出貨中'].includes(o.status) ? `<button data-milestone-contract-received="${o.id}" title="${o.contractReceivedAt ? '✅ 合約收到 '+fmtDate(o.contractReceivedAt) : '標記已收到客戶合約'}" style="font-size:13px;${o.contractReceivedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">📨</button>` : ''}
-          ${['契約書簽訂中','出貨中','驗收中'].includes(o.status) ? `<button data-milestone-delivery-order="${o.id}" title="${o.deliveryOrderSubmittedAt ? '✅ 出貨單完成 '+fmtDate(o.deliveryOrderSubmittedAt) : '標記出貨單已完成送出'}" style="font-size:13px;${o.deliveryOrderSubmittedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">📦</button>` : ''}
-          ${['驗收中','可開發票'].includes(o.status) ? `<button data-milestone-client-accepted="${o.id}" title="${o.clientAcceptedAt ? '✅ 驗收完成 '+fmtDate(o.clientAcceptedAt) : '標記客戶通知驗收完成'}" style="font-size:13px;${o.clientAcceptedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">🎯</button>` : ''}
-          ${['發票確認中','履約期間'].includes(o.status) ? `<button data-milestone-contract-returned="${o.id}" title="${o.contractReturnedAt ? '✅ 合約簽回 '+fmtDate(o.contractReturnedAt) : '標記已收回客戶簽回合約'}" style="font-size:13px;${o.contractReturnedAt?'background:#B0B8BE;color:#fff;border-radius:5px;padding:1px 4px;cursor:default;':'opacity:0.4;'}">🔁</button>` : ''}
-          ${o.status === '履約結束' && o.bondRefundStatus === 'pending' ? `<button data-bond-refund="${o.id}" title="履保金退款追蹤中 — 收到退款後點此，訂單正式結束" style="font-size:12px;background:#C06C4C;color:#fff;border-radius:5px;padding:1px 6px;">💰 追蹤退款</button>` : ''}
-          ${o.status === '履約結束' && o.bondRefundStatus === 'refunded' ? `<button data-bond-refund="${o.id}" title="履保金已於 ${o.bondRefundedAt?fmtDate(o.bondRefundedAt):''} 退回（點此可還原追蹤）" style="font-size:12px;background:#4A5D4E;color:#fff;border-radius:5px;padding:1px 6px;cursor:pointer;">💰✓ 已退款</button>` : ''}
-          ${!isChild ? `<button data-quote-order="${o.id}" title="生成報價單（Excel）">📋</button>` : ''}
-          ${!isChild ? `<button data-delivery-order="${o.id}" title="生成出貨確認單">📄</button>` : ''}
-          ${!isChild ? `<button data-invoice-order="${o.id}" title="開發票申請">💰</button>` : ''}
-          <button data-edit-order="${o.id}">✎ 編輯</button>
-          ${!isChild ? `<button class="del" data-delete-order="${o.id}">✕</button>` : ''}
-        </div>
-      </td>
       <td>${fmtDate(o.quoteDate)}</td>
       <td>${sym}</td>
       <td style="text-align:right;">${o.dealTwd ? 'NT$ '+fmtMoney(o.dealTwd) : '—'}</td>
@@ -4202,6 +4340,11 @@ function renderOrdersGrid() {
       <td>${o.caseNo||'—'}</td>
       <td>${fmtDateTime(o.updatedAt)}</td>
       <td class="wrap-cell" style="max-width:180px;color:var(--text-secondary);font-size:12px;">${o.quoteNote||'—'}</td>
+      <td style="text-align:center;white-space:nowrap;">
+        ${o.status === '履約結束' && o.bondRefundStatus === 'pending' ? `<button data-bond-refund="${o.id}" title="履保金退款追蹤中 — 收到退款後點此" style="font-size:12px;background:#C06C4C;color:#fff;border-radius:5px;padding:1px 6px;margin-right:4px;">💰追蹤</button>` : ''}
+        ${o.status === '履約結束' && o.bondRefundStatus === 'refunded' ? `<button data-bond-refund="${o.id}" title="履保金已退回（點此可還原）" style="font-size:12px;background:#4A5D4E;color:#fff;border-radius:5px;padding:1px 6px;margin-right:4px;cursor:pointer;">💰✓</button>` : ''}
+        ${!isChild ? `<button class="del" data-delete-order="${o.id}" title="刪除訂單">✕</button>` : ''}
+      </td>
     </tr>`;
   }
 
@@ -4284,8 +4427,8 @@ function renderOrdersGrid() {
 
   // Events
   wrap.querySelectorAll('.order-status-tag[data-order-id]').forEach(tag => {
-    tag.addEventListener('click', () => openStatusModal(tag.dataset.orderId,
-      orders.find(o=>o.id===tag.dataset.orderId)?.status));
+    tag.title = '點擊進入訂單時間軸（狀態切換請於時間軸中確認）';
+    tag.addEventListener('click', () => openOrderTimeline(tag.dataset.orderId));
   });
 
   // 子訂單預設隱藏
@@ -4434,7 +4577,7 @@ function renderOrdersGrid() {
     btn.addEventListener('click', () => openInvoiceModal(btn.dataset.invoiceOrder))
   );
   wrap.querySelectorAll('[data-edit-order]').forEach(btn =>
-    btn.addEventListener('click', () => openOrderModal(btn.dataset.editOrder))
+    btn.addEventListener('click', () => openOrderTimeline(btn.dataset.editOrder))
   );
   wrap.querySelectorAll('[data-contract-toggle]').forEach(row => {
     row.addEventListener('click', e => {
@@ -4542,11 +4685,9 @@ function buildOrderCard(o) {
     </div>
   `;
 
-  // Status tag click
-  card.querySelector('.order-status-tag').addEventListener('click', () => {
-    openStatusModal(o.id, o.status);
-  });
-  card.querySelector(`[data-edit-order]`).addEventListener('click', () => openOrderModal(o.id));
+  // Status tag click → 進入時間軸（不再直接切換狀態）
+  card.querySelector('.order-status-tag').addEventListener('click', () => openOrderTimeline(o.id));
+  card.querySelector(`[data-edit-order]`).addEventListener('click', () => openOrderTimeline(o.id));
   card.querySelector(`[data-delete-order]`).addEventListener('click', () => handleDeleteOrder(o.id));
 
   return card;
@@ -5328,11 +5469,6 @@ function renderOrderDashboard() {
       }).join('')
     : '<div class="dash-action-row"><span style="color:var(--text-muted);">目前無進行中訂單</span></div>';
 
-  // Warnings
-  const warningsHtml = alerts.length
-    ? alerts.map(a => `<div class="dash-warn-badge ${a.level}">${a.level === 'danger' ? '⚠' : '📋'} ${a.text}${a.canSnooze?`<span class="snooze-btns"><button onclick="snoozeOrderAlert('${a.orderId}',3)">+3天</button><button onclick="snoozeOrderAlert('${a.orderId}',7)">+7天</button></span>`:''}</div>`).join('')
-    : '<div class="dash-warn-badge ok">✓ 目前無逾期警示</div>';
-
   const dealWan = (monthDeal / 10000).toFixed(1);
   const dealCls = monthDeal > 0 ? 'ok' : '';
 
@@ -5351,8 +5487,6 @@ function renderOrderDashboard() {
         <div class="dash-ticker" id="orderTickerRows">${tickerHtml}</div>
       </div>
     </div>
-    <div class="dash-divider"></div>
-    <div class="dash-warnings" style="max-height:130px;overflow-y:auto;">${warningsHtml}</div>
   `;
 
   // 插入到預留的 slot
@@ -5410,49 +5544,72 @@ function buildOrderStatusTabs() {
   ).join('');
 }
 
+let _omStage = null; // null = 全部；否則為某階段 key
 function renderOrderGrid() {
-  const grid = document.getElementById('orderHomeGrid');
-  if (!grid) return;
-  const allOrders = getOrders().filter(o => !o.parentOrderId);
-  const allClients = getClients();
-  const clientMap = {};
-  allClients.forEach(c => { clientMap[c.id] = c; });
+  // 初始化早期可能在 TL_STAGES(const) 定義前被呼叫 → 用 try 保護，稍後會再重繪
+  try { renderOmStages(); renderOmOrders(); } catch (e) { /* deferred until TL_STAGES ready */ }
+}
 
-  // 「所有」分頁預設隱藏「履約結束」和「未開始」，也隱藏待確認狀態
-  const hiddenInAll = ['履約結束','未開始', ...STATUSES_PENDING];
-  let orders = currentOrderStatusTab === 'all'
-    ? allOrders.filter(o => !hiddenInAll.includes(o.status))
-    : currentOrderStatusTab === '__pending__'
-      ? allOrders.filter(o => STATUSES_PENDING.includes(o.status))
-      : allOrders.filter(o => o.status === currentOrderStatusTab);
-  orders = orders.sort((a, b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
-
+// 左側：時間軸階段框架（每階段顯示停在該階段的訂單數）
+function renderOmStages() {
+  const el = document.getElementById('omStages'); if (!el) return;
+  const orders = getOrders().filter(o => !o.parentOrderId);
+  const countOf = key => orders.filter(o => o.status === key).length;
+  const stages = TL_STAGES.filter(s => s.key !== '__base__');
   const countEl = document.getElementById('orderHomeCount');
   if (countEl) countEl.textContent = `${orders.length} 筆`;
 
-  if (!orders.length) {
-    grid.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13.5px;">此追蹤狀態目前無訂單</div>';
-    return;
-  }
-
-  grid.innerHTML = orders.map(o => {
-    const c = clientMap[o.clientId] || {};
-    const color = getStatusColor(o.status);
-    const cfg = ORDER_STATUS_ALERT[o.status];
-    const daysSince = o.updatedAt ? (new Date() - new Date(o.updatedAt)) / 86400000 : 0;
-    const isAlert = cfg && daysSince >= cfg.days;
-    return `<div class="home-q-row${isAlert ? ' order-row-alert' : ''}" data-client-id="${o.clientId}" style="padding:10px 14px;border-radius:8px;margin-bottom:6px;border:1.5px solid ${isAlert ? 'rgba(185,74,72,0.3)' : 'var(--border)'};background:${isAlert ? 'rgba(185,74,72,0.04)' : 'var(--surface)'};">
-      <span class="home-q-client">${c.shortName||'—'}</span>
-      <span class="home-q-product">${o.productName||'（未命名）'}</span>
-      <span class="home-q-tag" style="background:${getOrderStatusColor(o.status)};color:#fff;">${o.status}</span>
-      ${isAlert ? `<span style="font-size:11px;color:var(--danger);font-weight:600;">⚠ ${Math.floor(daysSince)}天</span>` : ''}
-      <span class="home-q-time" style="margin-left:auto;">${fmtDateTime(o.updatedAt).slice(5,16)}</span>
-    </div>`;
+  let html = `<div class="om-stage-item all ${_omStage===null?'active':''}" data-stage="__all__">
+      <div class="om-stage-node all"></div><div class="om-stage-lbl">全部訂單</div><div class="om-stage-cnt">${orders.length}</div></div>`;
+  html += stages.map(s => {
+    const c = countOf(s.key);
+    return `<div class="om-stage-item ${_omStage===s.key?'active':''} ${c?'':'empty'}" data-stage="${s.key}">
+      <div class="om-stage-line"></div><div class="om-stage-node"></div>
+      <div class="om-stage-lbl">${s.label}${s.par?'<span class="om-par">可平行</span>':''}</div>
+      <div class="om-stage-cnt">${c}</div></div>`;
   }).join('');
+  el.innerHTML = html;
+  el.querySelectorAll('.om-stage-item').forEach(it => it.addEventListener('click', () => {
+    _omStage = it.dataset.stage === '__all__' ? null : it.dataset.stage;
+    renderOmStages(); renderOmOrders();
+  }));
+}
 
-  grid.querySelectorAll('.home-q-row[data-client-id]').forEach(row => {
-    row.addEventListener('click', () => setActiveClient(row.dataset.clientId));
-  });
+// 右側：停在所選階段的客戶訂單卡片
+function renderOmOrders() {
+  const el = document.getElementById('omOrders'); if (!el) return;
+  const clients = getClients(); const cmap = {}; clients.forEach(c => cmap[c.id] = c);
+  let orders = getOrders().filter(o => !o.parentOrderId);
+  if (_omStage) orders = orders.filter(o => o.status === _omStage);
+  // 需警示的訂單 → 卡片紅底標示（取代原本右欄的訂單警示）
+  let alertMap = {};
+  try { (computeOrderKPI().alerts || []).forEach(a => { alertMap[a.orderId] = a; }); } catch (e) {}
+  // 排序：紅色警示優先（danger → warn → 一般），同級再依最近更新
+  const rank = o => { const a = alertMap[o.id]; return a ? (a.level === 'danger' ? 2 : 1) : 0; };
+  orders.sort((a,b) => (rank(b) - rank(a)) || (b.updatedAt||'').localeCompare(a.updatedAt||''));
+  const title = _omStage ? `${_omStage}（${orders.length}）` : `全部訂單（${orders.length}）`;
+  if (!orders.length) { el.innerHTML = `<div class="om-orders-head">${title}</div><div class="om-empty">此階段目前沒有訂單</div>`; return; }
+  el.innerHTML = `<div class="om-orders-head">${title}</div><div class="om-cards">` + orders.map(o => {
+    const c = cmap[o.clientId] || {};
+    const color = getOrderStatusColor(o.status);
+    const period = o.startDate ? `${fmtDate(o.startDate)}~${o.endDate?fmtDate(o.endDate):''}` : '未設定訂期';
+    const note = (o.statusNote && o.statusNote.trim()) ? `<div class="om-card-note">📝 ${o.statusNote.replace(/</g,'&lt;')}</div>` : '';
+    const al = alertMap[o.id];
+    const alertCls = al ? (al.level === 'danger' ? ' alert-danger' : ' alert-warn') : '';
+    const alertBadge = al ? `<div class="om-card-alert">⚠ ${(al.text.split('—')[1]||'需追蹤').trim()}
+      <span class="om-card-snooze"><button onclick="event.stopPropagation();snoozeOrderAlert('${o.id}',3)">+3天</button><button onclick="event.stopPropagation();snoozeOrderAlert('${o.id}',7)">+7天</button></span></div>` : '';
+    return `<div class="om-card${alertCls}" data-oid="${o.id}">
+      <div class="om-card-top">
+        <span class="om-card-prod"><b>${c.shortName||'—'}</b>｜${o.productName||'（未命名）'}</span>
+        ${_omStage?'':`<span class="om-card-tag" style="background:${color};">${o.status||'未設定'}</span>`}
+      </div>
+      <div class="om-card-meta">訂期 ${period}　·　更新 ${fmtDateTime(o.updatedAt).slice(5,16)}</div>
+      ${note}
+      ${alertBadge}
+    </div>`;
+  }).join('') + `</div>`;
+  el.querySelectorAll('.om-card[data-oid]').forEach(card =>
+    card.addEventListener('click', () => openOrderTimeline(card.dataset.oid)));
 }
 
 function renderHomePage() {
@@ -5470,22 +5627,16 @@ function renderHomePage() {
           ⬇ 匯入備份
           <input type="file" accept=".json" id="importFileInput" style="display:none;" />
         </label>
+        <button class="btn btn-ghost btn-sm" onclick="migrateOrdersV2Run()" title="一次性：把舊訂單資料轉成新版時間軸的 checklist 與階段（用既有日期回填）">🔄 一次性資料轉換</button>
       </div>
     </div>
     <div id="orderDashboardSlot"></div>
-    <div class="stage-tabs" id="orderStatusTabs">${buildOrderStatusTabs()}</div>
-    <div style="padding:16px 24px 40px;overflow-y:auto;">
-      <div id="orderHomeGrid"></div>
+    <div class="om-split">
+      <div class="om-stages" id="omStages"></div>
+      <div class="om-orders" id="omOrders"></div>
     </div>
   `;
 
-  page.querySelectorAll('[data-order-tab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      currentOrderStatusTab = btn.dataset.orderTab;
-      renderHomePage();
-      renderOrderDashboard();
-    });
-  });
   page.querySelector('#exportDataBtn').addEventListener('click', exportData);
   page.querySelector('#importFileInput').addEventListener('change', async e => {
     const file = e.target.files[0];
@@ -5684,111 +5835,97 @@ function computeDashboardItems() {
       ? (() => { const d = new Date(o.alertSnoozedUntil); d.setHours(0,0,0,0); return d; })()
       : null;
 
-    // ── 詢價中：雙階段邏輯 ──
-    if (o.status === '詢價中') {
-      const hardLimit = new Date(new Date(o.updatedAt).getTime() + 21*86400000);
-      const forced    = now >= hardLimit.getTime();
-      const snoozeHint = _snoozeDate ? `已延後至 ${fmtDate(_isoDate(_snoozeDate))}` : null;
+    // ══════ 訂單任務判斷（新版：依時間軸階段與 checklist）══════
+    const CK = o.checks || {};
+    const _GRP = {'詢價中':1,'已提案/草報價':2,'採購議價':3,'契約書簽訂中':4,'出貨中':4,'驗收中':4,'可開發票':4,'履約期間':5,'履約結束':6};
+    const curGrp = _GRP[o.status] || 0;
+    const _snoozeHint = _snoozeDate ? `已延後至 ${fmtDate(_isoDate(_snoozeDate))}` : null;
+    const _fu = (o.followUp || {})[o.status] || null;   // 該階段手動追蹤日
+    const _dPlus = (ds, n) => { const d = new Date(ds); d.setHours(0,0,0,0); d.setDate(d.getDate() + n); return d; };
 
-      if (!o.inquirySentAt) {
-        // 階段一：詢價信還沒寄 → 狀態更新後2天內要寫信
-        const base = new Date(o.updatedAt); base.setHours(0,0,0,0);
-        let actionDate = new Date(base); actionDate.setDate(base.getDate() + 2);
-        if (_snoozeDate && !forced) actionDate = _snoozeDate;
-        _pushItem(actionDate, '撰寫詢價信給PM', '📝', 0, snoozeHint); // 🔥 極緊急
-      } else {
-        // 階段二：詢價信已寄 → 5天後追蹤PM回覆
-        const base = new Date(o.inquirySentAt); base.setHours(0,0,0,0);
-        let actionDate = new Date(base); actionDate.setDate(base.getDate() + 5);
-        if (_snoozeDate && !forced) actionDate = _snoozeDate;
-        const sentLabel = `詢價信已於 ${fmtDate(o.inquirySentAt)} 寄出`;
-        _pushItem(actionDate, '追蹤PM詢價回覆', '📞', 1, [sentLabel, snoozeHint].filter(Boolean).join('\n')); // 🔴 高優先
+    // 詢價中：寫詢價信 → 追蹤詢價（已收到詢價則消失）→ 製作報價單
+    if (o.status === '詢價中') {
+      const _sent = CK.inquirySent || (o.inquirySentAt ? o.inquirySentAt.slice(0,10) : null);
+      if (!_sent) {
+        const a = _snoozeDate || (_fu ? new Date(_fu) : _dPlus(o.createdAt || o.updatedAt, 0));
+        _pushItem(a, '撰寫詢價信給PM', '📝', 1, _snoozeHint);
+      } else if (!CK.inquiryReceived) {
+        const a = _snoozeDate || (_fu ? new Date(_fu) : _dPlus(_sent, 5));
+        _pushItem(a, '追蹤詢價回覆', '📞', 1, [`詢價信已於 ${fmtDate(_sent)} 寄出`, _snoozeHint].filter(Boolean).join('\n'));
+      }
+      if (CK.inquiryReceived && !CK.quoteMade) _pushItem(_dPlus(CK.inquiryReceived, 0), '製作報價單', '📋', 1);
+      return;
+    }
+
+    // 已提案／草報價：製作報價單 → 依「預計追蹤客戶回覆時間」提醒
+    if (o.status === '已提案/草報價') {
+      if (!CK.quoteMade) _pushItem(_dPlus(o.updatedAt, 0), '製作報價單', '📋', 1);
+      const fu2 = _snoozeDate ? _isoDate(_snoozeDate) : _fu;
+      if (fu2) _pushItem(new Date(fu2), '確認客戶對報價回覆', '📋', 2, _snoozeHint);
+      return;
+    }
+
+    // 採購議價：製作標案文件（截標前5天）、申請押標金（截標前7天）
+    if (o.status === '採購議價') {
+      if (o.bidCloseDate && !CK.bidDocSent) _pushItem(_dPlus(o.bidCloseDate, -5), `製作標案文件（截標 ${fmtDate(o.bidCloseDate)}）`, '📝', 0, _snoozeHint);
+      if (o.hasBidBond && o.bidCloseDate && !CK.bidBondApplied) _pushItem(_dPlus(o.bidCloseDate, -7), '申請押標金', '🔐', 1);
+      return;
+    }
+
+    // 履約結束：強制結案 — 不再排出貨/啟用通知/追回等提醒，只保留申退履保金與退款追蹤
+    if (o.status === '履約結束') {
+      if (o.bondRefundStatus !== 'refunded') {
+        const base = _snoozeDate ? _isoDate(_snoozeDate) : (_fu || (o.endDate ? _isoDate(_dPlus(o.endDate, 30)) : null));
+        if (base) _pushItem(new Date(base), '申退履保金', '💰', 2, _snoozeHint);
+      }
+      if (o.bondRefundStatus === 'pending') {
+        const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        if (o.bondRefundSnoozedMonth !== ym) {
+          const d28 = new Date(today.getFullYear(), today.getMonth(), 28); d28.setHours(0, 0, 0, 0);
+          _pushItem(d28, '追蹤履保金退款是否入帳', '💰', 2, '打勾＝本月已追蹤/仍在等待，下個月再提醒', { bondSnoozeOrderId: o.id });
+        }
       }
       return;
     }
 
-    // ── 里程碑規則（獨立於狀態規則，按欄位是否存在觸發）──
+    // ══ 平行群組（決標/出貨/驗收/可開發票，grp≥4）＋後段：改用「欄位＋checklist」觸發，不綁精確狀態 ══
 
-    // 1. 收到客戶合約 → 當天提醒完成出貨單＋合約審閱表
-    if (o.contractReceivedAt && !o.deliveryOrderSubmittedAt) {
-      const base = new Date(o.contractReceivedAt); base.setHours(0,0,0,0);
-      _pushItem(base, '完成出貨單＋合約審閱表', '📝', 0);
-      _pushItem(base, '申請履保金＋申請印花稅', '🔐', 1);
+    // 決標日 → 製作出貨單（決標隔天；超過3天未送出 → 🔥 逾期警示）
+    if (o.contractReceivedAt && !CK.deliveryOrderSent) {
+      const overdue3 = now >= _dPlus(o.contractReceivedAt, 3).getTime();
+      _pushItem(_dPlus(o.contractReceivedAt, 1), overdue3 ? '⚠️ 逾期：製作出貨單' : '製作出貨單', '📦', overdue3 ? 0 : 1);
     }
-
-    // 2. 履保金繳納截止日 − 2天 / 當天
-    if (o.bondDeadline) {
-      const dl = new Date(o.bondDeadline); dl.setHours(0,0,0,0);
-      const warn = new Date(dl); warn.setDate(dl.getDate() - 2);
-      _pushItem(warn, `確認履保金繳納準備（截止 ${fmtDate(o.bondDeadline)}）`, '💰', 0);
-      _pushItem(dl,   '🚨 今日截止！繳納履保金', '💰', 0);
+    // 有履保金 → 申請履保金（履保金繳納截止前7天）
+    if (o.bondDeadline && (o.hasPerfBond || o.hasBidBond) && !CK.perfBondApplied) {
+      _pushItem(_dPlus(o.bondDeadline, -7), '申請履保金', '🔐', 1, `履保金截止 ${fmtDate(o.bondDeadline)}`);
     }
-
-    // 3. 出貨單完成 + 3天 → 可申請開立發票
-    if (o.deliveryOrderSubmittedAt && !o.clientAcceptedAt) {
-      const base = new Date(o.deliveryOrderSubmittedAt); base.setHours(0,0,0,0);
-      const inv = new Date(base); inv.setDate(base.getDate() + 3);
-      _pushItem(inv, '可申請開立發票（行政建案完成）', '🧾', 1);
+    // 需做合約 → 繳交合約（預計繳交合約日前3天）
+    if (o.needsContract && o.contractDueDate) {
+      _pushItem(_dPlus(o.contractDueDate, -3), '繳交合約', '✍️', 1, `預計繳交 ${fmtDate(o.contractDueDate)}`);
     }
-
-    // 4. 交貨日（長庚/明志型）
-    if (o.deliveryDate) {
-      const dd = new Date(o.deliveryDate); dd.setHours(0,0,0,0);
-      const prep = new Date(dd); prep.setDate(dd.getDate() - 5);
-      const check = new Date(dd); check.setDate(dd.getDate() - 2);
-      _pushItem(prep,  `完成出貨單（交貨日 ${fmtDate(o.deliveryDate)}，建案需3天）`, '📦', 0);
-      _pushItem(check, '確認發票＋啟用通知＋交貨文件齊備', '✅', 1);
-      _pushItem(dd,    '🚚 交貨日', '🚚', 0);
+    // 決標日 + 30天 仍未追回回簽合約 → 追回合約
+    if (o.contractReceivedAt && !CK.contractReturned) {
+      _pushItem(_dPlus(o.contractReceivedAt, 30), '追回客戶回簽合約', '🔁', 2);
     }
-
-    // 5. 客戶驗收完成 → 當天提醒申請開發票＋製作啟用通知（打勾標記完成後不再顯示）
-    if (o.clientAcceptedAt && !o.invoiceNoticeDoneAt) {
-      const base = new Date(o.clientAcceptedAt); base.setHours(0,0,0,0);
-      _pushItem(base, '申請開發票＋製作啟用通知', '🧾', 0, '打勾＝已完成，訂單狀態照常往下走', { invoiceNoticeOrderId: o.id });
-    }
-
-    // 6. 追回簽回合約（驗收完成後30天，仍無 contractReturnedAt）
-    if (!o.contractReturnedAt && o.clientAcceptedAt) {
-      const base = new Date(o.clientAcceptedAt); base.setHours(0,0,0,0);
-      const remind = new Date(base); remind.setDate(base.getDate() + 30);
-      _pushItem(remind, '追回客戶簽回合約', '🔁', 2);
-    }
-
-    // 7. 履保金退款追蹤（履約結束但退款未收到）→ 每月 28 號提醒；本月已略過則不顯示
-    if (o.status === '履約結束' && o.bondRefundStatus === 'pending') {
-      const ym = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
-      if (o.bondRefundSnoozedMonth !== ym) {
-        const d28 = new Date(today.getFullYear(), today.getMonth(), 28); d28.setHours(0,0,0,0);
-        _pushItem(d28, '追蹤履保金退款是否入帳', '💰', 2, '打勾＝本月已追蹤/仍在等待，下個月再提醒', { bondSnoozeOrderId: o.id });
+    // 製作啟用通知：已到平行群組(grp≥4) 且距訂期起始 ≤5 天才排；≤5天內 → 🔥 極緊急（子訂單不需啟用通知）
+    if (curGrp >= 4 && o.startDate && !o.parentOrderId && !CK.activationNotice) {
+      const start = new Date(o.startDate); start.setHours(0,0,0,0);
+      const daysToStart = Math.round((start - snapDate) / 86400000);
+      if (daysToStart <= 5) {
+        const target = _dPlus(o.startDate, -5);
+        _pushItem(target < snapDate ? snapDate : target, '製作啟用通知', '📬', 0, `訂期起始 ${fmtDate(o.startDate)}`);
       }
     }
-
-    // ── 其他狀態：一般規則 ──
-    const rule = DASH_ORDER_RULES[o.status];
-    if (!rule) return;
-
-    let actionDate;
-    if (rule.base === 'updatedAt') {
-      const base = new Date(o.updatedAt); base.setHours(0,0,0,0);
-      const targetDay = rule.alertDay - rule.advanceDays;
-      actionDate = new Date(base); actionDate.setDate(base.getDate() + targetDay);
-    } else if (rule.base === 'startDate' && o.startDate) {
-      const base = new Date(o.startDate); base.setHours(0,0,0,0);
-      actionDate = new Date(base); actionDate.setDate(base.getDate() - (Math.abs(rule.alertDay) + rule.advanceDays));
-    } else if (rule.base === 'endDate' && o.endDate) {
-      const base = new Date(o.endDate); base.setHours(0,0,0,0);
-      actionDate = new Date(base); actionDate.setDate(base.getDate() + rule.alertDay - rule.advanceDays);
-    } else if (rule.base === 'endDate' && !o.endDate) {
-      const base = new Date(o.updatedAt); base.setHours(0,0,0,0);
-      actionDate = new Date(base); actionDate.setDate(base.getDate() + rule.alertDay - rule.advanceDays);
+    // 可開發票 → 今日申請開發票
+    if (o.status === '可開發票' && !o.invoiceAppliedAt) {
+      _pushItem(_dPlus(o.updatedAt, 1), '今日申請開發票', '🧾', 1, _snoozeHint);
     }
-    if (!actionDate) return;
-
-    // 延後中：改排到延後到期日（落在本週→主格、下週→下週預告；不再完全隱藏）
-    const _snoozeHint = _snoozeDate ? `已延後至 ${fmtDate(_isoDate(_snoozeDate))}` : null;
-    if (_snoozeDate) actionDate = _snoozeDate;
-
-    _pushItem(actionDate, rule.label, rule.icon, rule.priW, _snoozeHint);
+    // 履約期間：客服／維護（依預計完成日；未回覆才提醒）
+    if (o.status === '履約期間' && Array.isArray(o.serviceLog)) {
+      o.serviceLog.forEach(r => {
+        if (r.due && !r.replied) _pushItem(new Date(r.due), `${r.kind || '客服'}：${(r.issue || '').slice(0, 16)}`, r.kind === '維護' ? '🛠️' : '📞', 1);
+      });
+    }
 
   });
 
@@ -7503,6 +7640,12 @@ async function _generateQuote() {
     a.href = url; a.download = fname; a.click();
     URL.revokeObjectURL(url);
     closeModal('quoteModal');
+    // 記錄「已下載報價單」的日期到訂單上（供時間軸「已提案／草報價」階段顯示）
+    if (window._qtOrderId) {
+      const _db = dbLoad(); const _o = _db.orders.find(x => x.id === window._qtOrderId);
+      if (_o) { _o.quoteDownloadedAt = _isoDate(new Date()); _o.updatedAt = new Date().toISOString(); dbSave(_db);
+        if (typeof _tlOrderId !== 'undefined' && _tlOrderId === window._qtOrderId && (document.getElementById('tlModal')?.classList.contains('open') || _tlEmbed)) _tlRender(); }
+    }
     showToast('報價單下載成功！');
   } catch(e) {
     console.error(e);
@@ -7675,6 +7818,12 @@ document.getElementById('generateDeliveryBtn').addEventListener('click', async (
     a.href = url; a.download = fname; a.click();
     URL.revokeObjectURL(url);
     closeModal('deliveryModal');
+    // 記錄「已下載出貨單」日期到訂單（供時間軸「出貨中」顯示）
+    if (window._dlvOrderId) {
+      const _db=dbLoad(); const _o=_db.orders.find(x=>x.id===window._dlvOrderId);
+      if(_o){ _o.deliveryDownloadedAt=_isoDate(new Date()); _o.updatedAt=new Date().toISOString(); dbSave(_db);
+        if(typeof _tlOrderId!=='undefined' && _tlOrderId===window._dlvOrderId && (document.getElementById('tlModal')?.classList.contains('open') || _tlEmbed)) _tlRender(); }
+    }
     showToast('出貨確認單下載成功！');
   } catch(e) {
     console.error(e);
@@ -8019,14 +8168,60 @@ function renderProjectPage() {
 
 
 // ===== 警示 Snooze =====
+// ════════ 一次性資料轉換（舊訂單 → 新版時間軸模型）════════
+// 用「既有的日期欄位」回填 checklist 完成日，避免上線後手動補；沒有現成日期者以 updatedAt 近似（可再手動改）。
+function migrateOrdersV2(save){
+  const db=dbLoad();
+  const GRP={'詢價中':1,'已提案/草報價':2,'採購議價':3,'契約書簽訂中':4,'決標＆契約書簽訂中':4,'出貨中':4,'驗收中':4,'可開發票':4,'發票確認中':4,'履約期間':5,'申退履保金':6,'履約結束':6};
+  let changed=0;
+  (db.orders||[]).forEach(o=>{
+    let touched=false;
+    const fb=(o.updatedAt||o.createdAt||_isoDate(new Date())).slice(0,10);   // fallback 近似日
+    o.checks=o.checks||{};
+    const set=(k,date)=>{ if(o.checks[k]==null){ o.checks[k]=(date||fb); touched=true; } };
+    // 1) 狀態改名 / 合併
+    if(o.status==='發票確認中'){ o.status='可開發票'; touched=true; }
+    if(o.status==='申退履保金'){ o.status='履約結束'; touched=true; }
+    if(o.status==='契約書簽訂中'){ /* 內部值不變，顯示名已改 */ }
+    const g=GRP[o.status]||0;
+    // 2) 依既有日期欄位回填 checklist
+    if(o.inquirySentAt) set('inquirySent', o.inquirySentAt.slice(0,10));
+    if(g>=2){ set('inquirySent', (o.inquirySentAt||o.createdAt||fb).slice ? (o.inquirySentAt||o.createdAt||fb).slice(0,10):fb); set('inquiryReceived'); }
+    if(o.quoteDate){ set('quoteMade', o.quoteDate.slice(0,10)); set('quoteSent', o.quoteDate.slice(0,10)); }
+    else if(g>=3){ set('quoteMade'); set('quoteSent'); if(!o.quoteDate){ o.quoteDate=o.checks.quoteSent; } }
+    if(g>=4){ set('bidDocReceived'); set('bidDocSent'); }
+    if(o.deliveryOrderSubmittedAt) set('deliveryOrderSent', o.deliveryOrderSubmittedAt.slice(0,10));
+    if(o.contractReturnedAt) set('contractReturned', o.contractReturnedAt.slice(0,10));
+    if(o.invoiceNoticeDoneAt) set('activationNotice', o.invoiceNoticeDoneAt.slice(0,10));
+    if(touched) changed++;
+  });
+  if(save){ db._migratedV2=_isoDate(new Date()); dbSave(db); }
+  return { changed, total:(db.orders||[]).length, already:!!db._migratedV2 };
+}
+function migrateOrdersV2Run(){
+  const prev=migrateOrdersV2(false); // 預覽（不存）
+  if(prev.already && !confirm('偵測到先前已執行過轉換，仍要再跑一次嗎？（不會覆蓋已填的完成日）')) return;
+  if(!confirm(`一次性資料轉換\n\n將把 ${prev.total} 筆訂單轉成新版模型：\n・發票確認中 → 可開發票、申退履保金 → 履約結束\n・用既有日期回填 checklist 完成日（沒有日期的以最後更新日近似，可再手動改）\n\n預估會調整約 ${prev.changed} 筆。確定執行？`)) return;
+  const res=migrateOrdersV2(true);
+  renderOrdersGrid && renderOrdersGrid();
+  if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  showToast(`轉換完成：調整了 ${res.changed} / ${res.total} 筆`);
+}
+window.migrateOrdersV2=migrateOrdersV2; window.migrateOrdersV2Run=migrateOrdersV2Run;
+
 function snoozeOrderAlert(orderId, days) {
   const db = dbLoad();
   const idx = db.orders.findIndex(o => o.id === orderId);
   if (idx < 0) return;
-  const until = new Date(Date.now() + days * 86400000).toISOString();
-  db.orders[idx].alertSnoozedUntil = until;
+  const untilDate = new Date(Date.now() + days * 86400000);
+  const o = db.orders[idx];
+  o.alertSnoozedUntil = untilDate.toISOString();
+  // 同步回訂單的「該階段追蹤日」（所有有追蹤日的階段一起放）
+  o.followUp = o.followUp || {};
+  if (o.status) o.followUp[o.status] = _isoDate(untilDate);
   dbSave(db);
   renderOrderDashboard();
+  if (typeof renderOrderGrid === 'function') renderOrderGrid();
   refreshDashboardContent();
   if (currentClientId) renderClientDashboard(currentClientId);
   showToast(`已延後 ${days} 天提醒`);
@@ -8152,6 +8347,12 @@ document.getElementById('invSubjectCopyBtn').addEventListener('click', () => {
 document.getElementById('invCopyBtn').addEventListener('click', () => {
   const ta = document.getElementById('invText');
   navigator.clipboard.writeText(ta.value).then(() => showToast('已複製到剪貼簿'));
+  // 記錄「申請開發票」時間到訂單（供時間軸「可開發票」顯示）
+  if (_invOrderId) {
+    const _db=dbLoad(); const _o=_db.orders.find(x=>x.id===_invOrderId);
+    if(_o){ _o.invoiceAppliedAt=_isoDate(new Date()); _o.updatedAt=new Date().toISOString(); dbSave(_db);
+      if(typeof _tlOrderId!=='undefined' && _tlOrderId===_invOrderId && (document.getElementById('tlModal')?.classList.contains('open') || _tlEmbed)) _tlRender(); }
+  }
 });
 document.getElementById('invEditTplBtn').addEventListener('click', () => {
   document.getElementById('invTplText').value = getInvTemplate();
@@ -8393,6 +8594,773 @@ document.addEventListener('mousemove', e => {
   _dbTooltip.style.left = (e.clientX + 14) + 'px';
   _dbTooltip.style.top  = (e.clientY + 10) + 'px';
 });
+
+// ══════════════ 訂單時間軸編輯器（原型）══════════════
+const TL_STAGES = [
+  {key:'__base__', label:'訂單資料', grp:0},
+  {key:'詢價中', label:'詢價中', grp:1, fu3:true, custom:'inquiry'},
+  {key:'已提案/草報價', label:'已提案／草報價', grp:2, fu3:true, quote:true, custom:'proposal', fuLabel:'預計追蹤客戶回覆時間'},
+  {key:'採購議價', label:'採購議價', grp:3, custom:'bid', noFu:true},
+  {key:'契約書簽訂中', label:'決標＆契約書簽訂中', grp:4, par:true, custom:'contract', noFu:true},
+  {key:'出貨中', label:'出貨中', grp:4, par:true, custom:'delivery', delivery:true, noFu:true},
+  {key:'驗收中', label:'驗收中', grp:4, par:true, custom:'accept', noFu:true},
+  {key:'可開發票', label:'可開發票', grp:4, par:true, invoice:true, custom:'invoice', noFu:true},
+  {key:'履約期間', label:'履約期間', grp:5, custom:'service', noFu:true},
+  {key:'履約結束', label:'履約結束', grp:6, fuLabel:'申退履保金追蹤日'},
+];
+const TL_FIELDS = {
+  '已提案/草報價':[
+    {f:'quoteDate',l:'寄出報價日期',t:'date'},
+    {f:'__note',l:'備註',t:'textarea',full:1},
+  ],
+  '出貨中':[
+    {f:'deliveryOrderSubmittedAt',l:'出貨單完成',t:'date'},
+    {f:'__note',l:'備註/卡住的點',t:'textarea',full:1},
+  ],
+  '履約期間':[
+    {f:'contractReturnedAt',l:'合約簽回收回',t:'date'},
+    {f:'__note',l:'客服/維護紀錄',t:'textarea',full:1},
+  ],
+  '申退履保金':[
+    {f:'bondDeadline',l:'履保金相關截止日',t:'date'},
+    {f:'__note',l:'備註',t:'textarea',full:1},
+  ],
+  '履約結束':[
+    {f:'__note',l:'備註',t:'textarea',full:1},
+  ],
+};
+const _TL_LINEAR = ['詢價中','已提案/草報價','採購議價','契約書簽訂中','出貨中','驗收中','可開發票','發票確認中','履約期間','申退履保金','履約結束'];
+let _tlOrderId=null, _tlView='__base__';
+
+function _tlGrpOf(status){ const s=TL_STAGES.find(x=>x.key===status); return s?s.grp:0; }
+function _tlOverdue(order, key){
+  const fu=(order.followUp||{})[key];
+  const today=_isoDate(new Date());
+  if(fu) return today>=fu;
+  const rule=DASH_ORDER_RULES && DASH_ORDER_RULES[key];
+  if(!rule) return false;
+  const base=new Date(order.updatedAt||order.createdAt); base.setHours(0,0,0,0);
+  return ((new Date(today)-base)/86400000) >= rule.alertDay;
+}
+function _tlStatus(order, stage){
+  if(stage.key==='__base__') return 'done';
+  const cur=_tlGrpOf(order.status);
+  if(stage.grp<cur) return 'done';
+  if(stage.grp>cur) return 'pending';
+  return _tlOverdue(order, stage.key)?'overdue':'active';
+}
+
+let _tlHostId='tlModal', _tlEmbed=false;
+function openOrderTimeline(orderId, embedHostId){
+  const db=dbLoad(); const o=db.orders.find(x=>x.id===orderId);
+  if(!o){ showToast('找不到訂單','error'); return; }
+  _tlOrderId=orderId; _tlView=o.status||'__base__';
+  if(!TL_STAGES.find(s=>s.key===_tlView)) _tlView='__base__';
+  if(embedHostId){ _tlHostId=embedHostId; _tlEmbed=true; }
+  else { _tlHostId='tlModal'; _tlEmbed=false; document.getElementById('tlModal').classList.add('open'); }
+  _tlRender();
+}
+function _tlClose(){
+  if(_tlEmbed){
+    _tlOrderId=null;
+    const host=document.getElementById(_tlHostId);
+    if(host) host.innerHTML='<div class="om-empty">← 左側點一張訂單卡片，這裡顯示時間軸</div>';
+    document.querySelectorAll('.om-card.active').forEach(x=>x.classList.remove('active'));
+  } else {
+    document.getElementById('tlModal').classList.remove('open');
+  }
+}
+
+function _tlRender(){
+  const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
+  const c=getClientById(o.clientId)||{};
+  const amt = (o.startDate||o.endDate) ? ('訂期 '+(o.startDate?_rocSlash(o.startDate):'—')+' ～ '+(o.endDate?_rocSlash(o.endDate):'—')) : '未設定訂期';
+  const shell=`
+    <div class="tl-shell${_tlEmbed?' tl-shell--embed':''}">
+      <div class="tl-top">
+        <div>
+          <div class="tl-cli">${c.shortName||c.fullName||'客戶'}</div>
+          <div class="tl-prod">${o.productName||'—'}</div>
+        </div>
+        <div class="tl-amt">${amt}</div>
+        <span class="tl-savestat" id="tlSaveStatus">自動儲存已開啟</span>
+        <button class="tl-x" onclick="_tlClose()">✕</button>
+      </div>
+      <div class="tl-body">
+        <div class="tl-left">
+          <div class="tl-legend">
+            <span><i style="background:#c9c4b4"></i>未到</span>
+            <span><i style="background:var(--navy)"></i>目前</span>
+            <span><i style="background:#4A5D4E"></i>已過</span>
+            <span><i style="background:#A94E3E"></i>逾期</span>
+          </div>
+          ${TL_STAGES.map(s=>_tlItemHtml(o,s)).join('')}
+        </div>
+        <div class="tl-right" id="tlRight"></div>
+      </div>
+    </div>`;
+  const m=document.getElementById(_tlHostId); m.innerHTML=shell;
+  m.querySelectorAll('.tl-item').forEach(el=>el.addEventListener('click',()=>{
+    _tlView=el.dataset.key;
+    m.querySelectorAll('.tl-item').forEach(x=>x.classList.toggle('viewing', x===el));
+    _tlDetail();
+  }));
+  // 自動儲存：右側任何欄位變動 → 防抖後靜默存檔（不重繪、不干擾輸入）
+  const rightEl=document.getElementById('tlRight');
+  rightEl.oninput = _tlAutoSaveScheduled;
+  rightEl.onchange = _tlAutoSaveScheduled;
+  _tlDetail();
+  refreshRocHints(m);
+}
+function _tlItemHtml(o,s){
+  const st=_tlStatus(o,s);
+  let meta='';
+  if(s.key==='__base__') meta='基本資料';
+  else if(st==='done') meta='已過';
+  else if(st==='active'||st==='overdue'){
+    const fu=(o.followUp||{})[s.key];
+    meta = fu ? '下次追蹤：'+fmtDate(fu) : '目前進行中';
+  } else meta='尚未進入';
+  return `<div class="tl-item ${st} ${s.key===_tlView?'viewing':''}" data-key="${s.key}">
+    <div class="tl-line"></div><div class="tl-node"></div>
+    <div class="tl-ttl">${s.label}${s.par?'<span class="tl-par-tag">可平行</span>':''}</div>
+    <div class="tl-meta">${meta}</div>
+    ${st==='overdue'?'<div class="tl-badge">逾期未追蹤</div>':''}
+  </div>`;
+}
+function _tlDetail(){
+  const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
+  const stage=TL_STAGES.find(s=>s.key===_tlView);
+  const st=_tlStatus(o,stage);
+  const right=document.getElementById('tlRight');
+  const stagTxt = st==='done'?'已過':st==='overdue'?'逾期未追蹤':st==='active'?'目前進度':'尚未進入';
+  const isPar = stage.par;
+
+  // ── 訂單資料（基本＋價格＋成交＋拆項）──
+  if(stage.key==='__base__'){
+    right.innerHTML=`
+      <div class="tl-dh"><h3>訂單資料</h3><span class="tl-stag done">基本資料</span>${_tlNoteBtn(o)}</div>
+      ${_tlBasePanel(o)}
+      <div class="tl-acts"><button class="tl-btn primary" onclick="_tlSave()">儲存</button></div>`;
+    _tlBaseInit(o);
+    refreshRocHints(right);
+    _tlDecorateCal();
+    return;
+  }
+
+  if(st==='pending'){
+    right.innerHTML=`<div class="tl-dh"><h3>${stage.label}</h3><span class="tl-stag pending">${stagTxt}</span></div>
+      <div class="tl-notreach">此訂單還沒走到「${stage.label}」，目前在「${o.status}」。<br>此階段的欄位會在走到這裡後開放。<br><br>
+      <button class="tl-btn setcur" onclick="_tlSetStatus('${stage.key}')">直接把狀態設為「${stage.label}」</button></div>`;
+    return;
+  }
+
+  // 主體欄位：自訂面板 or 一般欄位
+  let bodyInner='';
+  if(stage.custom==='bid') bodyInner=_tlBidPanel(o);
+  else if(stage.custom==='accept') bodyInner=_tlAcceptPanel(o);
+  else if(stage.custom==='inquiry') bodyInner=_tlInquiryPanel(o);
+  else if(stage.custom==='contract') bodyInner=_tlContractPanel(o);
+  else if(stage.custom==='invoice') bodyInner=_tlInvoicePanel(o);
+  else if(stage.custom==='proposal') bodyInner=_tlProposalPanel(o);
+  else if(stage.custom==='delivery') bodyInner=_tlDeliveryPanel(o);
+  else if(stage.custom==='service'){ _tlSvc=(o.serviceLog||[]).map(r=>({...r})); bodyInner=_tlServicePanel(o); }
+  else bodyInner=(TL_FIELDS[stage.key]||[]).map(fd=>_tlFieldHtml(o,fd)).join('');
+
+  // 下次追蹤日（noFu 階段不顯示）＋快速追蹤按鈕；可用 fuLabel 客製標題
+  const fu=(o.followUp||{})[stage.key]||'';
+  const fuLbl = stage.fuLabel || '下次追蹤日（可覆蓋系統預設提醒時間）';
+  const fuHint = stage.key==='已提案/草報價' ? '追蹤時間到當天，首頁總覽會自動排入「確認客戶對報價回覆」任務。'
+    : stage.key==='履約結束' ? '履約結束後約一個月自動提醒「申退履保金」，可 +3／+7 延後。' : '';
+  const fuBlock = stage.noFu ? '' :
+    `<div class="tl-f full"><label>${fuLbl}</label>
+      <input type="date" data-tlfu data-nocal value="${fu}"/>
+      ${fuHint?`<span class="hint">${fuHint}</span>`:''}
+      ${stage.fu3?`<div class="tl-fu-quick">快速設定：
+        <button type="button" class="tl-fu-btn" onclick="_tlSetFu(3)">+3 天</button>
+        <button type="button" class="tl-fu-btn" onclick="_tlSetFu(5)">+5 天</button>
+        <button type="button" class="tl-fu-btn" onclick="_tlSetFu(7)">+7 天</button>
+        <span class="hint">（自動填入，可再手動調整）</span></div>`:''}
+    </div>`;
+
+  // 文件生成按鈕（報價單／出貨單／開發票）——下載即記錄日期
+  let docBlock='';
+  if(stage.quote) docBlock=`
+    <div class="tl-quote-box">
+      <button type="button" class="tl-btn ghost" onclick="_tlOpenQuote()">📋 生成報價單（Excel）</button>
+      <span class="tl-quote-status">${o.quoteDownloadedAt?('✅ 已於 '+fmtDate(o.quoteDownloadedAt)+' 下載報價單'):'尚未下載報價單'}</span>
+    </div>`;
+  else if(stage.delivery) docBlock=`
+    <div class="tl-quote-box">
+      <button type="button" class="tl-btn ghost" onclick="_tlOpenDelivery()">📄 生成出貨確認單</button>
+      <span class="tl-quote-status">${o.deliveryDownloadedAt?('✅ 已於 '+fmtDate(o.deliveryDownloadedAt)+' 下載出貨單'):'尚未下載出貨單'}</span>
+    </div>`;
+  else if(stage.invoice) docBlock=`
+    <div class="tl-quote-box">
+      <button type="button" class="tl-btn ghost" onclick="_tlOpenInvoice()">💰 開發票申請</button>
+      <span class="tl-quote-status">${o.invoiceAppliedAt?('✅ 已於 '+fmtDate(o.invoiceAppliedAt)+' 申請開發票'):'尚未申請開發票'}</span>
+      ${o.invoiceAppliedAt?`<button type="button" class="tl-mini-btn danger" onclick="_tlResetInvoice()">復原（重設時間）</button>`:''}
+    </div>`;
+
+  right.innerHTML=`
+    <div class="tl-dh"><h3>${stage.label}</h3><span class="tl-stag ${st}">${stagTxt}</span>${_tlNoteBtn(o)}</div>
+    ${isPar?'<div class="tl-parbanner">「決標＆契約書簽訂中／出貨中／驗收中／可開發票」沒有固定先後順序，可同時編輯、各自追蹤，不用等其中一個完成。</div>':''}
+    ${docBlock}
+    <div class="tl-grid">${bodyInner}${fuBlock}</div>
+    <div class="tl-acts">
+      <button class="tl-btn primary" onclick="_tlSave()">儲存</button>
+      ${o.status!==stage.key ? `<button class="tl-btn setcur" onclick="_tlSave(true)">儲存並設為目前狀態</button>`:''}
+    </div>`;
+  refreshRocHints(right);
+  _tlDecorateCal();
+}
+
+// ══ 共用 checklist：o.checks[key] = 完成日 'YYYY-MM-DD' 或 null ══
+function _tlChkDone(o,key){ return (o.checks||{})[key]||''; }
+function _tlChk(o,key,label,opt){
+  opt=opt||{};
+  const done=_tlChkDone(o,key);
+  const conf=opt.confirm?` data-confirm="${opt.confirm}"`:'';
+  const dis=opt.disabled?' disabled':'';
+  const word=opt.word||'完成';
+  // 單一 onchange：先跑完成日切換，再跑額外處理（避免重複 onchange 屬性只認第一個）
+  const onAttr=`onchange="_tlChkToggle(this)${opt.on?';'+opt.on:''}"`;
+  return `<div class="tl-f full tl-chk"><input type="checkbox" data-check="${key}"${conf}${dis} ${done?'checked':''} ${onAttr}/><label>${label}</label><span class="tl-chk-done" data-checkat="${key}" data-word="${word}">${done?_tlChkDateHtml(key,done,word):''}</span></div>`;
+}
+// 完成日：可點擊修改的小日期框（顯示民國對照）
+function _tlChkDateHtml(key,val,word){
+  const iso=String(val).slice(0,10);
+  const p=iso.split('-');
+  const roc=(p.length>=3)?`（民國 ${parseInt(p[0])-1911}/${p[1]}/${p[2]}）`:'';
+  return `✅ ${word}於 <input type="date" class="tl-chk-date" data-nocal data-checkdate="${key}" title="點這裡可修改完成日期" value="${iso}"/> <span class="tl-chk-roc">${roc}</span>`;
+}
+function _tlChkToggle(cb){
+  if(!cb.checked && cb.dataset.confirm){ if(!confirm(cb.dataset.confirm)){ cb.checked=true; return; } }
+  const key=cb.dataset.check; const span=document.querySelector(`[data-checkat="${key}"]`);
+  if(span){ const word=span.dataset.word||'完成'; span.innerHTML = cb.checked ? _tlChkDateHtml(key,_isoDate(new Date()),word) : ''; }
+}
+// 完成日框被改動 → 即時更新旁邊的民國對照
+document.addEventListener('input', e => {
+  if(e.target && e.target.matches && e.target.matches('.tl-chk-date')){
+    const roc=e.target.parentElement?.querySelector('.tl-chk-roc');
+    const p=String(e.target.value||'').split('-');
+    if(roc) roc.textContent=(p.length>=3)?`（民國 ${parseInt(p[0])-1911}/${p[1]}/${p[2]}）`:'';
+  }
+});
+
+// ── 詢價中 ──
+function _tlInquiryPanel(o){
+  return `
+    ${_tlChk(o,'inquirySent','已寄出詢價信',{word:'寄出'})}
+    ${_tlChk(o,'inquiryReceived','已收到詢價（PM 回覆）',{confirm:'確定取消「已收到詢價」嗎？',on:'_tlInquiryReceived(this)'})}
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['詢價中']||''}</textarea></div>`;
+}
+function _tlInquiryReceived(cb){
+  if(cb.checked){
+    setTimeout(()=>{
+      if(confirm('已收到詢價 — 是否進入「已提案／草報價」開始製作報價單？')){
+        _tlSave(); _tlSetStatus('已提案/草報價');
+      }
+    },50);
+  }
+}
+
+// ── 已提案／草報價 ──
+function _tlProposalPanel(o){
+  const qs=(o.checks||{}).quoteSent;
+  return `
+    ${_tlChk(o,'quoteMade','製作報價單')}
+    <div class="tl-f full tl-chk"><input type="checkbox" data-check="quoteSent" ${qs?'checked':''} onchange="_tlChkToggle(this)"/><label>已寄出報價單</label><span class="hint" data-checkat="quoteSent">${o.quoteDate?('✅ '+fmtDate(o.quoteDate)+' 寄出（同訂單資料報價日期）'):''}</span></div>
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['已提案/草報價']||''}</textarea></div>`;
+}
+
+// ── 決標＆契約書簽訂中 ──
+function _tlContractPanel(o){
+  const need=!!o.needsContract;
+  const dv=v=>String(v||'').slice(0,10);
+  const bidAmt=o.bidBondAmount?parseInt(o.bidBondAmount).toLocaleString('zh-TW'):'';
+  const hasBid=!!o.hasBidBond;
+  const hasBond=!!o.hasPerfBond;
+  const bidBanner = hasBid ? `<div class="tl-alert warn">⚠️ 此案有押標金 ${bidAmt?('NT$ '+bidAmt):''}，記得確認是否轉為履保金。</div>` : '';
+  return `
+    ${bidBanner}
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="needsContract" ${need?'checked':''} onchange="_tlContractToggle(this)"/><label>需做合約</label></div>
+    <div class="tl-f"><label>決標日期</label><input type="date" data-tlf="contractReceivedAt" value="${dv(o.contractReceivedAt)}" data-caltitle="決標" ${need?'':'disabled'}/></div>
+    <div class="tl-f"><label>預計繳交合約日</label><input type="date" data-tlf="contractDueDate" value="${dv(o.contractDueDate)}" data-nocal ${need?'':'disabled'}/></div>
+    <div class="tl-f"><label>交貨日（交貨型客戶）</label><input type="date" data-tlf="deliveryDate" value="${dv(o.deliveryDate)}" data-caltitle="交貨"/></div>
+    <div class="tl-f"><label>履保金繳納截止日</label><input type="date" data-tlf="bondDeadline" value="${dv(o.bondDeadline)}" data-nocal/></div>
+    ${hasBid?_tlChk(o,'bidToPerf','押標金已轉履保金'+(bidAmt?('，金額 NT$ '+bidAmt):'')):`
+      <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="hasPerfBond" ${hasBond?'checked':''} onchange="_tlPerfBondToggle(this)"/><label>是否有履保金</label>
+        <input type="text" class="tl-money" data-tlf="perfBondAmount" placeholder="NT$ 金額" value="${o.perfBondAmount?('NT$ '+parseInt(o.perfBondAmount).toLocaleString('zh-TW')):''}" oninput="_tlFmtMoney(this)" ${hasBond?'':'disabled'}/></div>`}
+    ${(hasBid||hasBond)?_tlChk(o,'perfBondApplied','已申請履保金'):''}
+    ${_tlChk(o,'perfBondReceipt','是否取得履保金收據')}
+    ${_tlChk(o,'contractReturned','是否已追回客戶回簽合約',{word:'追回'})}
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['契約書簽訂中']||''}</textarea></div>`;
+}
+function _tlContractToggle(cb){
+  if(!cb.checked){
+    if(!confirm('確定要取消「需做合約」嗎？取消後合約相關欄位將鎖定免填。')){ cb.checked=true; return; }
+  }
+  const on=cb.checked;
+  ['contractReceivedAt','contractDueDate'].forEach(f=>{ const el=document.querySelector(`[data-tlf="${f}"]`); if(el) el.disabled=!on; });
+}
+function _tlPerfBondToggle(cb){
+  const amt=document.querySelector('[data-tlf="perfBondAmount"]'); if(amt) amt.disabled=!cb.checked;
+}
+
+// ── 可開發票 ──
+function _tlInvoicePanel(o){
+  return `
+    ${_tlChk(o,'invoiceReceived','已收到發票',{word:'收到'})}
+    ${_tlChk(o,'invoiceSent','已寄出發票',{word:'寄出'})}
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['可開發票']||''}</textarea></div>`;
+}
+
+// ── 出貨中 ──
+function _tlDeliveryPanel(o){
+  const miss=_tlMissingBase(o);
+  const missBanner = miss.length ? `<div class="tl-alert warn">⚠️ 記得補齊訂單資料：${miss.join('、')}（請至「訂單資料」填寫）</div>` : '';
+  return `
+    ${missBanner}
+    ${_tlChk(o,'deliveryOrderSent','已送出貨單',{word:'送出'})}
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['出貨中']||''}</textarea></div>`;
+}
+function _tlMissingBase(o){
+  const miss=[];
+  if(!o.caseNo) miss.push('採購案號');
+  if(!o.quoteTwd && !o.quoteOrig) miss.push('報價金額');
+  if(!o.dealTwd) miss.push('成交金額');
+  if(!o.startDate) miss.push('訂期起始日');
+  return miss;
+}
+
+// ── 履約期間（客服／維護：橫列表格，滿版）──
+function _tlSvcCats(){
+  let list=[];
+  try{ list=(workLoad().categories||[]).map(c=>typeof c==='string'?c:c.name).filter(Boolean); }catch(e){}
+  if(!list.length) list=['客服','設計','客戶溝通','文書作業','跑統計','個人','其他'];
+  return list;
+}
+function _tlServicePanel(o){
+  const rows=o.serviceLog||[];
+  return `
+    <div class="tl-svc-wrap">
+      <div class="tl-svc-top">
+        <div class="tl-section-label" style="margin:0;">客服／維護紀錄</div>
+        <button type="button" class="tl-svc-add" onclick="_tlAddSvc()">＋ 新增一筆</button>
+      </div>
+      <div class="tl-svc-scroll"><div class="tl-svc-tbl" id="tlSvcList">${_tlServiceRows(rows)}</div></div>
+      <div class="tl-f full" style="margin-top:16px;"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['履約期間']||''}</textarea></div>
+    </div>`;
+}
+let _tlSvc=[];
+function _tlServiceRows(rows){
+  const cats=_tlSvcCats();
+  const head=`<div class="tl-svc-head">
+    <span>已回覆</span><span>需求</span><span>任務類型</span><span>問題簡述</span><span>預計完成日</span><span>問題詳述</span><span></span></div>`;
+  if(!rows.length) return head+'<div class="tl-svc-empty">尚無紀錄，點右上「＋ 新增一筆」開始</div>';
+  const body=rows.map((r,i)=>`
+    <div class="tl-svc-line" data-svc="${i}">
+      <span class="tl-svc-chk"><input type="checkbox" data-sv="replied" ${r.replied?'checked':''}/></span>
+      <select data-sv="kind">${['客服','維護'].map(x=>`<option ${r.kind===x?'selected':''}>${x}</option>`).join('')}</select>
+      <select data-sv="cat">${cats.map(x=>`<option ${r.cat===x?'selected':''}>${x}</option>`).join('')}</select>
+      <input type="text" data-sv="brief" placeholder="問題簡述" value="${(r.brief||'').replace(/"/g,'&quot;')}"/>
+      <span class="tl-svc-date"><input type="date" data-sv="due" value="${String(r.due||'').slice(0,10)}" data-nocal/><button type="button" class="tl-cal-btn" onclick="_tlSvcCal(${i},this)">📅</button></span>
+      <textarea data-sv="issue" class="tl-svc-issue" placeholder="問題描述（可換行）">${r.issue||''}</textarea>
+      <button type="button" class="tl-svc-del" title="刪除這筆" onclick="_tlRmSvc(${i})">🗑</button>
+    </div>`).join('');
+  return head+body;
+}
+function _tlCollectSvc(){
+  document.querySelectorAll('#tlSvcList [data-svc]').forEach(row=>{
+    const i=+row.dataset.svc; if(!_tlSvc[i]) return;
+    row.querySelectorAll('[data-sv]').forEach(el=>{
+      const f=el.dataset.sv;
+      _tlSvc[i][f]= el.type==='checkbox'?el.checked:el.value;
+    });
+  });
+}
+function _tlAddSvc(){ _tlCollectSvc(); _tlSvc.push({kind:'客服',cat:_tlSvcCats()[0]||'客服',brief:'',replied:false,issue:'',due:''}); _tlRenderSvc(); _tlAutoSaveScheduled(); }
+function _tlRmSvc(i){
+  _tlCollectSvc();
+  const r=_tlSvc[i]||{};
+  if((r.brief||r.issue||r.due) && !confirm('確定要刪除這筆客服／維護紀錄嗎？')) return;
+  _tlSvc.splice(i,1); _tlRenderSvc(); _tlAutoSaveScheduled();
+}
+function _tlRenderSvc(){ const l=document.getElementById('tlSvcList'); if(l){ l.innerHTML=_tlServiceRows(_tlSvc); refreshRocHints(l); } }
+function _tlSvcCal(i, btn){
+  _tlCollectSvc(); const r=_tlSvc[i]||{};
+  if(!r.due){ showToast('請先填預計完成日','error'); return; }
+  const o=dbLoad().orders.find(x=>x.id===_tlOrderId)||{}; const c=getClientById(o.clientId)||{};
+  const title=`[客服／維護] ${c.shortName||''} ${r.brief||''}`.trim();
+  const details=`客服／維護紀錄（工作管理系統）\n客戶：${c.fullName||c.shortName||''}\n類型：${r.kind||''}／${r.cat||''}\n問題：${r.issue||r.brief||''}`;
+  _tlAddCalRaw(r.due, title, details, btn);
+}
+
+// ── 訂單資料面板（含價格資訊／成交資訊／拆項）──
+function _tlBasePanel(o){
+  const cur = o.currency||'USD';
+  const money = v => (v||v===0)&&v!=='' ? parseInt(v).toLocaleString('zh-TW') : '';
+  const dv = v => String(v||'').slice(0,10);
+  const opts = (arr,val)=>arr.map(x=>`<option ${String(val)===x?'selected':''}>${x}</option>`).join('');
+  return `
+  <div class="tl-grid">
+    <div class="tl-f"><label>產品類別</label><select data-tlf="productType">${opts(['資源','系統','其他','設備','服務'],o.productType)}</select></div>
+    <div class="tl-f"><label>產品名稱</label><input type="text" data-tlf="productName" value="${o.productName||''}"/></div>
+    <div class="tl-f"><label>採購案名稱</label><input type="text" data-tlf="caseName" value="${o.caseName||''}"/></div>
+    <div class="tl-f"><label>採購案號</label><input type="text" data-tlf="caseNo" value="${o.caseNo||''}"/></div>
+
+    <div class="tl-f"><label>訂期起始日 <button type="button" class="tl-mini-btn" onclick="_tlFillOneYear()">＋一年</button></label><input type="date" data-tlf="startDate" value="${dv(o.startDate)}" data-nocal/></div>
+    <div class="tl-f"><label>訂期結束日</label><input type="date" data-tlf="endDate" value="${dv(o.endDate)}" data-nocal/></div>
+
+    <div class="tl-f"><label>報價日期</label><input type="date" data-tlf="quoteDate" value="${dv(o.quoteDate)}" data-nocal/></div>
+    <div class="tl-f"><label>原幣別</label><select data-tlf="currency" onchange="_tlPriceCalc()">${opts(['USD','EUR','TWD'],cur)}</select></div>
+    <div class="tl-f full"><label>關聯去年訂單（顯示去年價格與漲幅）</label><select data-tlf="linkedOrderId" id="tlLinkedId" onchange="_tlLinkedChange()"></select></div>
+  </div>
+
+  <div class="tl-section-label">價格資訊</div>
+  <div class="tl-grid">
+    <div class="tl-f"><label>報價匯率</label><input type="number" step="0.0001" data-tlf="quoteRate" value="${o.quoteRate||''}" oninput="_tlPriceCalc()"/></div>
+    <div class="tl-f tl-chk" style="align-self:end;"><input type="checkbox" data-tlf="taxIncluded" ${o.taxIncluded?'checked':''} onchange="_tlPriceCalc()"/><label>含稅（5%）</label></div>
+
+    <div class="tl-f"><label>公司底價（原幣）</label><input type="number" data-tlf="costOrig" value="${o.costOrig||''}" oninput="_tlPriceCalc()"/><span class="hint" id="tlRefCostOrig"></span></div>
+    <div class="tl-f"><label>公司底價（台幣）<label class="tl-auto"><input type="checkbox" id="tlCostAuto" ${o.costTwdAuto===false?'':'checked'} onchange="_tlToggleAuto()"/>自動</label></label><input type="text" data-tlf="costTwd" id="tlCostTwd" value="${money(o.costTwd)}"/></div>
+
+    <div class="tl-f"><label>客戶報價（原幣）</label><input type="number" data-tlf="quoteOrig" value="${o.quoteOrig||''}" oninput="_tlPriceCalc()"/><span class="hint" id="tlRefQuoteOrig"></span></div>
+    <div class="tl-f"><label>客戶報價（台幣）<label class="tl-auto"><input type="checkbox" id="tlQuoteAuto" ${o.quoteTwdAuto===false?'':'checked'} onchange="_tlToggleAuto()"/>自動</label></label><input type="text" data-tlf="quoteTwd" id="tlQuoteTwd" value="${money(o.quoteTwd)}"/></div>
+  </div>
+
+  <div class="tl-section-label">成交資訊（決標後填寫）</div>
+  <div class="tl-grid">
+    <div class="tl-f"><label>成交匯率</label><input type="number" step="0.0001" data-tlf="dealRate" value="${o.dealRate||''}" oninput="_tlPriceCalc()"/></div>
+    <div class="tl-f"><label>成交金額（台幣）<label class="tl-auto"><input type="checkbox" id="tlDealAuto" ${o.dealTwdAuto?'checked':''} onchange="_tlToggleAuto()"/>自動</label></label><input type="text" data-tlf="dealTwd" id="tlDealTwd" value="${money(o.dealTwd)}"/></div>
+    <div class="tl-f full"><span class="hint" id="tlBargainPct"></span></div>
+  </div>
+
+  <div class="tl-section-label">拆項（選填）</div>
+  <div class="tl-grid">
+    <div class="tl-f full tl-chk"><input type="checkbox" id="tlSplitEnabled" ${(o.splitItems&&o.splitItems.length)?'checked':''} onchange="_tlToggleSplit()"/><label>此訂單有拆項</label></div>
+    <div class="tl-f full" id="tlSplitWrap" style="display:${(o.splitItems&&o.splitItems.length)?'block':'none'};">
+      <div id="tlSplitList"></div>
+      <button type="button" class="tl-btn ghost" style="margin-top:6px;" onclick="_tlAddSplit()">＋ 新增拆項</button>
+    </div>
+  </div>`;
+}
+
+// 拆項暫存（原型：存入 order.splitItems；正式版將對接子訂單）
+let _tlSplit = [];
+function _tlBaseInit(o){
+  _tlSplit = (o.splitItems||[]).map(s=>({...s}));
+  _tlPopulateLinked(o);
+  _tlRenderSplit();
+  _tlPriceCalc();
+}
+function _tlPopulateLinked(o){
+  const sel=document.getElementById('tlLinkedId'); if(!sel) return;
+  const all=dbLoad().orders.filter(x=>x.clientId===o.clientId && x.id!==o.id && !x.parentOrderId)
+    .sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||''));
+  sel.innerHTML='<option value="">（不關聯）</option>'+all.map(x=>{
+    const p=x.startDate?x.startDate.slice(0,7):'—';
+    return `<option value="${x.id}" ${o.linkedOrderId===x.id?'selected':''}>${x.productName||'未命名'} ${p}</option>`;
+  }).join('');
+  _tlLinkedChange();
+}
+function _tlLinkedChange(){
+  const sel=document.getElementById('tlLinkedId'); if(!sel) return;
+  const setR=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v||'';};
+  if(!sel.value){ setR('tlRefCostOrig','');setR('tlRefQuoteOrig',''); return; }
+  const l=dbLoad().orders.find(x=>x.id===sel.value); if(!l) return;
+  const sym=(typeof CURRENCY_SYMBOLS!=='undefined'&&CURRENCY_SYMBOLS[l.currency])||l.currency||'';
+  const cur=v=>parseFloat((document.querySelector(`[data-tlf="${v}"]`)||{}).value||0)||0;
+  const rise=(c,p)=>(p&&c)?(((c-p)/p*100).toFixed(1)):null;
+  const tag=p=>p===null?'':` <b style="color:${p>0?'#A36B5E':p<0?'#4A5D4E':'#8A8378'}">${p>0?'+':''}${p}%</b>`;
+  setR('tlRefCostOrig', l.costOrig?`去年底價 ${sym}${parseInt(l.costOrig).toLocaleString()}${tag(rise(cur('costOrig'),l.costOrig))}`:'');
+  setR('tlRefQuoteOrig', l.quoteOrig?`去年報價 ${sym}${parseInt(l.quoteOrig).toLocaleString()}${tag(rise(cur('quoteOrig'),l.quoteOrig))}`:'');
+}
+function _tlFillOneYear(){
+  const s=document.querySelector('[data-tlf="startDate"]'), e=document.querySelector('[data-tlf="endDate"]');
+  if(!s?.value){ showToast('請先填訂期起始日','error'); return; }
+  const d=new Date(s.value+'T00:00:00'); d.setFullYear(d.getFullYear()+1); d.setDate(d.getDate()-1);
+  e.value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if(typeof updateRocHint==='function') updateRocHint(e);
+}
+function _tlNum(sel){ const el=document.querySelector(sel); if(!el) return 0; return parseFloat(String(el.value).replace(/[^0-9.\-]/g,''))||0; }
+function _tlToggleAuto(){ _tlPriceCalc(); }
+function _tlPriceCalc(){
+  const isTWD=(document.querySelector('[data-tlf="currency"]')||{}).value==='TWD';
+  const tax=document.querySelector('[data-tlf="taxIncluded"]')?.checked?1.05:1;
+  const qRate=isTWD?1:_tlNum('[data-tlf="quoteRate"]');
+  const dRate=isTWD?1:_tlNum('[data-tlf="dealRate"]');
+  const cRate=dRate||qRate;
+  const costOrig=_tlNum('[data-tlf="costOrig"]'), quoteOrig=_tlNum('[data-tlf="quoteOrig"]');
+  const fmt=v=>v?Math.round(v).toLocaleString('zh-TW'):'';
+  if(document.getElementById('tlCostAuto')?.checked){ const el=document.getElementById('tlCostTwd'); if(el){ el.readOnly=true; el.value=fmt((costOrig&&cRate)?costOrig*cRate*tax:0);} }
+  else { const el=document.getElementById('tlCostTwd'); if(el) el.readOnly=false; }
+  if(document.getElementById('tlQuoteAuto')?.checked){ const el=document.getElementById('tlQuoteTwd'); if(el){ el.readOnly=true; el.value=fmt((quoteOrig&&qRate)?quoteOrig*qRate*tax:0);} }
+  else { const el=document.getElementById('tlQuoteTwd'); if(el) el.readOnly=false; }
+  if(document.getElementById('tlDealAuto')?.checked){ const el=document.getElementById('tlDealTwd'); if(el){ el.readOnly=true; el.value=fmt((quoteOrig&&dRate)?quoteOrig*dRate*tax:0);} }
+  else { const el=document.getElementById('tlDealTwd'); if(el) el.readOnly=false; }
+  const dealTwd=_tlNum('#tlDealTwd'), quoteTwd=_tlNum('#tlQuoteTwd');
+  const bp=document.getElementById('tlBargainPct');
+  if(bp) bp.innerHTML=(dealTwd&&quoteTwd)?`議價率（成交／報價）：<b>${(dealTwd/quoteTwd*100).toFixed(1)}%</b>`:'';
+  _tlLinkedChange();
+}
+function _tlToggleSplit(){
+  const on=document.getElementById('tlSplitEnabled')?.checked;
+  document.getElementById('tlSplitWrap').style.display=on?'block':'none';
+  if(on && _tlSplit.length===0) _tlAddSplit(); else _tlRenderSplit();
+}
+function _tlAddSplit(){ _tlCollectSplit(); _tlSplit.push({productName:'',costTwd:'',quoteTwd:'',dealTwd:''}); _tlRenderSplit(); }
+function _tlRemoveSplit(i){ _tlCollectSplit(); _tlSplit.splice(i,1); _tlRenderSplit(); }
+function _tlCollectSplit(){
+  document.querySelectorAll('#tlSplitList [data-splitrow]').forEach(row=>{
+    const i=+row.dataset.splitrow; if(!_tlSplit[i]) return;
+    row.querySelectorAll('[data-sf]').forEach(inp=>{
+      const f=inp.dataset.sf;
+      _tlSplit[i][f]= f==='productName'?inp.value : (String(inp.value).replace(/[^0-9.\-]/g,''));
+    });
+  });
+}
+function _tlRenderSplit(){
+  const list=document.getElementById('tlSplitList'); if(!list) return;
+  if(_tlSplit.length===0){ list.innerHTML='<div class="hint">尚無拆項</div>'; return; }
+  list.innerHTML=_tlSplit.map((s,i)=>`
+    <div class="tl-split-row" data-splitrow="${i}">
+      <div class="tl-split-hd"><b>拆項 ${i+1}</b><button type="button" class="tl-mini-btn danger" onclick="_tlRemoveSplit(${i})">刪除</button></div>
+      <div class="tl-grid">
+        <div class="tl-f full"><label>項目名稱</label><input type="text" data-sf="productName" value="${s.productName||''}"/></div>
+        <div class="tl-f"><label>底價（台幣）</label><input type="text" data-sf="costTwd" value="${s.costTwd?parseInt(s.costTwd).toLocaleString():''}"/></div>
+        <div class="tl-f"><label>報價（台幣）</label><input type="text" data-sf="quoteTwd" value="${s.quoteTwd?parseInt(s.quoteTwd).toLocaleString():''}"/></div>
+        <div class="tl-f"><label>成交（台幣）</label><input type="text" data-sf="dealTwd" value="${s.dealTwd?parseInt(s.dealTwd).toLocaleString():''}"/></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── 採購議價（截標日＋checklist＋押標金）──
+function _tlBidPanel(o){
+  const has=!!o.hasBidBond;
+  const dv=v=>String(v||'').slice(0,10);
+  return `
+    <div class="tl-f full tl-bidclose"><label>截標日</label><input type="date" data-tlf="bidCloseDate" value="${dv(o.bidCloseDate)}" data-caltitle="截標"/></div>
+    ${_tlChk(o,'bidDocReceived','已收到議價文件',{word:'收到'})}
+    ${_tlChk(o,'bidDocSent','已送出／寄出標案文件',{word:'送出'})}
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="hasBidBond" ${has?'checked':''} onchange="_tlBidToggle(this)"/><label>是否有押標金</label>
+      <input type="text" class="tl-money" data-tlf="bidBondAmount" placeholder="NT$ 金額" value="${o.bidBondAmount?('NT$ '+parseInt(o.bidBondAmount).toLocaleString('zh-TW')):''}" oninput="_tlFmtMoney(this)" ${has?'':'disabled'}/></div>
+    ${has?_tlChk(o,'bidBondApplied','已申請押標金',{word:'申請'}):''}
+    <div class="tl-f full"><label>備註（議價／標案進度）</label><textarea data-tlf="__note">${(o.stageNotes||{})['採購議價']||''}</textarea></div>`;
+}
+function _tlBidToggle(cb){
+  const amt=document.querySelector('[data-tlf="bidBondAmount"]'); if(amt) amt.disabled=!cb.checked;
+}
+
+// ── 驗收中（參與驗收＋啟用通知 checklist）──
+function _tlAcceptPanel(o){
+  const need=!!o.needAcceptance;
+  const dv=v=>String(v||'').slice(0,10);
+  const baseStart=dv(o.startDate);
+  return `
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="needAcceptance" ${need?'checked':''} onchange="_tlAcceptToggle()"/><label>是否需要參與驗收</label></div>
+    <div class="tl-f" id="tlAccBook"><label>預約驗收日</label><input type="date" data-tlf="acceptBookDate" value="${dv(o.acceptBookDate)}" data-caltitle="驗收" ${need?'':'disabled'}/></div>
+    <div class="tl-f"><label>客戶驗收完成（選填）</label><input type="date" data-tlf="clientAcceptedAt" value="${dv(o.clientAcceptedAt)}" data-nocal/></div>
+    <div class="tl-f full"><label>訂期起始日（鎖定，須至「訂單資料」修改）</label><input type="date" value="${baseStart}" data-nocal disabled/><span class="hint">此欄強制帶入訂單資料的訂期起始日，無法在此變更。</span></div>
+    ${o.parentOrderId ? '' : _tlChk(o,'activationNotice','已製作啟用通知',{word:'完成'})}
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['驗收中']||''}</textarea></div>`;
+}
+function _tlAcceptToggle(){
+  const on=document.querySelector('[data-tlf="needAcceptance"]')?.checked;
+  const el=document.querySelector('[data-tlf="acceptBookDate"]'); if(el){ el.disabled=!on; if(!on) el.value=''; }
+}
+
+function _tlSetFu(n){
+  const el=document.querySelector('[data-tlfu]'); if(!el) return;
+  const d=new Date(); d.setDate(d.getDate()+n);
+  el.value=_isoDate(d);
+  if(typeof updateRocHint==='function') updateRocHint(el);
+}
+function _tlFmtMoney(el){ const n=String(el.value).replace(/[^0-9]/g,''); el.value = n?('NT$ '+parseInt(n).toLocaleString('zh-TW')):''; }
+// ── 狀態備註（便條紙）：編輯 o.statusNote，顯示在訂單狀態標籤／儀表板 ──
+function _tlNoteBtn(o){
+  const has=!!(o.statusNote&&o.statusNote.trim());
+  const tip=has?('狀態備註：'+o.statusNote.replace(/"/g,'&quot;')):'新增狀態備註';
+  return `<button type="button" class="tl-note-btn ${has?'has':''}" onclick="_tlEditStatusNote()" title="${tip}">📝${has?'<i></i>':''}</button>`;
+}
+function _tlEditStatusNote(){
+  const o=dbLoad().orders.find(x=>x.id===_tlOrderId); if(!o) return;
+  document.getElementById('tlNotePop')?.remove();
+  const pop=document.createElement('div'); pop.id='tlNotePop'; pop.className='tl-note-pop';
+  pop.innerHTML=`<div class="tl-note-card">
+    <div class="tl-note-h">📝 狀態備註<span>會顯示在訂單狀態標籤與儀表板（最近一次）</span></div>
+    <textarea id="tlNoteTa" placeholder="快速記一下這個狀態的近況／卡住的點…">${(o.statusNote||'').replace(/</g,'&lt;')}</textarea>
+    <div class="tl-note-acts">
+      <button type="button" class="tl-btn" onclick="_tlCloseNote()">取消</button>
+      <button type="button" class="tl-btn primary" onclick="_tlSaveNote()">儲存備註</button>
+    </div></div>`;
+  pop.addEventListener('click',e=>{ if(e.target===pop) _tlCloseNote(); });
+  document.body.appendChild(pop);
+  setTimeout(()=>document.getElementById('tlNoteTa')?.focus(),30);
+}
+function _tlCloseNote(){ document.getElementById('tlNotePop')?.remove(); }
+function _tlSaveNote(){
+  const ta=document.getElementById('tlNoteTa'); if(!ta) return;
+  const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
+  o.statusNote=ta.value.trim(); o.updatedAt=new Date().toISOString(); dbSave(db);
+  renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  _tlCloseNote(); showToast('已更新狀態備註'); _tlRender();
+}
+function _tlOpenQuote(){ if(typeof openQuoteModal==='function') openQuoteModal(_tlOrderId); }
+function _tlOpenDelivery(){ const o=dbLoad().orders.find(x=>x.id===_tlOrderId); if(typeof openDeliveryModal==='function') openDeliveryModal(o?.clientId, _tlOrderId); }
+function _tlOpenInvoice(){ if(typeof openInvoiceModal==='function') openInvoiceModal(_tlOrderId); }
+function _tlResetInvoice(){
+  if(!confirm('確定要重設「申請開發票」的時間嗎？')) return;
+  const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
+  o.invoiceAppliedAt=null; o.updatedAt=new Date().toISOString(); dbSave(db);
+  showToast('已重設申請開發票時間'); _tlRender();
+}
+
+// ── 加入 Google 日曆（透過後端 Apps Script CalendarApp）──
+function _tlDecorateCal(){
+  const right=document.getElementById('tlRight'); if(!right) return;
+  right.querySelectorAll('input[type="date"]').forEach(inp=>{
+    if(inp.disabled) return;
+    if(inp.hasAttribute('data-nocal')) return;
+    if(inp.nextElementSibling && inp.nextElementSibling.classList?.contains('tl-cal-btn')) return;
+    const labEl=inp.closest('.tl-f')?.querySelector('label');
+    const rawTitle=(labEl?labEl.textContent:'訂單日期').replace(/[（(].*$/,'').replace(/＋一年/,'').trim();
+    const title=inp.getAttribute('data-caltitle')||rawTitle;  // 指定標題前綴（截標/交貨/驗收/決標/客服）
+    const btn=document.createElement('button');
+    btn.type='button'; btn.className='tl-cal-btn'; btn.textContent='📅 加入日曆';
+    btn.addEventListener('click',()=>_tlAddCal(inp.value, title, btn));
+    inp.insertAdjacentElement('afterend', btn);
+  });
+}
+function _tlAddCal(dateVal, title, btn){
+  if(!dateVal){ showToast('這個欄位還沒填日期','error'); return; }
+  const o=dbLoad().orders.find(x=>x.id===_tlOrderId)||{}; const c=getClientById(o.clientId)||{};
+  const evTitle=`[${title}] ${c.shortName||''} ${o.productName||''}`.trim();
+  const details=`訂單追蹤（工作管理系統）\n客戶：${c.fullName||c.shortName||''}\n產品：${o.productName||''}\n案號：${o.caseNo||''}`;
+  _tlAddCalRaw(dateVal, evTitle, details, btn);
+}
+async function _tlAddCalRaw(dateVal, evTitle, details, btn){
+  if(!dateVal){ showToast('這個欄位還沒填日期','error'); return; }
+  const old=btn?btn.textContent:''; if(btn){ btn.textContent='加入中…'; btn.disabled=true; }
+  try{
+    const res=await __api({ action:'calendar', event:{ title:evTitle, date:String(dateVal).slice(0,10), details } });
+    if(res && res.ok){ showToast('✅ 已加入 Google 日曆'); if(btn){ btn.textContent='✓ 已加入'; btn.classList.add('done'); } }
+    else { showToast('加入失敗：'+((res&&res.error)||'後端尚未部署 calendar 功能'),'error'); if(btn){ btn.textContent=old; btn.disabled=false; } }
+  }catch(e){ showToast('加入失敗：'+e.message,'error'); if(btn){ btn.textContent=old; btn.disabled=false; } }
+}
+
+function _tlFieldHtml(o,fd){
+  const val = fd.f==='__note' ? ((o.stageNotes||{})[_tlView]||'') : (o[fd.f]!=null?o[fd.f]:'');
+  const cls = fd.full?'tl-f full':'tl-f';
+  if(fd.t==='check'){
+    return `<div class="tl-f full tl-chk"><input type="checkbox" data-tlf="${fd.f}" ${o[fd.f]?'checked':''}/><label>${fd.l}</label></div>`;
+  }
+  if(fd.t==='select'){
+    return `<div class="${cls}"><label>${fd.l}</label><select data-tlf="${fd.f}">${fd.o.map(op=>`<option ${String(val)===op?'selected':''}>${op}</option>`).join('')}</select></div>`;
+  }
+  if(fd.t==='textarea'){
+    return `<div class="tl-f full"><label>${fd.l}</label><textarea data-tlf="${fd.f}">${val}</textarea></div>`;
+  }
+  const v = fd.t==='date'? String(val).slice(0,10) : val;
+  return `<div class="${cls}"><label>${fd.l}</label><input type="${fd.t}" data-tlf="${fd.f}" value="${v}"/>${fd.hint?`<span class="hint">${fd.hint}</span>`:''}</div>`;
+}
+// 把畫面欄位收集進訂單物件（_tlSave 與自動儲存共用）
+function _tlCollect(o, right){
+  const NUMF=['costOrig','quoteOrig','quoteTwd','costTwd','quoteRate','dealRate','dealTwd'];
+  const MONEYF=['bidBondAmount','perfBondAmount'];
+  right.querySelectorAll('[data-tlf]').forEach(el=>{
+    const f=el.dataset.tlf;
+    if(f==='__note'){ o.stageNotes=o.stageNotes||{}; o.stageNotes[_tlView]=el.value; return; }
+    if(el.type==='checkbox'){ o[f]=el.checked; return; }
+    let v=el.value;
+    if(NUMF.includes(f)){ const n=String(v).replace(/[^0-9.\-]/g,''); v = n===''?0:parseFloat(n)||0; }
+    else if(MONEYF.includes(f)){ const n=String(v).replace(/[^0-9]/g,''); v = n===''?0:parseInt(n); }
+    if(el.type==='date') v = v||null;
+    o[f]=v;
+  });
+  if(_tlView==='__base__'){
+    const ca=document.getElementById('tlCostAuto'), qa=document.getElementById('tlQuoteAuto'), da=document.getElementById('tlDealAuto');
+    if(ca) o.costTwdAuto=ca.checked; if(qa) o.quoteTwdAuto=qa.checked; if(da) o.dealTwdAuto=da.checked;
+    _tlCollectSplit();
+    const splitOn=document.getElementById('tlSplitEnabled')?.checked;
+    o.splitItems = splitOn ? _tlSplit.map(s=>({
+      productName:s.productName||'',
+      costTwd:parseInt(String(s.costTwd).replace(/[^0-9.\-]/g,''))||0,
+      quoteTwd:parseInt(String(s.quoteTwd).replace(/[^0-9.\-]/g,''))||0,
+      dealTwd:parseInt(String(s.dealTwd).replace(/[^0-9.\-]/g,''))||0,
+    })).filter(s=>s.productName||s.costTwd||s.quoteTwd||s.dealTwd) : [];
+  }
+  o.checks=o.checks||{};
+  right.querySelectorAll('[data-check]').forEach(cb=>{
+    const k=cb.dataset.check;
+    if(cb.checked){
+      const di=right.querySelector(`[data-checkdate="${k}"]`);
+      o.checks[k]= (di && di.value) ? di.value : (o.checks[k] || _isoDate(new Date()));
+    } else o.checks[k]=null;
+  });
+  if(_tlView==='已提案/草報價'){
+    if(o.checks.quoteSent && !o.quoteDate) o.quoteDate=_isoDate(new Date());
+    if(o.checks.quoteSent && o.quoteDate) o.checks.quoteSent=o.quoteDate;
+  }
+  if(_tlView==='履約期間'){
+    _tlCollectSvc();
+    o.serviceLog=_tlSvc.filter(r=>r.issue||r.brief||r.due).map(r=>({kind:r.kind||'客服',cat:r.cat||'',brief:r.brief||'',replied:!!r.replied,issue:r.issue||'',due:r.due||null}));
+  }
+  const fuEl=right.querySelector('[data-tlfu]');
+  if(fuEl){ o.followUp=o.followUp||{}; o.followUp[_tlView]=fuEl.value||null; }
+  o.updatedAt=new Date().toISOString();
+}
+function _tlMarkSaved(){
+  const el=document.getElementById('tlSaveStatus'); if(!el) return;
+  const t=new Date();
+  el.textContent='自動儲存 ✓ '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+}
+let _tlAutoTimer=null;
+function _tlAutoSaveScheduled(){ clearTimeout(_tlAutoTimer); _tlAutoTimer=setTimeout(_tlAutoSaveNow, 700); }
+function _tlAutoSaveNow(){
+  if(!_tlOrderId) return;
+  const db=dbLoad(); const idx=db.orders.findIndex(x=>x.id===_tlOrderId); if(idx<0) return;
+  const right=document.getElementById('tlRight'); if(!right) return;
+  _tlCollect(db.orders[idx], right);
+  dbSave(db);
+  renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  _tlMarkSaved();
+}
+function _tlSave(setStatus){
+  clearTimeout(_tlAutoTimer);
+  const db=dbLoad(); const idx=db.orders.findIndex(x=>x.id===_tlOrderId); if(idx<0) return;
+  const o=db.orders[idx]; const right=document.getElementById('tlRight');
+  _tlCollect(o, right);
+  if(setStatus && _tlView!=='__base__') o.status=_tlView;
+  dbSave(db);
+  renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  if(o.needsContract && typeof maybeCreateContractTask==='function') maybeCreateContractTask(o.id);
+  _tlMarkSaved();
+  if(setStatus) showToast(`已設為「${_tlView}」`);
+  _tlRender();
+}
+function _tlSetStatus(key){
+  const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
+  o.status=key; o.updatedAt=new Date().toISOString(); dbSave(db);
+  renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
+  _tlView=key; showToast('狀態已更新為「'+key+'」'); _tlRender();
+}
+window._tlClose=_tlClose; window._tlSave=_tlSave; window._tlSetStatus=_tlSetStatus;
+window.openOrderTimeline=openOrderTimeline;
+window._tlFillOneYear=_tlFillOneYear; window._tlPriceCalc=_tlPriceCalc; window._tlToggleAuto=_tlToggleAuto;
+window._tlLinkedChange=_tlLinkedChange; window._tlToggleSplit=_tlToggleSplit; window._tlAddSplit=_tlAddSplit; window._tlRemoveSplit=_tlRemoveSplit;
+window._tlBidToggle=_tlBidToggle; window._tlAcceptToggle=_tlAcceptToggle;
+window._tlSetFu=_tlSetFu; window._tlOpenQuote=_tlOpenQuote;
+window._tlContractToggle=_tlContractToggle; window._tlPerfBondToggle=_tlPerfBondToggle;
+window._tlChkToggle=_tlChkToggle; window._tlInquiryReceived=_tlInquiryReceived;
+window._tlAddSvc=_tlAddSvc; window._tlRmSvc=_tlRmSvc; window._tlSvcCal=_tlSvcCal;
+window._tlFmtMoney=_tlFmtMoney; window._tlAddCalRaw=_tlAddCalRaw; window._tlAutoSaveScheduled=_tlAutoSaveScheduled;
+window._tlEditStatusNote=_tlEditStatusNote; window._tlCloseNote=_tlCloseNote; window._tlSaveNote=_tlSaveNote;
+window._tlOpenDelivery=_tlOpenDelivery; window._tlOpenInvoice=_tlOpenInvoice; window._tlResetInvoice=_tlResetInvoice;
+window._tlAddCal=_tlAddCal; window._tlDecorateCal=_tlDecorateCal;
+// （正式版：不再強制測試模式）
+
 window.addSplitItem = addSplitItem;
 window.snoozeOrderAlert = snoozeOrderAlert;
 // 供 HTML inline 事件處理器（onchange/oninput）呼叫 — 主程式包在 __startApp() 內，需顯式掛到 window
@@ -8407,7 +9375,10 @@ window.toggleSplitItems = toggleSplitItems;
 window.updateBargainPct = updateBargainPct;
 window.updateSplitTotal = updateSplitTotal;
 window.fillOneYearEnd = fillOneYearEnd;
+// TL_STAGES 此時已定義，補繪一次訂單管理主頁（避免早期 TDZ 導致的空白）
+try { renderOrderGrid(); } catch (e) {}
 }
 </script>
+<div id="tlModal"></div>
 </body>
 </html>
