@@ -610,6 +610,14 @@ ul { list-style: none; }
   border-bottom-color: var(--navy);
   font-weight: 600;
 }
+.contact-tab-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 5px; margin-left: 6px;
+  font-size: 10.5px; font-weight: 700; line-height: 1;
+  color: #fff; background: #B0B8BE; border-radius: 9px; vertical-align: middle;
+}
+.contact-tab.active .contact-tab-count { background: var(--navy); }
+.contact-sync-time { margin-right: auto; font-size: 12px; color: var(--text-muted); font-weight: 600; }
 .contact-toolbar { margin-bottom: 10px; }
 .contact-table-wrap { overflow-x: auto; }
 .contact-table {
@@ -2302,16 +2310,19 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
       </div>
       <div class="modal-body">
         <div class="contact-tabs">
-          <button class="contact-tab active" data-role="館員">館員</button>
-          <button class="contact-tab" data-role="行政">行政</button>
-          <button class="contact-tab" data-role="醫護人員">醫護人員</button>
-          <button class="contact-tab" data-role="老師">老師</button>
+          <button class="contact-tab active" data-role="館員">館員<span class="contact-tab-count" data-count-role="館員"></span></button>
+          <button class="contact-tab" data-role="行政">行政<span class="contact-tab-count" data-count-role="行政"></span></button>
+          <button class="contact-tab" data-role="醫護人員">醫護人員<span class="contact-tab-count" data-count-role="醫護人員"></span></button>
+          <button class="contact-tab" data-role="老師">老師<span class="contact-tab-count" data-count-role="老師"></span></button>
         </div>
         <div class="contact-toolbar">
           <button class="btn btn-primary btn-sm" id="addContactRowBtn">＋ 新增聯絡人</button>
         </div>
         <div class="contact-table-wrap">
           <table class="contact-table">
+            <colgroup>
+              <col style="width:100px"><col style="width:84px"><col style="width:172px"><col style="width:190px"><col><col style="width:44px">
+            </colgroup>
             <thead>
               <tr>
                 <th>姓名</th>
@@ -2327,6 +2338,7 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
         </div>
       </div>
       <div class="modal-footer">
+        <span id="contactSyncTime" class="contact-sync-time"></span>
         <button class="btn btn-secondary" data-close="contactModal">關閉</button>
         <button class="btn btn-primary" id="saveContactsBtn">儲存聯絡人</button>
       </div>
@@ -5168,6 +5180,8 @@ function openContactModal(clientId) {
     tab.classList.toggle('active', tab.dataset.role === currentRole);
   });
   renderContactTable();
+  updateContactTabCounts();
+  const _st = document.getElementById('contactSyncTime'); if (_st) _st.textContent = '';
   openModal('contactModal');
 }
 
@@ -5187,16 +5201,21 @@ function renderContactTable() {
       <td><button class="contact-delete-btn" data-idx="${idx}" title="刪除">✕</button></td>
     `;
     tr.querySelectorAll('input').forEach(input => {
-      input.addEventListener('change', e => {
+      input.addEventListener('input', e => {
         const i = parseInt(e.target.dataset.idx);
         const field = e.target.dataset.field;
         pendingContacts[currentRole][i][field] = e.target.value;
+        if (field === 'name') updateContactTabCounts();
+        _contactSaveScheduled();
       });
     });
     tr.querySelector('.contact-delete-btn').addEventListener('click', e => {
       const i = parseInt(e.target.dataset.idx);
+      if ((pendingContacts[currentRole][i]?.name||'').trim() && !confirm('確定刪除這位聯絡人嗎？')) return;
       pendingContacts[currentRole].splice(i, 1);
       renderContactTable();
+      updateContactTabCounts();
+      _contactSaveNow(true);
     });
     tbody.appendChild(tr);
   });
@@ -5234,18 +5253,34 @@ document.getElementById('addContactRowBtn').addEventListener('click', () => {
   if (rows.length) rows[rows.length-1].querySelector('input')?.focus();
 });
 
-async function handleSaveContacts() {
+function _contactSaveNow(silent) {
   syncContactTableInputs();
   const all = [];
   Object.entries(pendingContacts).forEach(([role, rows]) => {
-    rows.forEach(ct => {
-      if (ct.name.trim()) all.push({ ...ct, role });
-    });
+    rows.forEach(ct => { if ((ct.name||'').trim()) all.push({ ...ct, role }); });
   });
   saveContacts(contactClientId, all);
-  closeModal('contactModal');
-  showToast('聯絡人已儲存');
+  updateContactTabCounts();
+  _contactMarkSaved();
+  if (!silent) showToast('聯絡人已儲存');
 }
+let _contactSaveTimer = null;
+function _contactSaveScheduled() { clearTimeout(_contactSaveTimer); _contactSaveTimer = setTimeout(() => _contactSaveNow(true), 700); }
+function _contactMarkSaved() {
+  const el = document.getElementById('contactSyncTime'); if (!el) return;
+  const t = new Date();
+  el.textContent = '已儲存 ✓ ' + String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
+}
+function updateContactTabCounts() {
+  document.querySelectorAll('.contact-tab-count').forEach(span => {
+    const role = span.dataset.countRole;
+    const n = (pendingContacts[role] || []).filter(ct => (ct.name||'').trim()).length;
+    span.textContent = n || '';
+    span.style.display = n ? '' : 'none';
+  });
+}
+// 儲存聯絡人：改為只儲存、不關閉視窗
+async function handleSaveContacts() { _contactSaveNow(false); }
 
 
 // ===== filter.js =====
