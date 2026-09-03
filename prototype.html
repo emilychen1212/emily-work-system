@@ -1807,6 +1807,8 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-sp-del:hover{opacity:1;}
 .tl-sp-empty{padding:16px;text-align:center;color:var(--text-muted);font-size:12.5px;}
 .tl-ship-wrap{grid-column:1/-1;}
+.tl-deal-info{grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 13px;font-size:12.5px;color:var(--text-secondary);line-height:1.7;}
+.tl-deal-info b{color:var(--navy);font-weight:700;}
 .tl-recon{margin:4px 0 10px;padding:9px 13px;border-radius:9px;font-size:13px;font-weight:700;}
 .tl-recon.ok{background:#E4EEEA;color:#1B4B3A;border:1px solid #B9D6CB;}
 .tl-recon.bad{background:#F6E4DE;color:#A4472F;border:1px solid #D9A491;}
@@ -9211,9 +9213,18 @@ function _tlInvoicePanel(o){
 function _tlDeliveryPanel(o){
   const miss=_tlMissingBase(o);
   const missBanner = miss.length ? `<div class="tl-alert warn">⚠️ 記得補齊訂單資料：${miss.join('、')}（請至「訂單資料」填寫）</div>` : '';
+  // 成交資訊（唯讀，來自訂單資料的「成交資訊（決標後填寫）」）— 出貨中同步確認價格
+  const m=v=>{const n=parseInt(String(v).replace(/[^0-9]/g,''))||0;return n?('NT$ '+n.toLocaleString()):'—';};
+  const cur=o.currency||'';
+  const k=(typeof caseOfOrder==='function')?caseOfOrder(o.id):null;
+  const caseTotal=(typeof _tlCaseDealTotal==='function')?_tlCaseDealTotal(o):(parseInt(o.dealTwd)||0);
+  const dealInfo=`<div class="tl-deal-info">成交資訊（來自訂單資料）：
+    成交金額 <b>${m(o.dealTwd)}</b>　·　成交匯率 <b>${o.dealRate||'—'}</b>　·　原幣別 <b>${cur||'—'}</b>
+    ${k?`　·　購案總成交 <b>NT$ ${caseTotal.toLocaleString()}</b>`:''}</div>`;
   return `
     ${missBanner}
     ${_tlChk(o,'deliveryOrderSent','已送出貨單',{word:'送出'})}
+    ${dealInfo}
     <div class="tl-f full tl-ship-wrap">
       <div class="tl-svc-top">
         <div class="tl-section-label" style="margin:0;">出貨明細（此表用於出貨單，可與報價不同）</div>
@@ -9277,14 +9288,17 @@ function _tlShipPct(el){
 function _tlShipRecon(){
   _tlShipCollect();
   const o=dbLoad().orders.find(x=>x.id===_tlOrderId)||{};
-  const sum=_tlShip.filter(s=>!/內/.test(s.splitType||'對外')).reduce((a,s)=>a+(parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0),0);
+  // 對外＋對內全部算入：內部行銷費是從總成交價「切出來」的，也要納入分配
+  const sum=_tlShip.reduce((a,s)=>a+(parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0),0);
   const target=_tlCaseDealTotal(o);
   const diff=sum-target;
   const box=document.getElementById('tlShipRecon'); if(!box) return;
   const inCase=(typeof caseOfOrder==='function')&&caseOfOrder(o.id);
   const label=inCase?'購案總成交價':'訂單成交金額';
-  if(diff===0 && target>0) box.innerHTML=`<div class="tl-recon ok">✓ 已平衡：出貨成交合計 = ${label} NT$ ${target.toLocaleString()}</div>`;
-  else box.innerHTML=`<div class="tl-recon bad">⚠ 未平衡：出貨成交合計 NT$ ${sum.toLocaleString()} ／ ${label} NT$ ${target.toLocaleString()}　差額 NT$ ${diff.toLocaleString()}</div>`;
+  if(target<=0){ box.innerHTML=`<div class="tl-recon bad">請先在「訂單資料」填成交金額，才能對帳</div>`; return; }
+  if(diff===0) box.innerHTML=`<div class="tl-recon ok">✓ 已分配完成：拆項成交合計 = ${label} NT$ ${target.toLocaleString()}</div>`;
+  else if(diff<0) box.innerHTML=`<div class="tl-recon bad">尚有 NT$ ${Math.abs(diff).toLocaleString()} 未分配 — 請把這筆金額補到拆項（例如某項成交價或行銷費）｜目前拆項合計 NT$ ${sum.toLocaleString()} ／ ${label} NT$ ${target.toLocaleString()}</div>`;
+  else box.innerHTML=`<div class="tl-recon bad">超出 NT$ ${diff.toLocaleString()} — 需從其他拆項降低這筆金額（拆項合計不可超過${label}）｜目前拆項合計 NT$ ${sum.toLocaleString()} ／ ${label} NT$ ${target.toLocaleString()}</div>`;
 }
 function _tlShipRender(){
   const list=document.getElementById('tlShipList'); if(!list) return;
