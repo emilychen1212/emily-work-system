@@ -4488,9 +4488,11 @@ function renderOrdersGrid() {
     const toggleBtn = (!isChild && hasChildren)
       ? `<button class="order-row-toggle" data-toggle="${o.id}" title="展開/收合拆項">▶</button>`
       : (isChild ? '' : '<span style="display:inline-block;width:22px;"></span>');
-    const contractBg = o._inContract ? 'background:rgba(63,79,113,0.03);border-left:2.5px solid #3a3a4a;border-right:2.5px solid #3a3a4a;' : '';
-    const lastYearBorder = o._isLastYear ? 'border-bottom:2.5px solid #3a3a4a;border-left:2.5px solid #3a3a4a;border-right:2.5px solid #3a3a4a;' : '';
-    return `<tr data-order-id="${o.id}" class="${isChild?'sub-order-row':''}" style="${contractBg}${lastYearBorder}">
+    const contractBg = o._inContract ? 'background:rgba(63,79,113,0.03);border-left:3px solid #3a4a6b;border-right:3px solid #3a4a6b;' : '';
+    const lastYearBorder = o._isLastYear ? 'border-bottom:3px solid #3a4a6b;border-left:3px solid #3a4a6b;border-right:3px solid #3a4a6b;' : '';
+    const caseBg = o._inCase ? 'background:rgba(176,101,63,0.06);border-left:3px solid #B0653F;border-right:3px solid #B0653F;' : '';
+    const lastCaseBorder = o._isLastCaseMember ? 'border-bottom:3px solid #B0653F;border-left:3px solid #B0653F;border-right:3px solid #B0653F;' : '';
+    return `<tr data-order-id="${o.id}" class="${isChild?'sub-order-row':''}" style="${contractBg}${lastYearBorder}${caseBg}${lastCaseBorder}">
       <td style="text-align:center;padding:0 4px;">${toggleBtn}</td>
       <td><button class="order-qadd-btn" data-qadd="${o.id}" title="新增相關任務">＋</button></td>
       <td>
@@ -4583,7 +4585,8 @@ function renderOrdersGrid() {
         <button style="margin-left:10px;font-size:11px;background:none;border:1px solid var(--border);border-radius:4px;padding:1px 7px;cursor:pointer;color:var(--text-muted);" data-edit-case="${k.id}">✎ 編輯購案</button>
       </td>
     </tr>`;
-    const orderRows = members.map(o => { o._inContract = false; o._isLastYear = false;
+    const lastIdx = members.length - 1;
+    const orderRows = members.map((o, idx) => { o._inContract = false; o._isLastYear = false; o._inCase = true; o._isLastCaseMember = idx === lastIdx;
       const children = childOrdersMap[o.id]||[];
       const childRows = children.map(c => buildOrderRow(c,true)).join('');
       const row = buildOrderRow(o,false) + childRows;
