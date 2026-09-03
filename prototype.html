@@ -1796,7 +1796,7 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-sp-scroll{overflow-x:auto;border:1px solid var(--line,var(--border));border-radius:10px;}
 .tl-sp-tbl{min-width:700px;}
 .tl-sp-head,.tl-sp-line{display:grid;grid-template-columns:64px minmax(120px,1.4fr) 96px 96px 96px 62px 34px;gap:8px;align-items:center;padding:8px 10px;}
-.tl-sp-head.sp-order,.tl-sp-line.sp-order{grid-template-columns:58px minmax(110px,1.3fr) 84px 90px 84px 90px 58px 32px;}
+.tl-sp-head.sp-order,.tl-sp-line.sp-order{grid-template-columns:58px minmax(110px,1.3fr) 84px 92px 84px 92px 32px;}
 .tl-sp-head.sp-ship,.tl-sp-line.sp-ship{grid-template-columns:58px minmax(110px,1.3fr) 84px 92px 100px 58px 32px;}
 .tl-sp-head{background:var(--surface2);font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border);}
 .tl-sp-line{border-top:1px solid var(--line-soft,rgba(0,0,0,.06));}
@@ -9529,20 +9529,17 @@ function _tlSplitPct(el){
 function _tlRenderSplit(){
   const list=document.getElementById('tlSplitList'); if(!list) return;
   const money=v=>{const n=parseInt(String(v).replace(/[^0-9]/g,''))||0;return n?n.toLocaleString():'';};
-  const head=`<div class="tl-sp-head sp-order"><span>類型</span><span>項目名稱</span><span>底價(原幣)</span><span>底價(台幣)</span><span>報價(原幣)</span><span>報價(台幣)</span><span>議價%</span><span></span></div>`;
+  const head=`<div class="tl-sp-head sp-order"><span>類型</span><span>項目名稱</span><span>底價(原幣)</span><span>底價(台幣)</span><span>報價(原幣)</span><span>報價(台幣)</span><span></span></div>`;
   if(_tlSplit.length===0){ list.innerHTML=head+'<div class="tl-sp-empty">尚無拆項，點「＋ 新增拆項」開始</div>'; return; }
   const rows=_tlSplit.map((s,i)=>{
     const isIn=/內/.test(s.splitType||'');
-    const c=parseInt(String(s.costTwd).replace(/[^0-9]/g,''))||0, q=parseInt(String(s.quoteTwd).replace(/[^0-9]/g,''))||0;
-    const pct=(c&&q)?((c/q*100).toFixed(1)+'%'):'—';
     return `<div class="tl-sp-line sp-order${isIn?' internal':''}" data-splitrow="${i}">
       <select data-sf="splitType"><option value="對外" ${!isIn?'selected':''}>對外</option><option value="對內" ${isIn?'selected':''}>對內</option></select>
       <input type="text" data-sf="productName" placeholder="項目名稱" value="${(s.productName||'').replace(/"/g,'&quot;')}"/>
       <input type="text" data-sf="costOrig" placeholder="原幣" value="${money(s.costOrig)}"/>
-      <input type="text" data-sf="costTwd" placeholder="台幣" value="${money(s.costTwd)}" oninput="_tlSplitPct(this)"/>
+      <input type="text" data-sf="costTwd" placeholder="台幣" value="${money(s.costTwd)}"/>
       <input type="text" data-sf="quoteOrig" placeholder="原幣" value="${money(s.quoteOrig)}"/>
-      <input type="text" data-sf="quoteTwd" placeholder="台幣" value="${money(s.quoteTwd)}" oninput="_tlSplitPct(this)"/>
-      <span class="tl-sp-pct">${pct}</span>
+      <input type="text" data-sf="quoteTwd" placeholder="台幣" value="${money(s.quoteTwd)}"/>
       <button type="button" class="tl-sp-del" title="刪除" onclick="_tlRemoveSplit(${i})">🗑</button>
     </div>`;
   }).join('');
