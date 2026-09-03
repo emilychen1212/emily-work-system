@@ -638,6 +638,9 @@ ul { list-style: none; }
 .case-o-other{font-size:11px;color:var(--warm);white-space:nowrap;}
 .case-empty{padding:24px;text-align:center;color:var(--text-muted);font-size:13px;}
 .order-case-badge{display:inline-block;font-size:10.5px;font-weight:600;color:var(--navy);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:0 6px;margin-left:5px;white-space:nowrap;}
+.tl-case-banner{padding:8px 22px;font-size:12.5px;color:#6B5A2A;background:#F6EFD9;border-bottom:1px solid #E4D6A8;}
+.tl-case-banner.sync{color:#1B4B3A;background:#E4EEEA;border-bottom-color:#B9D6CB;}
+.tl-case-banner b{font-weight:700;}
 .contact-table-wrap { overflow-x: auto; }
 .contact-table {
   width: 100%;
@@ -3108,8 +3111,16 @@ function _saveCase() {
   // 把購案名稱寫回成員訂單的群組代號（供報價單編號）
   const db = dbLoad();
   db.orders.forEach(o => { const k = caseOfOrder(o.id, cases); if (k) o.caseGroup = k.name; });
+  // 若成員已進採購議價，立即以「最進度」的成員把整組同步起來
+  const k2 = caseById(_caseEditingId, cases);
+  if (k2 && typeof _tlSyncCase === 'function') {
+    const members = (k2.orderIds||[]).map(id => db.orders.find(x => x.id === id)).filter(Boolean);
+    const lead = members.slice().sort((a,b) => _tlCaseGrp(b.status) - _tlCaseGrp(a.status))[0];
+    if (lead && _tlCaseGrp(lead.status) >= 3) _tlSyncCase(db, lead);
+  }
   dbSave(db);
   renderOrdersGrid && renderOrdersGrid();
+  if (typeof refreshDashboardContent === 'function') refreshDashboardContent();
   showToast('購案已儲存');
   _renderCaseModal();
 }
@@ -5990,6 +6001,7 @@ function computeDashboardItems() {
   const db = dbLoad();
   const clientMap = {};
   getClients().forEach(c => { clientMap[c.id] = c; });
+  const _caseList = getCases();
 
   (db.orders || []).forEach(o => {
     const now = Date.now();
@@ -6025,6 +6037,11 @@ function computeDashboardItems() {
     const CK = o.checks || {};
     const _GRP = {'詢價中':1,'已提案/草報價':2,'採購議價':3,'契約書簽訂中':4,'出貨中':4,'驗收中':4,'可開發票':4,'履約期間':5,'履約結束':6};
     const curGrp = _GRP[o.status] || 0;
+    // 購案：進採購議價(grp≥3)後，共用任務只由「主訂單」出一次、以購案名稱稱呼；啟用通知仍照產品各自出
+    const _kase = _caseList.find(k => (k.orderIds||[]).includes(o.id)) || null;
+    const _caseActive = _kase && curGrp >= 3;
+    const _isLead = _caseActive ? (_kase.orderIds[0] === o.id) : true;
+    if (_caseActive) { subParts.length = 0; subParts.push(clientName, '購案：' + _kase.name); }
     const _snoozeHint = _snoozeDate ? `已延後至 ${fmtDate(_isoDate(_snoozeDate))}` : null;
     const _fu = (o.followUp || {})[o.status] || null;   // 該階段手動追蹤日
     const _dPlus = (ds, n) => { const d = new Date(ds); d.setHours(0,0,0,0); d.setDate(d.getDate() + n); return d; };
@@ -6053,19 +6070,21 @@ function computeDashboardItems() {
 
     // 採購議價：製作標案文件（截標前5天）、申請押標金（截標前7天）
     if (o.status === '採購議價') {
-      const bidCloseD = (o.bidCloseAt || o.bidCloseDate || '').slice(0,10);
-      if (bidCloseD && !CK.bidDocSent) _pushItem(_dPlus(bidCloseD, -5), `製作標案文件（截標 ${fmtDate(bidCloseD)}）`, '📝', 0, _snoozeHint);
-      if (o.hasBidBond && bidCloseD && !CK.bidBondApplied) _pushItem(_dPlus(bidCloseD, -7), '申請押標金', '🔐', 1);
+      if (_isLead) {
+        const bidCloseD = (o.bidCloseAt || o.bidCloseDate || '').slice(0,10);
+        if (bidCloseD && !CK.bidDocSent) _pushItem(_dPlus(bidCloseD, -5), `製作標案文件（截標 ${fmtDate(bidCloseD)}）`, '📝', 0, _snoozeHint);
+        if (o.hasBidBond && bidCloseD && !CK.bidBondApplied) _pushItem(_dPlus(bidCloseD, -7), '申請押標金', '🔐', 1);
+      }
       return;
     }
 
     // 履約結束：強制結案 — 不再排出貨/啟用通知/追回等提醒，只保留申退履保金與退款追蹤
     if (o.status === '履約結束') {
-      if (o.bondRefundStatus !== 'refunded') {
+      if (_isLead && o.bondRefundStatus !== 'refunded') {
         const base = _snoozeDate ? _isoDate(_snoozeDate) : (_fu || (o.endDate ? _isoDate(_dPlus(o.endDate, 30)) : null));
         if (base) _pushItem(new Date(base), '申退履保金', '💰', 2, _snoozeHint);
       }
-      if (o.bondRefundStatus === 'pending') {
+      if (_isLead && o.bondRefundStatus === 'pending') {
         const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
         if (o.bondRefundSnoozedMonth !== ym) {
           const d28 = new Date(today.getFullYear(), today.getMonth(), 28); d28.setHours(0, 0, 0, 0);
@@ -6077,38 +6096,40 @@ function computeDashboardItems() {
 
     // ══ 平行群組（決標/出貨/驗收/可開發票，grp≥4）＋後段：改用「欄位＋checklist」觸發，不綁精確狀態 ══
 
+    // 以下平行群組的「共用任務」：購案成員只由主訂單出一次（_isLead）；未在購案者 _isLead 恆真
     // 決標日 → 製作出貨單（決標隔天；超過3天未送出 → 🔥 逾期警示）
-    if (o.contractReceivedAt && !CK.deliveryOrderSent) {
+    if (_isLead && o.contractReceivedAt && !CK.deliveryOrderSent) {
       const overdue3 = now >= _dPlus(o.contractReceivedAt, 3).getTime();
       _pushItem(_dPlus(o.contractReceivedAt, 1), overdue3 ? '⚠️ 逾期：製作出貨單' : '製作出貨單', '📦', overdue3 ? 0 : 1);
     }
     // 有履保金 → 申請履保金（履保金繳納截止前7天）
-    if (o.bondDeadline && (o.hasPerfBond || o.hasBidBond) && !CK.perfBondApplied) {
+    if (_isLead && o.bondDeadline && (o.hasPerfBond || o.hasBidBond) && !CK.perfBondApplied) {
       _pushItem(_dPlus(o.bondDeadline, -7), '申請履保金', '🔐', 1, `履保金截止 ${fmtDate(o.bondDeadline)}`);
     }
     // 需做合約 → 繳交合約（預計繳交合約日前3天）
-    if (o.needsContract && o.contractDueDate) {
+    if (_isLead && o.needsContract && o.contractDueDate) {
       _pushItem(_dPlus(o.contractDueDate, -3), '繳交合約', '✍️', 1, `預計繳交 ${fmtDate(o.contractDueDate)}`);
     }
     // 決標日 + 30天 仍未追回回簽合約 → 追回合約
-    if (o.contractReceivedAt && !CK.contractReturned) {
+    if (_isLead && o.contractReceivedAt && !CK.contractReturned) {
       _pushItem(_dPlus(o.contractReceivedAt, 30), '追回客戶回簽合約', '🔁', 2);
     }
-    // 製作啟用通知：已到平行群組(grp≥4) 且距訂期起始 ≤5 天才排；≤5天內 → 🔥 極緊急（子訂單不需啟用通知）
+    // 製作啟用通知：照產品各自出（購案也不去重）；grp≥4 且距訂期起始 ≤5 天才排（子訂單不需）
     if (curGrp >= 4 && o.startDate && !o.parentOrderId && !CK.activationNotice) {
       const start = new Date(o.startDate); start.setHours(0,0,0,0);
       const daysToStart = Math.round((start - snapDate) / 86400000);
       if (daysToStart <= 5) {
         const target = _dPlus(o.startDate, -5);
-        _pushItem(target < snapDate ? snapDate : target, '製作啟用通知', '📬', 0, `訂期起始 ${fmtDate(o.startDate)}`);
+        const actLabel = _caseActive ? `製作啟用通知（${productName}）` : '製作啟用通知';
+        _pushItem(target < snapDate ? snapDate : target, actLabel, '📬', 0, `訂期起始 ${fmtDate(o.startDate)}`);
       }
     }
     // 可開發票 → 今日申請開發票
-    if (o.status === '可開發票' && !o.invoiceAppliedAt) {
+    if (_isLead && o.status === '可開發票' && !o.invoiceAppliedAt) {
       _pushItem(_dPlus(o.updatedAt, 1), '今日申請開發票', '🧾', 1, _snoozeHint);
     }
     // 履約期間：客服／維護（依預計完成日；未回覆才提醒）
-    if (o.status === '履約期間' && Array.isArray(o.serviceLog)) {
+    if (_isLead && o.status === '履約期間' && Array.isArray(o.serviceLog)) {
       o.serviceLog.forEach(r => {
         if (r.due && !r.replied) _pushItem(new Date(r.due), `${r.kind || '客服'}：${(r.issue || '').slice(0, 16)}`, r.kind === '維護' ? '🛠️' : '📞', 1);
       });
@@ -8863,6 +8884,9 @@ function _tlRender(){
   const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
   const c=getClientById(o.clientId)||{};
   const amt = (o.startDate||o.endDate) ? ('訂期 '+(o.startDate?_rocSlash(o.startDate):'—')+' ～ '+(o.endDate?_rocSlash(o.endDate):'—')) : '未設定訂期';
+  const _kase = (typeof caseOfOrder==='function') ? caseOfOrder(o.id) : null;
+  const _caseSync = _kase && _tlCaseGrp(o.status)>=3;
+  const caseBanner = _kase ? `<div class="tl-case-banner ${_caseSync?'sync':''}">📦 此訂單屬於購案「${(_kase.name||'').replace(/</g,'&lt;')}」（${(_kase.orderIds||[]).length} 張）${_caseSync?'：流程與其他成員<b>一起連動</b>，編輯會即時同步（啟用通知仍照產品各自）':'：進到採購議價後會開始一起連動'}</div>` : '';
   const shell=`
     <div class="tl-shell${_tlEmbed?' tl-shell--embed':''}">
       <div class="tl-top">
@@ -8874,6 +8898,7 @@ function _tlRender(){
         <span class="tl-savestat" id="tlSaveStatus">自動儲存已開啟</span>
         <button class="tl-x" onclick="_tlClose()">✕</button>
       </div>
+      ${caseBanner}
       <div class="tl-body">
         <div class="tl-left">
           <div class="tl-legend">
@@ -9531,6 +9556,29 @@ function _tlMarkSaved(){
   const t=new Date();
   el.textContent='自動儲存 ✓ '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
 }
+// 購案共用時間軸：把 o 的流程欄位即時同步到同購案的其他成員（採購議價 grp≥3 才啟動；啟用通知除外）
+const CASE_SHARED=['status','followUp','stageNotes','statusNote',
+  'bidCloseAt','bidOpenAt','bidBondAmount','hasBidBond',
+  'contractReceivedAt','contractDueDate','bondDeadline','hasPerfBond','perfBondAmount','needsContract','contractReturnedFlag',
+  'deliveryDate','deliveryOrderSubmittedAt',
+  'needAcceptance','acceptBookDate','clientAcceptedAt',
+  'invoiceReceived','invoiceSent','invoiceAppliedAt','quoteDownloadedAt','deliveryDownloadedAt',
+  'alertSnoozedUntil'];
+function _tlCaseGrp(status){ const s=TL_STAGES.find(x=>x.key===status); return s?s.grp:0; }
+function _tlSyncCase(db, o){
+  const k=caseOfOrder(o.id); if(!k) return;
+  if(_tlCaseGrp(o.status)<3) return;          // 只有進到採購議價後才一起追
+  const srcChecks={...(o.checks||{})}; delete srcChecks.activationNotice;   // 啟用通知照產品各自
+  (k.orderIds||[]).forEach(mid=>{
+    if(mid===o.id) return;
+    const m=db.orders.find(x=>x.id===mid); if(!m) return;
+    CASE_SHARED.forEach(f=>{ if(o[f]===undefined) delete m[f]; else m[f]=o[f]; });
+    const keepAct=(m.checks||{}).activationNotice;
+    m.checks={...(m.checks||{}), ...srcChecks};
+    if(keepAct!==undefined) m.checks.activationNotice=keepAct; else delete m.checks.activationNotice;
+    m.updatedAt=o.updatedAt||new Date().toISOString();
+  });
+}
 let _tlAutoTimer=null;
 function _tlAutoSaveScheduled(){ clearTimeout(_tlAutoTimer); _tlAutoTimer=setTimeout(_tlAutoSaveNow, 700); }
 function _tlAutoSaveNow(){
@@ -9538,6 +9586,7 @@ function _tlAutoSaveNow(){
   const db=dbLoad(); const idx=db.orders.findIndex(x=>x.id===_tlOrderId); if(idx<0) return;
   const right=document.getElementById('tlRight'); if(!right) return;
   _tlCollect(db.orders[idx], right);
+  _tlSyncCase(db, db.orders[idx]);
   dbSave(db);
   renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
   _tlMarkSaved();
@@ -9548,6 +9597,7 @@ function _tlSave(setStatus){
   const o=db.orders[idx]; const right=document.getElementById('tlRight');
   _tlCollect(o, right);
   if(setStatus && _tlView!=='__base__') o.status=_tlView;
+  _tlSyncCase(db, o);
   dbSave(db);
   renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
   if(o.needsContract && typeof maybeCreateContractTask==='function') maybeCreateContractTask(o.id);
@@ -9556,8 +9606,10 @@ function _tlSave(setStatus){
   _tlRender();
 }
 function _tlSetStatus(key){
-  const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
-  o.status=key; o.updatedAt=new Date().toISOString(); dbSave(db);
+  const db=dbLoad(); const idx=db.orders.findIndex(x=>x.id===_tlOrderId); if(idx<0) return;
+  const o=db.orders[idx]; o.status=key; o.updatedAt=new Date().toISOString();
+  _tlSyncCase(db, o);
+  dbSave(db);
   renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
   _tlView=key; showToast('狀態已更新為「'+key+'」'); _tlRender();
 }
