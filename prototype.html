@@ -7967,8 +7967,12 @@ function openDeliveryModal(clientId, orderId=null) {
   document.getElementById('dlvBargainPct').value  = bpct;
   document.getElementById('dlvLastDeal').value    = linked?.dealTwd ? `NT$ ${parseInt(linked.dealTwd).toLocaleString('zh-TW')}` : '';
 
-  // 載入拆項供出貨單使用
-  const dlvSplits = orderId ? db.orders.filter(x => x.parentOrderId === orderId) : [];
+  // 載入拆項供出貨單使用：舊子訂單 + 新版時間軸拆項（只帶「對外」，內部拆帳不進客戶文件）
+  const childSplits = orderId ? db.orders.filter(x => x.parentOrderId === orderId) : [];
+  const timelineSplits = (o.splitItems || [])
+    .filter(s => !/內/.test(s.splitType || '對外'))
+    .map(s => ({ productName: s.productName, costTwd: s.costTwd, costOrig: 0, quoteTwd: s.quoteTwd, dealTwd: s.dealTwd, currency: o.currency }));
+  const dlvSplits = [...childSplits, ...timelineSplits];
   window._dlvOrderId = orderId;
   window._dlvSplits  = dlvSplits;
 
