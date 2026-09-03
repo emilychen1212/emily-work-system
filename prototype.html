@@ -848,6 +848,17 @@ ul { list-style: none; }
 .orders-table tbody tr:hover { background: #f0f2f8; }
 .orders-table tbody tr:nth-child(even) { background: var(--surface2); }
 .orders-table tbody tr:nth-child(even):hover { background: #e8eaf2; }
+/* 群組成員：整塊實色蓋過斑馬紋 + td 上色邊框（tr 邊框不會顯示）*/
+.orders-table tbody tr.grp-contract, .orders-table tbody tr.grp-contract:nth-child(even) { background: #E9EDF4 !important; }
+.orders-table tbody tr.grp-contract:hover { background: #DEE4EF !important; }
+.orders-table tbody tr.grp-contract td:first-child { border-left: 3px solid #3A4A6B; }
+.orders-table tbody tr.grp-contract td:last-child { border-right: 3px solid #3A4A6B; }
+.orders-table tbody tr.grp-case, .orders-table tbody tr.grp-case:nth-child(even) { background: #F5EBE2 !important; }
+.orders-table tbody tr.grp-case:hover { background: #EFE0D3 !important; }
+.orders-table tbody tr.grp-case td:first-child { border-left: 3px solid #B0653F; }
+.orders-table tbody tr.grp-case td:last-child { border-right: 3px solid #B0653F; }
+.orders-table tbody tr.grp-last.grp-contract td { border-bottom: 3px solid #3A4A6B; }
+.orders-table tbody tr.grp-last.grp-case td { border-bottom: 3px solid #B0653F; }
 .orders-table tbody td {
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
@@ -4488,11 +4499,13 @@ function renderOrdersGrid() {
     const toggleBtn = (!isChild && hasChildren)
       ? `<button class="order-row-toggle" data-toggle="${o.id}" title="展開/收合拆項">▶</button>`
       : (isChild ? '' : '<span style="display:inline-block;width:22px;"></span>');
-    const contractBg = o._inContract ? 'background:rgba(63,79,113,0.03);border-left:3px solid #3a4a6b;border-right:3px solid #3a4a6b;' : '';
-    const lastYearBorder = o._isLastYear ? 'border-bottom:3px solid #3a4a6b;border-left:3px solid #3a4a6b;border-right:3px solid #3a4a6b;' : '';
-    const caseBg = o._inCase ? 'background:rgba(176,101,63,0.06);border-left:3px solid #B0653F;border-right:3px solid #B0653F;' : '';
-    const lastCaseBorder = o._isLastCaseMember ? 'border-bottom:3px solid #B0653F;border-left:3px solid #B0653F;border-right:3px solid #B0653F;' : '';
-    return `<tr data-order-id="${o.id}" class="${isChild?'sub-order-row':''}" style="${contractBg}${lastYearBorder}${caseBg}${lastCaseBorder}">
+    const grpCls = [
+      isChild ? 'sub-order-row' : '',
+      o._inContract ? 'grp-member grp-contract' : '',
+      o._inCase ? 'grp-member grp-case' : '',
+      (o._isLastYear || o._isLastCaseMember) ? 'grp-last' : '',
+    ].filter(Boolean).join(' ');
+    return `<tr data-order-id="${o.id}" class="${grpCls}">
       <td style="text-align:center;padding:0 4px;">${toggleBtn}</td>
       <td><button class="order-qadd-btn" data-qadd="${o.id}" title="新增相關任務">＋</button></td>
       <td>
