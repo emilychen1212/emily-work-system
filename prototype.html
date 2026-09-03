@@ -9325,6 +9325,8 @@ function _tlShipRender(){
       <button type="button" class="tl-sp-del" title="刪除" onclick="_tlShipRemove(${i})">🗑</button>
     </div>`;
   }).join('');
+  // 依當前匯率自動重算各列底價（台幣）
+  list.querySelectorAll('[data-shiprow] [data-shf="costOrig"]').forEach(el=>_tlPriceTax(el));
   _tlShipRecon();
 }
 function _tlMissingBase(o){
@@ -9536,7 +9538,8 @@ function _tlPriceTax(el){
   const row=el.closest('[data-splitrow],[data-shiprow]'); if(!row) return;
   const attr = row.hasAttribute('data-shiprow') ? 'shf' : 'sf';
   const o=dbLoad().orders.find(x=>x.id===_tlOrderId)||{};
-  const rate=parseFloat(String(o.dealRate).replace(/[^0-9.]/g,''))||0;
+  // 有成交匯率用成交匯率，沒有就用報價匯率
+  const rate=(parseFloat(String(o.dealRate).replace(/[^0-9.]/g,''))||0) || (parseFloat(String(o.quoteRate).replace(/[^0-9.]/g,''))||0);
   const tax=(row.querySelector(`[data-${attr}="taxIncluded"]`)||{}).checked?1.05:1;
   const num=f=>parseFloat(String((row.querySelector(`[data-${attr}="${f}"]`)||{}).value||'').replace(/[^0-9.]/g,''))||0;
   const setTwd=(origF,twdF)=>{ if(rate<=0) return; const orig=num(origF); if(!orig) return; const t=row.querySelector(`[data-${attr}="${twdF}"]`); if(t) t.value=Math.round(orig*rate*tax).toLocaleString(); };
@@ -9563,6 +9566,8 @@ function _tlRenderSplit(){
     </div>`;
   }).join('');
   list.innerHTML=head+rows;
+  // 依當前匯率自動重算各列底價/報價（台幣）
+  list.querySelectorAll('[data-splitrow] [data-sf="costOrig"]').forEach(el=>_tlPriceTax(el));
 }
 
 // ── 採購議價（截標時間＋開標時間＋checklist＋押標金）──
