@@ -1759,7 +1759,12 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-quote-status{font-size:12px;color:var(--text-secondary);}
 .tl-btn.ghost{background:var(--surface);border:1.5px solid var(--warm);color:var(--warm);}
 .tl-split-row{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;background:var(--surface);}
+.tl-split-row.internal{background:#F4F1EA;border-color:#D9CBB0;}
 .tl-split-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.tl-split-type{border:1.5px solid var(--border);border-radius:7px;padding:5px 9px;font-size:12.5px;font-weight:600;font-family:inherit;background:#fff;color:var(--text-primary);}
+.tl-split-row.internal .tl-split-type{border-color:#C9A24B;color:#8A6D1A;}
+.tl-split-sum{margin-top:4px;padding:9px 12px;background:var(--surface2);border-radius:8px;font-size:12.5px;color:var(--text-secondary);}
+.tl-split-sum b{color:var(--navy);}
 .tl-cal-btn{margin-top:6px;align-self:flex-start;font-size:11px;font-weight:600;padding:3px 10px;border:1px solid var(--warm);background:var(--surface);color:var(--warm);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}
 .tl-cal-btn:hover{background:var(--warm);color:#fff;}
 .tl-cal-btn.done{border-color:#4A5D4E;color:#4A5D4E;}
@@ -7623,7 +7628,8 @@ function openQuoteModal(orderId) {
   g('qtTotal', o.quoteTwd ? String(o.quoteTwd) : '');
 
   const code = (c?.quoteCode || c?.shortName || '客戶');
-  g('qtNo', `${code}-${_rocCompact(today)}-${o.productName||''}`);
+  // 有填採購案群組代號 → 直接當報價單編號；否則沿用自動格式
+  g('qtNo', (o.caseGroup && o.caseGroup.trim()) ? o.caseGroup.trim() : `${code}-${_rocCompact(today)}-${o.productName||''}`);
 
   g('qtNote1', o.taxIncluded ? '此案包含5%稅' : '此案已免稅計價');
   const curName = o.currency === 'EUR' ? '歐元' : o.currency === 'USD' ? '美金' : '';
@@ -9045,7 +9051,8 @@ function _tlBasePanel(o){
     <div class="tl-f"><label>產品類別</label><select data-tlf="productType">${opts(['資源','系統','其他','設備','服務'],o.productType)}</select></div>
     <div class="tl-f"><label>產品名稱</label><input type="text" data-tlf="productName" value="${o.productName||''}"/></div>
     <div class="tl-f"><label>採購案名稱</label><input type="text" data-tlf="caseName" value="${o.caseName||''}"/></div>
-    <div class="tl-f"><label>採購案號</label><input type="text" data-tlf="caseNo" value="${o.caseNo||''}"/></div>
+    <div class="tl-f"><label>採購案號（決標後補）</label><input type="text" data-tlf="caseNo" value="${o.caseNo||''}"/></div>
+    <div class="tl-f full"><label>採購案群組代號 <span class="hint" style="font-weight:400;">同一批訂單填相同代號即歸為一組；可當報價單編號。詢價階段就能先填，案號之後再補。</span></label><input type="text" data-tlf="caseGroup" value="${(o.caseGroup||'').replace(/"/g,'&quot;')}" placeholder="例：台大-西文期刊-2026"/></div>
 
     <div class="tl-f"><label>訂期起始日 <button type="button" class="tl-mini-btn" onclick="_tlFillOneYear()">＋一年</button></label><input type="date" data-tlf="startDate" value="${dv(o.startDate)}" data-nocal/></div>
     <div class="tl-f"><label>訂期結束日</label><input type="date" data-tlf="endDate" value="${dv(o.endDate)}" data-nocal/></div>
@@ -9147,30 +9154,49 @@ function _tlToggleSplit(){
   document.getElementById('tlSplitWrap').style.display=on?'block':'none';
   if(on && _tlSplit.length===0) _tlAddSplit(); else _tlRenderSplit();
 }
-function _tlAddSplit(){ _tlCollectSplit(); _tlSplit.push({productName:'',costTwd:'',quoteTwd:'',dealTwd:''}); _tlRenderSplit(); }
+function _tlAddSplit(){ _tlCollectSplit(); _tlSplit.push({productName:'',splitType:'對外明細',purpose:'',costTwd:'',quoteTwd:'',dealTwd:''}); _tlRenderSplit(); }
 function _tlRemoveSplit(i){ _tlCollectSplit(); _tlSplit.splice(i,1); _tlRenderSplit(); }
+function _tlSplitTypeChange(el){ _tlCollectSplit(); _tlRenderSplit(); }
 function _tlCollectSplit(){
   document.querySelectorAll('#tlSplitList [data-splitrow]').forEach(row=>{
     const i=+row.dataset.splitrow; if(!_tlSplit[i]) return;
     row.querySelectorAll('[data-sf]').forEach(inp=>{
       const f=inp.dataset.sf;
-      _tlSplit[i][f]= f==='productName'?inp.value : (String(inp.value).replace(/[^0-9.\-]/g,''));
+      _tlSplit[i][f]= ['productName','splitType','purpose'].includes(f) ? inp.value : (String(inp.value).replace(/[^0-9.\-]/g,''));
     });
   });
 }
+const _TL_PURPOSES=['行銷費用','通路／代理費','服務／建置費','其他'];
 function _tlRenderSplit(){
   const list=document.getElementById('tlSplitList'); if(!list) return;
   if(_tlSplit.length===0){ list.innerHTML='<div class="hint">尚無拆項</div>'; return; }
-  list.innerHTML=_tlSplit.map((s,i)=>`
-    <div class="tl-split-row" data-splitrow="${i}">
-      <div class="tl-split-hd"><b>拆項 ${i+1}</b><button type="button" class="tl-mini-btn danger" onclick="_tlRemoveSplit(${i})">刪除</button></div>
-      <div class="tl-grid">
-        <div class="tl-f full"><label>項目名稱</label><input type="text" data-sf="productName" value="${s.productName||''}"/></div>
-        <div class="tl-f"><label>底價（台幣）</label><input type="text" data-sf="costTwd" value="${s.costTwd?parseInt(s.costTwd).toLocaleString():''}"/></div>
-        <div class="tl-f"><label>報價（台幣）</label><input type="text" data-sf="quoteTwd" value="${s.quoteTwd?parseInt(s.quoteTwd).toLocaleString():''}"/></div>
-        <div class="tl-f"><label>成交（台幣）</label><input type="text" data-sf="dealTwd" value="${s.dealTwd?parseInt(s.dealTwd).toLocaleString():''}"/></div>
+  const money=v=>v?parseInt(String(v).replace(/[^0-9]/g,'')||0).toLocaleString():'';
+  const rows=_tlSplit.map((s,i)=>{
+    const isInternal=s.splitType==='內部拆帳';
+    const purposeOpts=['',..._TL_PURPOSES].map(p=>`<option value="${p}" ${(''+ (s.purpose||''))===p?'selected':''}>${p||'（選用途）'}</option>`).join('');
+    return `
+    <div class="tl-split-row ${isInternal?'internal':''}" data-splitrow="${i}">
+      <div class="tl-split-hd">
+        <select data-sf="splitType" class="tl-split-type" onchange="_tlSplitTypeChange(this)">
+          <option value="對外明細" ${!isInternal?'selected':''}>對外明細（客戶可見）</option>
+          <option value="內部拆帳" ${isInternal?'selected':''}>內部拆帳（僅內部）</option>
+        </select>
+        <button type="button" class="tl-mini-btn danger" onclick="_tlRemoveSplit(${i})">刪除</button>
       </div>
-    </div>`).join('');
+      <div class="tl-grid">
+        <div class="tl-f full"><label>項目名稱</label><input type="text" data-sf="productName" value="${(s.productName||'').replace(/"/g,'&quot;')}"/></div>
+        ${isInternal
+          ? `<div class="tl-f"><label>金額（台幣）</label><input type="text" data-sf="dealTwd" value="${money(s.dealTwd)}"/></div>
+             <div class="tl-f"><label>用途</label><select data-sf="purpose">${purposeOpts}</select></div>`
+          : `<div class="tl-f"><label>底價（台幣）</label><input type="text" data-sf="costTwd" value="${money(s.costTwd)}"/></div>
+             <div class="tl-f"><label>報價（台幣）</label><input type="text" data-sf="quoteTwd" value="${money(s.quoteTwd)}"/></div>
+             <div class="tl-f"><label>成交（台幣）</label><input type="text" data-sf="dealTwd" value="${money(s.dealTwd)}"/></div>`}
+      </div>
+    </div>`;}).join('');
+  const ext=_tlSplit.filter(s=>s.splitType!=='內部拆帳').reduce((a,s)=>a+(parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0),0);
+  const intl=_tlSplit.filter(s=>s.splitType==='內部拆帳').reduce((a,s)=>a+(parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0),0);
+  const summary=`<div class="tl-split-sum">對外明細合計（客戶可見）：<b>NT$ ${ext.toLocaleString()}</b>　·　內部拆帳合計（僅內部）：<b>NT$ ${intl.toLocaleString()}</b></div>`;
+  list.innerHTML=rows+summary;
 }
 
 // ── 採購議價（截標時間＋開標時間＋checklist＋押標金）──
@@ -9335,6 +9361,8 @@ function _tlCollect(o, right){
     const splitOn=document.getElementById('tlSplitEnabled')?.checked;
     o.splitItems = splitOn ? _tlSplit.map(s=>({
       productName:s.productName||'',
+      splitType:s.splitType||'對外明細',
+      purpose:s.splitType==='內部拆帳'?(s.purpose||''):'',
       costTwd:parseInt(String(s.costTwd).replace(/[^0-9.\-]/g,''))||0,
       quoteTwd:parseInt(String(s.quoteTwd).replace(/[^0-9.\-]/g,''))||0,
       dealTwd:parseInt(String(s.dealTwd).replace(/[^0-9.\-]/g,''))||0,
@@ -9398,7 +9426,7 @@ function _tlSetStatus(key){
 window._tlClose=_tlClose; window._tlSave=_tlSave; window._tlSetStatus=_tlSetStatus;
 window.openOrderTimeline=openOrderTimeline;
 window._tlFillOneYear=_tlFillOneYear; window._tlPriceCalc=_tlPriceCalc; window._tlToggleAuto=_tlToggleAuto;
-window._tlLinkedChange=_tlLinkedChange; window._tlToggleSplit=_tlToggleSplit; window._tlAddSplit=_tlAddSplit; window._tlRemoveSplit=_tlRemoveSplit;
+window._tlLinkedChange=_tlLinkedChange; window._tlToggleSplit=_tlToggleSplit; window._tlAddSplit=_tlAddSplit; window._tlRemoveSplit=_tlRemoveSplit; window._tlSplitTypeChange=_tlSplitTypeChange;
 window._tlBidToggle=_tlBidToggle; window._tlAcceptToggle=_tlAcceptToggle; window._tlSameBidClose=_tlSameBidClose;
 window._tlSetFu=_tlSetFu; window._tlOpenQuote=_tlOpenQuote;
 window._tlContractToggle=_tlContractToggle; window._tlPerfBondToggle=_tlPerfBondToggle;
