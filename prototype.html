@@ -638,6 +638,7 @@ ul { list-style: none; }
 .case-o-other{font-size:11px;color:var(--warm);white-space:nowrap;}
 .case-empty{padding:24px;text-align:center;color:var(--text-muted);font-size:13px;}
 .order-case-badge{display:inline-block;font-size:10.5px;font-weight:600;color:var(--navy);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:0 6px;margin-left:5px;white-space:nowrap;}
+.order-borrow-tag{display:inline-block;font-size:10.5px;font-weight:600;color:#8A6D1A;background:#F6EFD9;border:1px solid #E4D6A8;border-radius:8px;padding:0 6px;margin-left:5px;white-space:nowrap;}
 .tl-case-banner{padding:8px 22px;font-size:12.5px;color:#6B5A2A;background:#F6EFD9;border-bottom:1px solid #E4D6A8;}
 .tl-case-banner.sync{color:#1B4B3A;background:#E4EEEA;border-bottom-color:#B9D6CB;}
 .tl-case-banner b{font-weight:700;}
@@ -3921,6 +3922,10 @@ const collapsedContracts = new Set(
 function _saveCollapsedContracts() {
   cloudStore.setItem(_CC_KEY, JSON.stringify([...collapsedContracts]));
 }
+// 購案收合狀態（預設展開）
+const _CK_KEY = 'collapsed_cases';
+const collapsedCases = new Set(JSON.parse(cloudStore.getItem(_CK_KEY) || '[]'));
+function _saveCollapsedCases() { cloudStore.setItem(_CK_KEY, JSON.stringify([...collapsedCases])); }
 
 function calcCtYearPrice(base, riseRates, y) {
   // y=1 → base；y=2 → base*(1+rate[1])；y=3 → 第2年*(1+rate[2])... 逐年遞推
@@ -4495,7 +4500,7 @@ function renderOrdersGrid() {
         </div>
       </td>
       <td>${o.productType||'—'}</td>
-      <td class="wrap-cell">${childLabel}${o.productName||'—'}${(()=>{const k=caseOfOrder(o.id);return k?` <span class="order-case-badge" title="購案：${(k.name||'').replace(/"/g,'&quot;')}">📦 ${(k.name||'').replace(/</g,'&lt;')}</span>`:'';})()}</td>
+      <td class="wrap-cell">${childLabel}${o.productName||'—'}${(()=>{const k=caseOfOrder(o.id); if(k && o.contractId){const ct=contractMap[o.contractId]; if(ct) return ` <span class="order-borrow-tag" title="原屬多年約">↳ ${(ct.productName||'').replace(/</g,'&lt;')} 第${o.yearIndex||'?'}年</span>`;} return '';})()}</td>
       <td>${o.startDate ? fmtDate(o.startDate)+'～'+fmtDate(o.endDate) : '—'}</td>
       <td>${fmtDate(o.quoteDate)}</td>
       <td>${sym}</td>
@@ -4526,9 +4531,13 @@ function renderOrdersGrid() {
   const contracts = getContracts(currentClientId);
   const contractMap = {};
   contracts.forEach(ct => { contractMap[ct.id] = ct; });
+  // 購案（此客戶）— 購案優先：被打包的訂單從合約/獨立群組移出，改列在購案群組
+  const clientCases = getCases().filter(k => k.clientId === currentClientId);
+  const casedIds = new Set(); clientCases.forEach(k => (k.orderIds||[]).forEach(id => casedIds.add(id)));
   const contractOrdersMap = {};
   const noContractOrders = [];
   parentOrders.forEach(o => {
+    if (casedIds.has(o.id)) return; // 交給購案群組
     if (o.contractId) {
       if (!contractOrdersMap[o.contractId]) contractOrdersMap[o.contractId] = [];
       contractOrdersMap[o.contractId].push(o);
@@ -4561,6 +4570,32 @@ function renderOrdersGrid() {
     return headerRow + orderRows;
   }
 
+  function buildCaseGroup(k) {
+    const members = (k.orderIds||[]).map(id => parentOrders.find(o => o.id === id)).filter(Boolean)
+      .sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
+    if (!members.length) return '';
+    const isCollapsed = collapsedCases.has(k.id);
+    const iconCls = isCollapsed ? 'contract-toggle-icon collapsed' : 'contract-toggle-icon';
+    const headerRow = `<tr class="contract-header-row" data-case-toggle="${k.id}" style="background:rgba(176,101,63,0.06);outline:2.5px solid #B0653F;outline-offset:-1px;">
+      <td colspan="${colCount}" style="padding:7px 14px;font-weight:700;font-size:13px;color:#8A3B28;border-left:3px solid #B0653F;">
+        <span class="${iconCls}">▼</span><span class="ct-title">📦 ${(k.name||'未命名').replace(/</g,'&lt;')}</span>
+        <span style="font-weight:400;font-size:11.5px;color:var(--text-muted);margin-left:6px;">購案 · ${members.length} 筆</span>
+        <button style="margin-left:10px;font-size:11px;background:none;border:1px solid var(--border);border-radius:4px;padding:1px 7px;cursor:pointer;color:var(--text-muted);" data-edit-case="${k.id}">✎ 編輯購案</button>
+      </td>
+    </tr>`;
+    const orderRows = members.map(o => { o._inContract = false; o._isLastYear = false;
+      const children = childOrdersMap[o.id]||[];
+      const childRows = children.map(c => buildOrderRow(c,true)).join('');
+      const row = buildOrderRow(o,false) + childRows;
+      return isCollapsed ? row.replace('<tr ', '<tr style="display:none;" ') : row;
+    }).join('');
+    return headerRow + orderRows;
+  }
+  function getCaseSortVal(k) {
+    const members = (k.orderIds||[]).map(id => parentOrders.find(o => o.id === id)).filter(Boolean);
+    return members.map(o => o[currentSort] || '').sort().reverse()[0] || '';
+  }
+
   // 排序：合約整包 + 獨立訂單，統一依 currentSort 排序後合併
   function getContractSortVal(ct) {
     const firstOrder = (contractOrdersMap[ct.id]||[]).find(o=>o.yearIndex===1) || (contractOrdersMap[ct.id]||[])[0] || {};
@@ -4570,18 +4605,23 @@ function renderOrdersGrid() {
     return firstOrder[currentSort] || '';
   }
 
-  // 建立統一排序清單（合約包 / 獨立訂單）
+  // 建立統一排序清單（購案包 / 合約包 / 獨立訂單）
   const sortableItems = [
+    ...clientCases.filter(k => (k.orderIds||[]).some(id => parentOrders.find(o=>o.id===id))).map(k => ({
+      type: 'case', k, sortVal: getCaseSortVal(k)
+    })),
     ...contracts.filter(ct => contractOrdersMap[ct.id]).map(ct => ({
       type: 'contract', ct, sortVal: getContractSortVal(ct)
     })),
     ...noContractOrders.map(o => ({
       type: 'order', o, sortVal: o[currentSort] || ''
     }))
-  ].sort((a,b) => b.sortVal.localeCompare(a.sortVal));
+  ].sort((a,b) => (b.sortVal||'').localeCompare(a.sortVal||''));
 
   const tbody = sortableItems.map(item => {
-    if (item.type === 'contract') {
+    if (item.type === 'case') {
+      return buildCaseGroup(item.k);
+    } else if (item.type === 'contract') {
       return buildContractGroup(item.ct);
     } else {
       const o = item.o;
@@ -4761,6 +4801,18 @@ function renderOrdersGrid() {
       renderOrdersGrid();
     });
   });
+  wrap.querySelectorAll('[data-case-toggle]').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('[data-edit-case]')) return;
+      const kid = row.dataset.caseToggle;
+      if (collapsedCases.has(kid)) collapsedCases.delete(kid); else collapsedCases.add(kid);
+      _saveCollapsedCases();
+      renderOrdersGrid();
+    });
+  });
+  wrap.querySelectorAll('[data-edit-case]').forEach(btn =>
+    btn.addEventListener('click', () => { openCaseModal(currentClientId); _caseSelect(btn.dataset.editCase); })
+  );
   wrap.querySelectorAll('[data-edit-contract]').forEach(btn =>
     btn.addEventListener('click', () => openContractModal(currentClientId, btn.dataset.editContract))
   );
