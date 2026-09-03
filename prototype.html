@@ -1794,8 +1794,10 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-btn.ghost{background:var(--surface);border:1.5px solid var(--warm);color:var(--warm);}
 /* 拆項：聯絡人式橫列表格 */
 .tl-sp-scroll{overflow-x:auto;border:1px solid var(--line,var(--border));border-radius:10px;}
-.tl-sp-tbl{min-width:620px;}
+.tl-sp-tbl{min-width:700px;}
 .tl-sp-head,.tl-sp-line{display:grid;grid-template-columns:64px minmax(120px,1.4fr) 96px 96px 96px 62px 34px;gap:8px;align-items:center;padding:8px 10px;}
+.tl-sp-head.sp-order,.tl-sp-line.sp-order{grid-template-columns:58px minmax(110px,1.3fr) 84px 90px 84px 90px 58px 32px;}
+.tl-sp-head.sp-ship,.tl-sp-line.sp-ship{grid-template-columns:58px minmax(110px,1.3fr) 84px 92px 100px 58px 32px;}
 .tl-sp-head{background:var(--surface2);font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border);}
 .tl-sp-line{border-top:1px solid var(--line-soft,rgba(0,0,0,.06));}
 .tl-sp-line:first-of-type{border-top:none;}
@@ -9251,8 +9253,8 @@ function _tlSeedShip(o){
   const items=[];
   members.forEach(m=>{
     const ext=(m.splitItems||[]).filter(s=>!/內/.test(s.splitType||'對外'));
-    if(ext.length) ext.forEach(s=>items.push({splitType:'對外',productName:s.productName,costTwd:s.costTwd,quoteTwd:s.quoteTwd,dealTwd:s.dealTwd}));
-    else items.push({splitType:'對外',productName:m.productName,costTwd:m.costTwd,quoteTwd:m.quoteTwd,dealTwd:m.dealTwd});
+    if(ext.length) ext.forEach(s=>items.push({splitType:'對外',productName:s.productName,costOrig:s.costOrig,costTwd:s.costTwd,dealTwd:s.quoteTwd}));  // 成交先帶報價，之後可調
+    else items.push({splitType:'對外',productName:m.productName,costOrig:m.costOrig,costTwd:m.costTwd,dealTwd:m.dealTwd});
   });
   return items;
 }
@@ -9267,7 +9269,7 @@ function _tlShipReseed(){
   if(_tlShip.length && !confirm('確定用訂單資料重新帶入？現在的出貨明細會被覆蓋。')) return;
   _tlShip=_tlSeedShip(o); _tlShipRender(); _tlAutoSaveScheduled();
 }
-function _tlShipAdd(){ _tlShipCollect(); _tlShip.push({splitType:'對外',productName:'',costTwd:'',quoteTwd:'',dealTwd:''}); _tlShipRender(); }
+function _tlShipAdd(){ _tlShipCollect(); _tlShip.push({splitType:'對外',productName:'',costOrig:'',costTwd:'',dealTwd:''}); _tlShipRender(); }
 function _tlShipRemove(i){ _tlShipCollect(); _tlShip.splice(i,1); _tlShipRender(); _tlAutoSaveScheduled(); }
 function _tlShipCollect(){
   document.querySelectorAll('#tlShipList [data-shiprow]').forEach(row=>{
@@ -9281,8 +9283,8 @@ function _tlShipCollect(){
 function _tlShipPct(el){
   const row=el.closest('[data-shiprow]'); if(!row) return;
   const g=f=>parseInt(String((row.querySelector(`[data-shf="${f}"]`)||{}).value||'').replace(/[^0-9]/g,''))||0;
-  const q=g('quoteTwd'), dl=g('dealTwd'); const span=row.querySelector('.tl-sp-pct');
-  if(span) span.textContent=(q&&dl)?((dl/q*100).toFixed(1)+'%'):'—';
+  const c=g('costTwd'), dl=g('dealTwd'); const span=row.querySelector('.tl-sp-pct');
+  if(span) span.textContent=(c&&dl)?((c/dl*100).toFixed(1)+'%'):'—';   // 底價占成交
   _tlShipRecon();
 }
 function _tlShipRecon(){
@@ -9303,17 +9305,17 @@ function _tlShipRecon(){
 function _tlShipRender(){
   const list=document.getElementById('tlShipList'); if(!list) return;
   const money=v=>{const n=parseInt(String(v).replace(/[^0-9]/g,''))||0;return n?n.toLocaleString():'';};
-  const head=`<div class="tl-sp-head"><span>類型</span><span>項目名稱</span><span>底價</span><span>報價</span><span>成交價</span><span>議價%</span><span></span></div>`;
+  const head=`<div class="tl-sp-head sp-ship"><span>類型</span><span>項目名稱</span><span>底價(原幣)</span><span>底價(台幣)</span><span>成交價(台幣)</span><span>議價%</span><span></span></div>`;
   if(_tlShip.length===0){ list.innerHTML=head+'<div class="tl-sp-empty">尚無出貨明細，點「＋ 新增項目」或「↺ 帶入訂單資料」</div>'; _tlShipRecon(); return; }
   list.innerHTML=head+_tlShip.map((s,i)=>{
     const isIn=/內/.test(s.splitType||'');
-    const q=parseInt(String(s.quoteTwd).replace(/[^0-9]/g,''))||0, dl=parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0;
-    const pct=(q&&dl)?((dl/q*100).toFixed(1)+'%'):'—';
-    return `<div class="tl-sp-line${isIn?' internal':''}" data-shiprow="${i}">
+    const c=parseInt(String(s.costTwd).replace(/[^0-9]/g,''))||0, dl=parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0;
+    const pct=(c&&dl)?((c/dl*100).toFixed(1)+'%'):'—';
+    return `<div class="tl-sp-line sp-ship${isIn?' internal':''}" data-shiprow="${i}">
       <select data-shf="splitType" onchange="_tlShipRecon()"><option value="對外" ${!isIn?'selected':''}>對外</option><option value="對內" ${isIn?'selected':''}>對內</option></select>
       <input type="text" data-shf="productName" placeholder="項目名稱" value="${(s.productName||'').replace(/"/g,'&quot;')}"/>
-      <input type="text" data-shf="costTwd" placeholder="底價" value="${money(s.costTwd)}"/>
-      <input type="text" data-shf="quoteTwd" placeholder="報價" value="${money(s.quoteTwd)}" oninput="_tlShipPct(this)"/>
+      <input type="text" data-shf="costOrig" placeholder="原幣" value="${money(s.costOrig)}"/>
+      <input type="text" data-shf="costTwd" placeholder="台幣" value="${money(s.costTwd)}" oninput="_tlShipPct(this)"/>
       <input type="text" data-shf="dealTwd" placeholder="成交" value="${money(s.dealTwd)}" oninput="_tlShipPct(this)"/>
       <span class="tl-sp-pct">${pct}</span>
       <button type="button" class="tl-sp-del" title="刪除" onclick="_tlShipRemove(${i})">🗑</button>
@@ -9507,7 +9509,7 @@ function _tlToggleSplit(){
   document.getElementById('tlSplitWrap').style.display=on?'block':'none';
   if(on && _tlSplit.length===0) _tlAddSplit(); else _tlRenderSplit();
 }
-function _tlAddSplit(){ _tlCollectSplit(); _tlSplit.push({splitType:'對外',productName:'',costTwd:'',quoteTwd:'',dealTwd:''}); _tlRenderSplit(); }
+function _tlAddSplit(){ _tlCollectSplit(); _tlSplit.push({splitType:'對外',productName:'',costOrig:'',costTwd:'',quoteOrig:'',quoteTwd:''}); _tlRenderSplit(); }
 function _tlRemoveSplit(i){ _tlCollectSplit(); _tlSplit.splice(i,1); _tlRenderSplit(); }
 function _tlCollectSplit(){
   document.querySelectorAll('#tlSplitList [data-splitrow]').forEach(row=>{
@@ -9521,24 +9523,25 @@ function _tlCollectSplit(){
 function _tlSplitPct(el){
   const row=el.closest('[data-splitrow]'); if(!row) return;
   const g=f=>parseInt(String((row.querySelector(`[data-sf="${f}"]`)||{}).value||'').replace(/[^0-9]/g,''))||0;
-  const q=g('quoteTwd'), dl=g('dealTwd'); const span=row.querySelector('.tl-sp-pct');
-  if(span) span.textContent=(q&&dl)?((dl/q*100).toFixed(1)+'%'):'—';
+  const c=g('costTwd'), q=g('quoteTwd'); const span=row.querySelector('.tl-sp-pct');
+  if(span) span.textContent=(c&&q)?((c/q*100).toFixed(1)+'%'):'—';   // 底價占報價
 }
 function _tlRenderSplit(){
   const list=document.getElementById('tlSplitList'); if(!list) return;
   const money=v=>{const n=parseInt(String(v).replace(/[^0-9]/g,''))||0;return n?n.toLocaleString():'';};
-  const head=`<div class="tl-sp-head"><span>類型</span><span>項目名稱</span><span>底價</span><span>報價</span><span>成交價</span><span>議價%</span><span></span></div>`;
+  const head=`<div class="tl-sp-head sp-order"><span>類型</span><span>項目名稱</span><span>底價(原幣)</span><span>底價(台幣)</span><span>報價(原幣)</span><span>報價(台幣)</span><span>議價%</span><span></span></div>`;
   if(_tlSplit.length===0){ list.innerHTML=head+'<div class="tl-sp-empty">尚無拆項，點「＋ 新增拆項」開始</div>'; return; }
   const rows=_tlSplit.map((s,i)=>{
     const isIn=/內/.test(s.splitType||'');
-    const q=parseInt(String(s.quoteTwd).replace(/[^0-9]/g,''))||0, dl=parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0;
-    const pct=(q&&dl)?((dl/q*100).toFixed(1)+'%'):'—';
-    return `<div class="tl-sp-line${isIn?' internal':''}" data-splitrow="${i}">
+    const c=parseInt(String(s.costTwd).replace(/[^0-9]/g,''))||0, q=parseInt(String(s.quoteTwd).replace(/[^0-9]/g,''))||0;
+    const pct=(c&&q)?((c/q*100).toFixed(1)+'%'):'—';
+    return `<div class="tl-sp-line sp-order${isIn?' internal':''}" data-splitrow="${i}">
       <select data-sf="splitType"><option value="對外" ${!isIn?'selected':''}>對外</option><option value="對內" ${isIn?'selected':''}>對內</option></select>
       <input type="text" data-sf="productName" placeholder="項目名稱" value="${(s.productName||'').replace(/"/g,'&quot;')}"/>
-      <input type="text" data-sf="costTwd" placeholder="底價" value="${money(s.costTwd)}"/>
-      <input type="text" data-sf="quoteTwd" placeholder="報價" value="${money(s.quoteTwd)}" oninput="_tlSplitPct(this)"/>
-      <input type="text" data-sf="dealTwd" placeholder="成交" value="${money(s.dealTwd)}" oninput="_tlSplitPct(this)"/>
+      <input type="text" data-sf="costOrig" placeholder="原幣" value="${money(s.costOrig)}"/>
+      <input type="text" data-sf="costTwd" placeholder="台幣" value="${money(s.costTwd)}" oninput="_tlSplitPct(this)"/>
+      <input type="text" data-sf="quoteOrig" placeholder="原幣" value="${money(s.quoteOrig)}"/>
+      <input type="text" data-sf="quoteTwd" placeholder="台幣" value="${money(s.quoteTwd)}" oninput="_tlSplitPct(this)"/>
       <span class="tl-sp-pct">${pct}</span>
       <button type="button" class="tl-sp-del" title="刪除" onclick="_tlRemoveSplit(${i})">🗑</button>
     </div>`;
@@ -9706,13 +9709,12 @@ function _tlCollect(o, right){
     if(ca) o.costTwdAuto=ca.checked; if(qa) o.quoteTwdAuto=qa.checked; if(da) o.dealTwdAuto=da.checked;
     _tlCollectSplit();
     const splitOn=document.getElementById('tlSplitEnabled')?.checked;
+    const _n=v=>parseInt(String(v).replace(/[^0-9.\-]/g,''))||0;
     o.splitItems = splitOn ? _tlSplit.map(s=>({
       productName:s.productName||'',
       splitType:/內/.test(s.splitType||'')?'對內':'對外',
-      costTwd:parseInt(String(s.costTwd).replace(/[^0-9.\-]/g,''))||0,
-      quoteTwd:parseInt(String(s.quoteTwd).replace(/[^0-9.\-]/g,''))||0,
-      dealTwd:parseInt(String(s.dealTwd).replace(/[^0-9.\-]/g,''))||0,
-    })).filter(s=>s.productName||s.costTwd||s.quoteTwd||s.dealTwd) : [];
+      costOrig:_n(s.costOrig), costTwd:_n(s.costTwd), quoteOrig:_n(s.quoteOrig), quoteTwd:_n(s.quoteTwd),
+    })).filter(s=>s.productName||s.costOrig||s.costTwd||s.quoteOrig||s.quoteTwd) : [];
   }
   o.checks=o.checks||{};
   right.querySelectorAll('[data-check]').forEach(cb=>{
@@ -9732,13 +9734,12 @@ function _tlCollect(o, right){
   }
   if(_tlView==='出貨中'){
     _tlShipCollect();
+    const _ns=v=>parseInt(String(v).replace(/[^0-9.\-]/g,''))||0;
     o.shipItems=_tlShip.map(s=>({
       splitType:/內/.test(s.splitType||'')?'對內':'對外',
       productName:s.productName||'',
-      costTwd:parseInt(String(s.costTwd).replace(/[^0-9.\-]/g,''))||0,
-      quoteTwd:parseInt(String(s.quoteTwd).replace(/[^0-9.\-]/g,''))||0,
-      dealTwd:parseInt(String(s.dealTwd).replace(/[^0-9.\-]/g,''))||0,
-    })).filter(s=>s.productName||s.costTwd||s.quoteTwd||s.dealTwd);
+      costOrig:_ns(s.costOrig), costTwd:_ns(s.costTwd), dealTwd:_ns(s.dealTwd),
+    })).filter(s=>s.productName||s.costOrig||s.costTwd||s.dealTwd);
   }
   const fuEl=right.querySelector('[data-tlfu]');
   if(fuEl){ o.followUp=o.followUp||{}; o.followUp[_tlView]=fuEl.value||null; }
