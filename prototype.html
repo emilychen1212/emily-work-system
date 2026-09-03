@@ -619,6 +619,25 @@ ul { list-style: none; }
 .contact-tab.active .contact-tab-count { background: var(--navy); }
 .contact-sync-time { margin-right: auto; font-size: 12px; color: var(--text-muted); font-weight: 600; }
 .contact-toolbar { margin-bottom: 10px; }
+/* 購案管理 */
+.case-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.case-chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:6px 12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-secondary);border-radius:20px;cursor:pointer;}
+.case-chip span{background:var(--surface2);border-radius:9px;padding:0 6px;font-size:11px;}
+.case-chip.active{border-color:var(--navy);color:var(--navy);background:var(--surface2);}
+.case-chip.new{border-style:dashed;color:var(--warm);border-color:var(--warm);}
+.case-name-label{display:block;font-size:12.5px;font-weight:600;color:var(--navy);margin-bottom:6px;}
+.case-name-label input{display:block;width:100%;margin-top:5px;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;background:#fff;color:var(--text-primary);}
+.case-hint{font-size:12px;color:var(--text-muted);margin:12px 0 8px;}
+.case-orders{max-height:46vh;overflow-y:auto;border:1px solid var(--border);border-radius:10px;}
+.case-o-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--line-soft,rgba(0,0,0,.06));cursor:pointer;}
+.case-o-row:first-child{border-top:none;}
+.case-o-row.on{background:var(--surface2);}
+.case-o-row input{width:16px;height:16px;flex:0 0 auto;}
+.case-o-prod{font-size:13px;font-weight:500;color:var(--text-primary);flex:1;}
+.case-o-tag{font-size:11px;font-weight:600;color:#fff;border-radius:20px;padding:2px 9px;white-space:nowrap;}
+.case-o-other{font-size:11px;color:var(--warm);white-space:nowrap;}
+.case-empty{padding:24px;text-align:center;color:var(--text-muted);font-size:13px;}
+.order-case-badge{display:inline-block;font-size:10.5px;font-weight:600;color:var(--navy);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:0 6px;margin-left:5px;white-space:nowrap;}
 .contact-table-wrap { overflow-x: auto; }
 .contact-table {
   width: 100%;
@@ -2358,6 +2377,31 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
     </div>
   </div>
 
+  <!-- 購案管理 Modal -->
+  <div class="modal-overlay" id="caseModal">
+    <div class="modal modal-xl">
+      <div class="modal-header">
+        <h2 id="caseModalTitle">購案管理</h2>
+        <button class="modal-close" data-close="caseModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="case-chips" id="caseChips"></div>
+        <div class="case-form">
+          <label class="case-name-label">購案名稱（也會當報價單編號）
+            <input type="text" id="caseNameInput" placeholder="例：台大-西文期刊-2026" />
+          </label>
+          <div class="case-hint">勾選要包在一起的訂單（已結束的不列）。同一批進到採購議價後會一起追蹤。</div>
+          <div class="case-orders" id="caseOrders"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="caseDissolveBtn" style="margin-right:auto;color:#A4472F;display:none;">解散此購案</button>
+        <button class="btn btn-secondary" data-close="caseModal">關閉</button>
+        <button class="btn btn-primary" id="caseSaveBtn">儲存購案</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 篩選器 Modal -->
   <div class="modal-overlay" id="filterModal">
     <div class="modal modal-lg">
@@ -2991,6 +3035,96 @@ function getOrders(clientId) {
 function getParentOrders(clientId) {
   return getOrders(clientId).filter(o => !o.parentOrderId);
 }
+
+// ══════════ 購案（把多張訂單包成一個採購案）══════════
+function getCases() { const db = dbLoad(); return db.cases || []; }
+function saveCases(cases) { const db = dbLoad(); db.cases = cases; dbSave(db); }
+function caseOfOrder(orderId, cases) { cases = cases || getCases(); return cases.find(k => (k.orderIds||[]).includes(orderId)) || null; }
+function caseById(id, cases) { cases = cases || getCases(); return cases.find(k => k.id === id) || null; }
+
+let _caseClientId = null, _caseEditingId = null;
+function openCaseModal(clientId) {
+  _caseClientId = clientId; _caseEditingId = null;
+  const c = getClientById(clientId);
+  document.getElementById('caseModalTitle').textContent = `購案管理 — ${c?.shortName || ''}`;
+  _renderCaseModal();
+  openModal('caseModal');
+}
+function _clientCases() { return getCases().filter(k => k.clientId === _caseClientId); }
+function _renderCaseModal() {
+  // 上方：既有購案 chips ＋ 建立新購案
+  const chips = document.getElementById('caseChips');
+  const list = _clientCases();
+  chips.innerHTML = list.map(k =>
+    `<button type="button" class="case-chip ${k.id===_caseEditingId?'active':''}" onclick="_caseSelect('${k.id}')">📦 ${(k.name||'未命名').replace(/</g,'&lt;')}<span>${(k.orderIds||[]).length}</span></button>`
+  ).join('') + `<button type="button" class="case-chip new ${_caseEditingId===null?'active':''}" onclick="_caseNew()">＋ 建立新購案</button>`;
+
+  const editing = _caseEditingId ? caseById(_caseEditingId) : null;
+  document.getElementById('caseNameInput').value = editing ? (editing.name||'') : '';
+  document.getElementById('caseDissolveBtn').style.display = editing ? '' : 'none';
+  document.getElementById('caseSaveBtn').textContent = editing ? '儲存變更' : '建立購案';
+
+  // 訂單清單（此客戶、非子訂單、非履約結束）＋勾選狀態
+  const cases = getCases();
+  const orders = getParentOrders(_caseClientId)
+    .filter(o => !['履約結束','未開始'].includes(o.status))
+    .sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
+  const memberSet = new Set(editing ? (editing.orderIds||[]) : []);
+  const box = document.getElementById('caseOrders');
+  if (!orders.length) { box.innerHTML = '<div class="case-empty">此客戶目前沒有可打包的訂單</div>'; return; }
+  box.innerHTML = orders.map(o => {
+    const inOther = caseOfOrder(o.id, cases);
+    const inThis = memberSet.has(o.id);
+    const otherTag = (inOther && inOther.id !== _caseEditingId) ? `<span class="case-o-other">已在購案：${(inOther.name||'').replace(/</g,'&lt;')}</span>` : '';
+    const color = getOrderStatusColor(o.status);
+    return `<label class="case-o-row ${inThis?'on':''}">
+      <input type="checkbox" data-case-oid="${o.id}" ${inThis?'checked':''}/>
+      <span class="case-o-prod">${o.productName||'（未命名）'}</span>
+      <span class="case-o-tag" style="background:${color};">${o.status||'未設定'}</span>
+      ${otherTag}
+    </label>`;
+  }).join('');
+}
+function _caseSelect(id) { _caseEditingId = id; _renderCaseModal(); }
+function _caseNew() { _caseEditingId = null; _renderCaseModal(); }
+function _saveCase() {
+  const name = document.getElementById('caseNameInput').value.trim();
+  if (!name) { showToast('請填購案名稱', 'error'); return; }
+  const checked = [...document.querySelectorAll('#caseOrders [data-case-oid]:checked')].map(i => i.dataset.caseOid);
+  if (!checked.length) { showToast('請至少勾選一張訂單', 'error'); return; }
+  let cases = getCases();
+  // 被勾選的訂單先從其他購案移除（一張訂單只能屬於一個購案）
+  cases.forEach(k => { if (k.id !== _caseEditingId) k.orderIds = (k.orderIds||[]).filter(id => !checked.includes(id)); });
+  if (_caseEditingId) {
+    const k = cases.find(x => x.id === _caseEditingId);
+    if (k) { k.name = name; k.orderIds = checked; }
+  } else {
+    const id = 'case_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    cases.push({ id, clientId: _caseClientId, name, orderIds: checked });
+    _caseEditingId = id;
+  }
+  cases = cases.filter(k => (k.orderIds||[]).length > 0); // 清掉空購案
+  saveCases(cases);
+  // 把購案名稱寫回成員訂單的群組代號（供報價單編號）
+  const db = dbLoad();
+  db.orders.forEach(o => { const k = caseOfOrder(o.id, cases); if (k) o.caseGroup = k.name; });
+  dbSave(db);
+  renderOrdersGrid && renderOrdersGrid();
+  showToast('購案已儲存');
+  _renderCaseModal();
+}
+async function _dissolveCase() {
+  if (!_caseEditingId) return;
+  const k = caseById(_caseEditingId);
+  if (!k) return;
+  if (!confirm(`確定解散購案「${k.name}」嗎？裡面 ${(k.orderIds||[]).length} 張訂單會回到各自獨立（不會刪除訂單）。`)) return;
+  saveCases(getCases().filter(x => x.id !== _caseEditingId));
+  _caseEditingId = null;
+  renderOrdersGrid && renderOrdersGrid();
+  showToast('已解散購案');
+  _renderCaseModal();
+}
+window.openCaseModal=openCaseModal; window._caseSelect=_caseSelect; window._caseNew=_caseNew;
 
 function saveOrder(order) {
   const db = dbLoad();
@@ -4203,6 +4337,7 @@ function renderClientPage(clientId) {
         <button class="btn btn-ghost btn-sm" id="filterBtn">⚙ 篩選</button>
         <button class="btn btn-ghost btn-sm" id="exportXlsxBtn">⬇ 匯出 Excel</button>
         <button class="btn btn-ghost btn-sm" id="addContractBtn">📑 新增合約</button>
+        <button class="btn btn-ghost btn-sm" id="addCaseBtn">📦 新增購案</button>
         <button class="btn btn-primary btn-sm" id="addOrderBtn">＋ 新增訂單</button>
         <button class="btn btn-ghost btn-sm" id="editClientBtn">✎</button>
         <button class="btn btn-ghost btn-sm" id="deleteClientBtn" style="color:#A36B5E;">✕</button>
@@ -4222,6 +4357,7 @@ function renderClientPage(clientId) {
 
   page.querySelector('#addOrderBtn').addEventListener('click', () => openOrderModal());
   page.querySelector('#addContractBtn').addEventListener('click', () => openContractModal(clientId));
+  page.querySelector('#addCaseBtn').addEventListener('click', () => openCaseModal(clientId));
   page.querySelector('#editClientBtn').addEventListener('click', () => openClientModal(clientId));
   page.querySelector('#deleteClientBtn').addEventListener('click', () => handleDeleteClient(clientId));
 page.querySelector('#contactsBtn').addEventListener('click', () => openContactModal(clientId));
@@ -4348,7 +4484,7 @@ function renderOrdersGrid() {
         </div>
       </td>
       <td>${o.productType||'—'}</td>
-      <td class="wrap-cell">${childLabel}${o.productName||'—'}</td>
+      <td class="wrap-cell">${childLabel}${o.productName||'—'}${(()=>{const k=caseOfOrder(o.id);return k?` <span class="order-case-badge" title="購案：${(k.name||'').replace(/"/g,'&quot;')}">📦 ${(k.name||'').replace(/</g,'&lt;')}</span>`:'';})()}</td>
       <td>${o.startDate ? fmtDate(o.startDate)+'～'+fmtDate(o.endDate) : '—'}</td>
       <td>${fmtDate(o.quoteDate)}</td>
       <td>${sym}</td>
@@ -5726,6 +5862,8 @@ document.getElementById('clientSearch').addEventListener('input', e => {
 document.getElementById('saveClientBtn').addEventListener('click', handleSaveClient);
 document.getElementById('saveOrderBtn').addEventListener('click', handleSaveOrder);
 document.getElementById('saveContactsBtn').addEventListener('click', handleSaveContacts);
+document.getElementById('caseSaveBtn')?.addEventListener('click', _saveCase);
+document.getElementById('caseDissolveBtn')?.addEventListener('click', _dissolveCase);
 document.getElementById('saveStatusBtn').addEventListener('click', handleSaveStatus);
 // 任務管理按鈕綁定移至 init 最後執行（確保 Modal DOM 已插入）
 
