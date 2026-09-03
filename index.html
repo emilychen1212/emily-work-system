@@ -1758,13 +1758,20 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-quote-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:12px;}
 .tl-quote-status{font-size:12px;color:var(--text-secondary);}
 .tl-btn.ghost{background:var(--surface);border:1.5px solid var(--warm);color:var(--warm);}
-.tl-split-row{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;background:var(--surface);}
-.tl-split-row.internal{background:#F4F1EA;border-color:#D9CBB0;}
-.tl-split-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-.tl-split-type{border:1.5px solid var(--border);border-radius:7px;padding:5px 9px;font-size:12.5px;font-weight:600;font-family:inherit;background:#fff;color:var(--text-primary);}
-.tl-split-row.internal .tl-split-type{border-color:#C9A24B;color:#8A6D1A;}
-.tl-split-sum{margin-top:4px;padding:9px 12px;background:var(--surface2);border-radius:8px;font-size:12.5px;color:var(--text-secondary);}
-.tl-split-sum b{color:var(--navy);}
+/* 拆項：聯絡人式橫列表格 */
+.tl-sp-scroll{overflow-x:auto;border:1px solid var(--line,var(--border));border-radius:10px;}
+.tl-sp-tbl{min-width:620px;}
+.tl-sp-head,.tl-sp-line{display:grid;grid-template-columns:64px minmax(120px,1.4fr) 96px 96px 96px 62px 34px;gap:8px;align-items:center;padding:8px 10px;}
+.tl-sp-head{background:var(--surface2);font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border);}
+.tl-sp-line{border-top:1px solid var(--line-soft,rgba(0,0,0,.06));}
+.tl-sp-line:first-of-type{border-top:none;}
+.tl-sp-line.internal{background:#F4F1EA;}
+.tl-sp-line select,.tl-sp-line input{border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text-primary);width:100%;}
+.tl-sp-line.internal select{border-color:#C9A24B;color:#8A6D1A;font-weight:600;}
+.tl-sp-pct{font-size:12px;font-weight:600;color:var(--navy);text-align:center;}
+.tl-sp-del{background:none;border:none;cursor:pointer;font-size:15px;opacity:.65;padding:2px;justify-self:center;}
+.tl-sp-del:hover{opacity:1;}
+.tl-sp-empty{padding:16px;text-align:center;color:var(--text-muted);font-size:12.5px;}
 .tl-cal-btn{margin-top:6px;align-self:flex-start;font-size:11px;font-weight:600;padding:3px 10px;border:1px solid var(--warm);background:var(--surface);color:var(--warm);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}
 .tl-cal-btn:hover{background:var(--warm);color:#fff;}
 .tl-cal-btn.done{border-color:#4A5D4E;color:#4A5D4E;}
@@ -9085,8 +9092,8 @@ function _tlBasePanel(o){
   <div class="tl-grid">
     <div class="tl-f full tl-chk"><input type="checkbox" id="tlSplitEnabled" ${(o.splitItems&&o.splitItems.length)?'checked':''} onchange="_tlToggleSplit()"/><label>此訂單有拆項</label></div>
     <div class="tl-f full" id="tlSplitWrap" style="display:${(o.splitItems&&o.splitItems.length)?'block':'none'};">
-      <div id="tlSplitList"></div>
-      <button type="button" class="tl-btn ghost" style="margin-top:6px;" onclick="_tlAddSplit()">＋ 新增拆項</button>
+      <div class="tl-sp-scroll"><div class="tl-sp-tbl" id="tlSplitList"></div></div>
+      <button type="button" class="tl-btn ghost" style="margin-top:8px;" onclick="_tlAddSplit()">＋ 新增拆項</button>
     </div>
   </div>`;
 }
@@ -9154,49 +9161,43 @@ function _tlToggleSplit(){
   document.getElementById('tlSplitWrap').style.display=on?'block':'none';
   if(on && _tlSplit.length===0) _tlAddSplit(); else _tlRenderSplit();
 }
-function _tlAddSplit(){ _tlCollectSplit(); _tlSplit.push({productName:'',splitType:'對外明細',purpose:'',costTwd:'',quoteTwd:'',dealTwd:''}); _tlRenderSplit(); }
+function _tlAddSplit(){ _tlCollectSplit(); _tlSplit.push({splitType:'對外',productName:'',costTwd:'',quoteTwd:'',dealTwd:''}); _tlRenderSplit(); }
 function _tlRemoveSplit(i){ _tlCollectSplit(); _tlSplit.splice(i,1); _tlRenderSplit(); }
-function _tlSplitTypeChange(el){ _tlCollectSplit(); _tlRenderSplit(); }
 function _tlCollectSplit(){
   document.querySelectorAll('#tlSplitList [data-splitrow]').forEach(row=>{
     const i=+row.dataset.splitrow; if(!_tlSplit[i]) return;
     row.querySelectorAll('[data-sf]').forEach(inp=>{
       const f=inp.dataset.sf;
-      _tlSplit[i][f]= ['productName','splitType','purpose'].includes(f) ? inp.value : (String(inp.value).replace(/[^0-9.\-]/g,''));
+      _tlSplit[i][f]= ['productName','splitType'].includes(f) ? inp.value : (String(inp.value).replace(/[^0-9.\-]/g,''));
     });
   });
 }
-const _TL_PURPOSES=['行銷費用','通路／代理費','服務／建置費','其他'];
+function _tlSplitPct(el){
+  const row=el.closest('[data-splitrow]'); if(!row) return;
+  const g=f=>parseInt(String((row.querySelector(`[data-sf="${f}"]`)||{}).value||'').replace(/[^0-9]/g,''))||0;
+  const q=g('quoteTwd'), dl=g('dealTwd'); const span=row.querySelector('.tl-sp-pct');
+  if(span) span.textContent=(q&&dl)?((dl/q*100).toFixed(1)+'%'):'—';
+}
 function _tlRenderSplit(){
   const list=document.getElementById('tlSplitList'); if(!list) return;
-  if(_tlSplit.length===0){ list.innerHTML='<div class="hint">尚無拆項</div>'; return; }
-  const money=v=>v?parseInt(String(v).replace(/[^0-9]/g,'')||0).toLocaleString():'';
+  const money=v=>{const n=parseInt(String(v).replace(/[^0-9]/g,''))||0;return n?n.toLocaleString():'';};
+  const head=`<div class="tl-sp-head"><span>類型</span><span>項目名稱</span><span>底價</span><span>報價</span><span>成交價</span><span>議價%</span><span></span></div>`;
+  if(_tlSplit.length===0){ list.innerHTML=head+'<div class="tl-sp-empty">尚無拆項，點「＋ 新增拆項」開始</div>'; return; }
   const rows=_tlSplit.map((s,i)=>{
-    const isInternal=s.splitType==='內部拆帳';
-    const purposeOpts=['',..._TL_PURPOSES].map(p=>`<option value="${p}" ${(''+ (s.purpose||''))===p?'selected':''}>${p||'（選用途）'}</option>`).join('');
-    return `
-    <div class="tl-split-row ${isInternal?'internal':''}" data-splitrow="${i}">
-      <div class="tl-split-hd">
-        <select data-sf="splitType" class="tl-split-type" onchange="_tlSplitTypeChange(this)">
-          <option value="對外明細" ${!isInternal?'selected':''}>對外明細（客戶可見）</option>
-          <option value="內部拆帳" ${isInternal?'selected':''}>內部拆帳（僅內部）</option>
-        </select>
-        <button type="button" class="tl-mini-btn danger" onclick="_tlRemoveSplit(${i})">刪除</button>
-      </div>
-      <div class="tl-grid">
-        <div class="tl-f full"><label>項目名稱</label><input type="text" data-sf="productName" value="${(s.productName||'').replace(/"/g,'&quot;')}"/></div>
-        ${isInternal
-          ? `<div class="tl-f"><label>金額（台幣）</label><input type="text" data-sf="dealTwd" value="${money(s.dealTwd)}"/></div>
-             <div class="tl-f"><label>用途</label><select data-sf="purpose">${purposeOpts}</select></div>`
-          : `<div class="tl-f"><label>底價（台幣）</label><input type="text" data-sf="costTwd" value="${money(s.costTwd)}"/></div>
-             <div class="tl-f"><label>報價（台幣）</label><input type="text" data-sf="quoteTwd" value="${money(s.quoteTwd)}"/></div>
-             <div class="tl-f"><label>成交（台幣）</label><input type="text" data-sf="dealTwd" value="${money(s.dealTwd)}"/></div>`}
-      </div>
-    </div>`;}).join('');
-  const ext=_tlSplit.filter(s=>s.splitType!=='內部拆帳').reduce((a,s)=>a+(parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0),0);
-  const intl=_tlSplit.filter(s=>s.splitType==='內部拆帳').reduce((a,s)=>a+(parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0),0);
-  const summary=`<div class="tl-split-sum">對外明細合計（客戶可見）：<b>NT$ ${ext.toLocaleString()}</b>　·　內部拆帳合計（僅內部）：<b>NT$ ${intl.toLocaleString()}</b></div>`;
-  list.innerHTML=rows+summary;
+    const isIn=/內/.test(s.splitType||'');
+    const q=parseInt(String(s.quoteTwd).replace(/[^0-9]/g,''))||0, dl=parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0;
+    const pct=(q&&dl)?((dl/q*100).toFixed(1)+'%'):'—';
+    return `<div class="tl-sp-line${isIn?' internal':''}" data-splitrow="${i}">
+      <select data-sf="splitType"><option value="對外" ${!isIn?'selected':''}>對外</option><option value="對內" ${isIn?'selected':''}>對內</option></select>
+      <input type="text" data-sf="productName" placeholder="項目名稱" value="${(s.productName||'').replace(/"/g,'&quot;')}"/>
+      <input type="text" data-sf="costTwd" placeholder="底價" value="${money(s.costTwd)}"/>
+      <input type="text" data-sf="quoteTwd" placeholder="報價" value="${money(s.quoteTwd)}" oninput="_tlSplitPct(this)"/>
+      <input type="text" data-sf="dealTwd" placeholder="成交" value="${money(s.dealTwd)}" oninput="_tlSplitPct(this)"/>
+      <span class="tl-sp-pct">${pct}</span>
+      <button type="button" class="tl-sp-del" title="刪除" onclick="_tlRemoveSplit(${i})">🗑</button>
+    </div>`;
+  }).join('');
+  list.innerHTML=head+rows;
 }
 
 // ── 採購議價（截標時間＋開標時間＋checklist＋押標金）──
@@ -9361,8 +9362,7 @@ function _tlCollect(o, right){
     const splitOn=document.getElementById('tlSplitEnabled')?.checked;
     o.splitItems = splitOn ? _tlSplit.map(s=>({
       productName:s.productName||'',
-      splitType:s.splitType||'對外明細',
-      purpose:s.splitType==='內部拆帳'?(s.purpose||''):'',
+      splitType:/內/.test(s.splitType||'')?'對內':'對外',
       costTwd:parseInt(String(s.costTwd).replace(/[^0-9.\-]/g,''))||0,
       quoteTwd:parseInt(String(s.quoteTwd).replace(/[^0-9.\-]/g,''))||0,
       dealTwd:parseInt(String(s.dealTwd).replace(/[^0-9.\-]/g,''))||0,
@@ -9426,7 +9426,7 @@ function _tlSetStatus(key){
 window._tlClose=_tlClose; window._tlSave=_tlSave; window._tlSetStatus=_tlSetStatus;
 window.openOrderTimeline=openOrderTimeline;
 window._tlFillOneYear=_tlFillOneYear; window._tlPriceCalc=_tlPriceCalc; window._tlToggleAuto=_tlToggleAuto;
-window._tlLinkedChange=_tlLinkedChange; window._tlToggleSplit=_tlToggleSplit; window._tlAddSplit=_tlAddSplit; window._tlRemoveSplit=_tlRemoveSplit; window._tlSplitTypeChange=_tlSplitTypeChange;
+window._tlLinkedChange=_tlLinkedChange; window._tlToggleSplit=_tlToggleSplit; window._tlAddSplit=_tlAddSplit; window._tlRemoveSplit=_tlRemoveSplit; window._tlSplitPct=_tlSplitPct;
 window._tlBidToggle=_tlBidToggle; window._tlAcceptToggle=_tlAcceptToggle; window._tlSameBidClose=_tlSameBidClose;
 window._tlSetFu=_tlSetFu; window._tlOpenQuote=_tlOpenQuote;
 window._tlContractToggle=_tlContractToggle; window._tlPerfBondToggle=_tlPerfBondToggle;
