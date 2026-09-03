@@ -9315,7 +9315,7 @@ function _tlShipRender(){
     const c=parseInt(String(s.costTwd).replace(/[^0-9]/g,''))||0, dl=parseInt(String(s.dealTwd).replace(/[^0-9]/g,''))||0;
     const pct=(c&&dl)?((c/dl*100).toFixed(1)+'%'):'—';
     return `<div class="tl-sp-line sp-ship${isIn?' internal':''}" data-shiprow="${i}">
-      <select data-shf="splitType" onchange="_tlShipRecon()"><option value="對外" ${!isIn?'selected':''}>對外</option><option value="對內" ${isIn?'selected':''}>對內</option></select>
+      <select data-shf="splitType" onchange="_tlShipRecon()"><option value="外" ${!isIn?'selected':''}>外</option><option value="內" ${isIn?'selected':''}>內</option></select>
       <input type="text" data-shf="productName" placeholder="項目名稱" value="${(s.productName||'').replace(/"/g,'&quot;')}"/>
       <input type="text" data-shf="costOrig" placeholder="原幣" value="${money(s.costOrig)}" oninput="_tlPriceTax(this)"/>
       <input type="text" data-shf="costTwd" placeholder="台幣" value="${money(s.costTwd)}" oninput="_tlShipPct(this)"/>
@@ -9552,7 +9552,7 @@ function _tlRenderSplit(){
   const rows=_tlSplit.map((s,i)=>{
     const isIn=/內/.test(s.splitType||'');
     return `<div class="tl-sp-line sp-order${isIn?' internal':''}" data-splitrow="${i}">
-      <select data-sf="splitType"><option value="對外" ${!isIn?'selected':''}>對外</option><option value="對內" ${isIn?'selected':''}>對內</option></select>
+      <select data-sf="splitType"><option value="外" ${!isIn?'selected':''}>外</option><option value="內" ${isIn?'selected':''}>內</option></select>
       <input type="text" data-sf="productName" placeholder="項目名稱" value="${(s.productName||'').replace(/"/g,'&quot;')}"/>
       <input type="text" data-sf="costOrig" placeholder="原幣" value="${money(s.costOrig)}" oninput="_tlPriceTax(this)"/>
       <input type="text" data-sf="costTwd" placeholder="台幣" value="${money(s.costTwd)}"/>
