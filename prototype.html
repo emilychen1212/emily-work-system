@@ -3183,7 +3183,8 @@ function saveOrder(order) {
 
 function deleteOrder(orderId) {
   const db = dbLoad();
-  db.orders     = db.orders.filter(o => o.id !== orderId);
+  // 刪除該訂單，並連帶刪除它底下的子訂單（避免孤兒子訂單卡在資料裡刪不掉）
+  db.orders     = db.orders.filter(o => o.id !== orderId && o.parentOrderId !== orderId);
   db.orderItems = (db.orderItems||[]).filter(i => i.orderId !== orderId);
   dbSave(db);
 }
@@ -4547,7 +4548,7 @@ function renderOrdersGrid() {
       <td style="text-align:center;white-space:nowrap;">
         ${o.status === '履約結束' && o.bondRefundStatus === 'pending' ? `<button data-bond-refund="${o.id}" title="履保金退款追蹤中 — 收到退款後點此" style="font-size:12px;background:#C06C4C;color:#fff;border-radius:5px;padding:1px 6px;margin-right:4px;">💰追蹤</button>` : ''}
         ${o.status === '履約結束' && o.bondRefundStatus === 'refunded' ? `<button data-bond-refund="${o.id}" title="履保金已退回（點此可還原）" style="font-size:12px;background:#4A5D4E;color:#fff;border-radius:5px;padding:1px 6px;margin-right:4px;cursor:pointer;">💰✓</button>` : ''}
-        ${!isChild ? `<button class="del" data-delete-order="${o.id}" title="刪除訂單">✕</button>` : ''}
+        <button class="del" data-delete-order="${o.id}" title="${isChild?'刪除子訂單':'刪除訂單'}">✕</button>
       </td>
     </tr>`;
   }
