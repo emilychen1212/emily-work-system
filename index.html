@@ -4258,11 +4258,12 @@ function renderClientDashboard(clientId) {
   const now       = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  // KPI：目前業績 = 狀態「履約期間」且訂期起始日在當年（不管結束年）
+  // KPI：目前業績 = 已進入履約（含已結束）且訂期起始日在當年（不管結束年）
+  const _KPI_STATUSES = ['履約期間','申退履保金','履約結束'];
   const _thisYear = new Date().getFullYear();
   let monthDeal = 0;
   orders.forEach(o => {
-    if (o.status === '履約期間' && o.dealTwd && o.startDate) {
+    if (_KPI_STATUSES.includes(o.status) && o.dealTwd && o.startDate) {
       if (new Date(o.startDate).getFullYear() === _thisYear)
         monthDeal += (parseInt(o.dealTwd) || 0);
     }
@@ -4318,7 +4319,7 @@ function renderClientDashboard(clientId) {
   bar.innerHTML = `
     <div class="dash-stat ${monthDeal > 0 ? 'ok' : ''}">
       <div class="dash-stat-num">${dealWan}<span style="font-size:14px;font-weight:500;">萬</span></div>
-      <div class="dash-stat-label">目前業績<br>（履約期間合計）</div>
+      <div class="dash-stat-label">目前業績<br>（今年已履約合計）</div>
     </div>
     <div class="dash-divider"></div>
     <div class="dash-scroll-area">
@@ -5630,11 +5631,12 @@ function computeOrderKPI() {
   const now        = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  // KPI：目前業績 = 狀態「履約期間」且訂期起始日在當年
+  // KPI：目前業績 = 已進入履約（含已結束）且訂期起始日在當年
+  const _KPI_STATUSES2 = ['履約期間','申退履保金','履約結束'];
   const _thisYear2 = new Date().getFullYear();
   let monthDeal = 0;
   orders.forEach(o => {
-    if (o.status === '履約期間' && o.dealTwd && o.startDate) {
+    if (_KPI_STATUSES2.includes(o.status) && o.dealTwd && o.startDate) {
       if (new Date(o.startDate).getFullYear() === _thisYear2)
         monthDeal += (parseInt(o.dealTwd) || 0);
     }
@@ -5752,7 +5754,7 @@ function renderOrderDashboard() {
   bar.innerHTML = `
     <div class="dash-stat ${dealCls}">
       <div class="dash-stat-num">${dealWan}<span style="font-size:14px;font-weight:500;">萬</span></div>
-      <div class="dash-stat-label">目前業績<br>（履約期間合計）</div>
+      <div class="dash-stat-label">目前業績<br>（今年已履約合計）</div>
     </div>
     <div class="dash-divider"></div>
     <div class="dash-scroll-area">
