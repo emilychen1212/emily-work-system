@@ -9428,7 +9428,6 @@ function _tlBasePanel(o){
     <div class="tl-f"><label>產品名稱</label><input type="text" data-tlf="productName" value="${o.productName||''}"/></div>
     <div class="tl-f"><label>採購案名稱</label><input type="text" data-tlf="caseName" value="${o.caseName||''}"/></div>
     <div class="tl-f"><label>採購案號（決標後補）</label><input type="text" data-tlf="caseNo" value="${o.caseNo||''}"/></div>
-    <div class="tl-f full"><label>採購案群組代號 <span class="hint" style="font-weight:400;">同一批訂單填相同代號即歸為一組；可當報價單編號。詢價階段就能先填，案號之後再補。</span></label><input type="text" data-tlf="caseGroup" value="${(o.caseGroup||'').replace(/"/g,'&quot;')}" placeholder="例：台大-西文期刊-2026"/></div>
 
     <div class="tl-f"><label>訂期起始日 <button type="button" class="tl-mini-btn" onclick="_tlFillOneYear()">＋一年</button></label><input type="date" data-tlf="startDate" value="${dv(o.startDate)}" data-nocal/></div>
     <div class="tl-f"><label>訂期結束日</label><input type="date" data-tlf="endDate" value="${dv(o.endDate)}" data-nocal/></div>
