@@ -6160,8 +6160,10 @@ function computeDashboardItems() {
     }
 
     // 履約結束：強制結案 — 不再排出貨/啟用通知/追回等提醒，只保留申退履保金與退款追蹤
-    if (o.status === '履約結束') {
-      if (_isLead && o.bondRefundStatus !== 'refunded') {
+    if (o.status === '履約結束' || o.status === '申退履保金') {
+      // 只有「有履保金」的訂單才需要申退履保金
+      const _hasBond = !!(o.hasPerfBond || (parseInt(String(o.perfBondAmount).replace(/[^0-9]/g,''))||0) > 0 || o.bondDeadline || (o.checks && o.checks.bidToPerf) || o.bondRefundStatus);
+      if (_isLead && _hasBond && o.bondRefundStatus !== 'refunded') {
         const base = _snoozeDate ? _isoDate(_snoozeDate) : (_fu || (o.endDate ? _isoDate(_dPlus(o.endDate, 30)) : null));
         if (base) _pushItem(new Date(base), '申退履保金', '💰', 2, _snoozeHint);
       }
