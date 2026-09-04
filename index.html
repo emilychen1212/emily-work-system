@@ -6198,14 +6198,17 @@ function computeDashboardItems() {
     if (_isLead && o.contractReceivedAt && !CK.contractReturned) {
       _pushItem(_dPlus(o.contractReceivedAt, 30), '追回客戶回簽合約', '🔁', 2);
     }
-    // 製作啟用通知：照產品各自出（購案也不去重）；grp≥4 且距訂期起始 ≤5 天才排（子訂單不需）
+    // 製作啟用通知：訂期起始前5天排入；可 +3/+7 延後，但不晚於訂期起始日；打勾完成才消失（子訂單不需）
     if (curGrp >= 4 && o.startDate && !o.parentOrderId && !CK.activationNotice) {
       const start = new Date(o.startDate); start.setHours(0,0,0,0);
       const daysToStart = Math.round((start - snapDate) / 86400000);
-      if (daysToStart <= 5) {
-        const target = _dPlus(o.startDate, -5);
+      if (daysToStart <= 5 || _snoozeDate) {   // 進入視窗、或已被延後 → 保留在清單
+        let a = _dPlus(o.startDate, -5);
+        if (a < snapDate) a = snapDate;
+        if (_snoozeDate) a = (_snoozeDate > start) ? start : _snoozeDate;   // 延後上限＝訂期起始日
         const actLabel = _caseActive ? `製作啟用通知（${productName}）` : '製作啟用通知';
-        _pushItem(target < snapDate ? snapDate : target, actLabel, '📬', 0, `訂期起始 ${fmtDate(o.startDate)}`);
+        const hint = _snoozeDate ? `已延後至 ${fmtDate(_isoDate(a))}（最晚須於訂期起始 ${fmtDate(o.startDate)} 前）` : `訂期起始 ${fmtDate(o.startDate)}`;
+        _pushItem(a, actLabel, '📬', 0, hint);
       }
     }
     // 可開發票 → 今日申請開發票
