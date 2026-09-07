@@ -5432,11 +5432,25 @@ function openContactModal(clientId) {
   _initContactColResize();
 }
 // 聯絡人表格欄寬可拖拉（像 Excel/Google Sheet）
+const _CONTACT_COLW_KEY = 'contact_col_widths';
+function _saveContactColWidths(cols) {
+  try {
+    const w = Array.from(cols).map(c => c.style.width || '');
+    localStorage.setItem(_CONTACT_COLW_KEY, JSON.stringify(w));
+  } catch (e) {}
+}
+function _restoreContactColWidths(cols) {
+  try {
+    const w = JSON.parse(localStorage.getItem(_CONTACT_COLW_KEY) || '[]');
+    w.forEach((val, i) => { if (val && cols[i]) cols[i].style.width = val; });
+  } catch (e) {}
+}
 function _initContactColResize() {
   const table = document.querySelector('#contactModal .contact-table');
+  const cols = table ? table.querySelectorAll('colgroup col') : [];
+  if (table) _restoreContactColWidths(cols);           // 每次開啟都套用上次存的寬度
   if (!table || table._resizeInit) return;
   table._resizeInit = true;
-  const cols = table.querySelectorAll('colgroup col');
   const ths  = table.querySelectorAll('thead th');
   ths.forEach((th, i) => {
     if (i >= cols.length - 1) return;               // 最後一欄(操作)不放把手
@@ -5453,6 +5467,7 @@ function _initContactColResize() {
         h.classList.remove('dragging');
         document.removeEventListener('mousemove', move);
         document.removeEventListener('mouseup', up);
+        _saveContactColWidths(cols);                 // 放手即自動儲存寬度
       };
       document.addEventListener('mousemove', move);
       document.addEventListener('mouseup', up);

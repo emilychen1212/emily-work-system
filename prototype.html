@@ -5431,11 +5431,19 @@ function openContactModal(clientId) {
   openModal('contactModal');
   _initContactColResize();
 }
+const _CONTACT_COLW_KEY = 'contact_col_widths';
+function _saveContactColWidths(cols) {
+  try { localStorage.setItem(_CONTACT_COLW_KEY, JSON.stringify(Array.from(cols).map(c => c.style.width || ''))); } catch (e) {}
+}
+function _restoreContactColWidths(cols) {
+  try { (JSON.parse(localStorage.getItem(_CONTACT_COLW_KEY) || '[]')).forEach((val, i) => { if (val && cols[i]) cols[i].style.width = val; }); } catch (e) {}
+}
 function _initContactColResize() {
   const table = document.querySelector('#contactModal .contact-table');
+  const cols = table ? table.querySelectorAll('colgroup col') : [];
+  if (table) _restoreContactColWidths(cols);
   if (!table || table._resizeInit) return;
   table._resizeInit = true;
-  const cols = table.querySelectorAll('colgroup col');
   const ths  = table.querySelectorAll('thead th');
   ths.forEach((th, i) => {
     if (i >= cols.length - 1) return;
@@ -5444,7 +5452,7 @@ function _initContactColResize() {
       e.preventDefault(); e.stopPropagation(); h.classList.add('dragging');
       const startX = e.pageX; const startW = cols[i].offsetWidth || th.offsetWidth;
       const move = ev => { cols[i].style.width = Math.max(44, startW + (ev.pageX - startX)) + 'px'; };
-      const up = () => { h.classList.remove('dragging'); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+      const up = () => { h.classList.remove('dragging'); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); _saveContactColWidths(cols); };
       document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
     });
   });
