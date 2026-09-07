@@ -9546,6 +9546,7 @@ function _tlBasePanel(o){
 
   <div class="tl-section-label">成交資訊（決標後填寫）</div>
   <div class="tl-grid">
+    <div class="tl-f"><label>成交日期 <span class="hint" style="font-weight:400;">決標／成交當日，業績依此年度計</span></label><input type="date" data-tlf="dealDate" value="${dv(o.dealDate)}" data-nocal/></div>
     <div class="tl-f"><label>成交匯率</label><input type="number" step="0.0001" data-tlf="dealRate" value="${o.dealRate||''}" oninput="_tlPriceCalc()"/></div>
     <div class="tl-f"><label>成交金額（台幣）<label class="tl-auto"><input type="checkbox" id="tlDealAuto" ${o.dealTwdAuto?'checked':''} onchange="_tlToggleAuto()"/>自動</label></label><input type="text" data-tlf="dealTwd" id="tlDealTwd" value="${money(o.dealTwd)}"/></div>
     <div class="tl-f full"><span class="hint" id="tlBargainPct"></span></div>
