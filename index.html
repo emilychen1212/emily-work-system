@@ -2287,6 +2287,10 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
           <div class="form-group section-divider full"><span>成交資訊（決標後填寫）</span></div>
           <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;">
             <div class="form-group">
+              <label>成交日期 <span style="font-weight:400;color:var(--text-muted);font-size:11px;">（決標／成交當日；業績依此年度計）</span></label>
+              <input type="date" id="orderDealDate" data-nocal style="width:100%;"/>
+            </div>
+            <div class="form-group">
               <label>成交匯率</label>
               <input type="number" id="orderDealRate" placeholder="0.00" step="0.01" oninput="autoCalcTwd()" style="width:100%;"/>
             </div>
@@ -4264,15 +4268,13 @@ function renderClientDashboard(clientId) {
   const now       = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  // KPI：目前業績 = 已進入履約（含已結束）且訂期起始日在當年（不管結束年）
-  const _KPI_STATUSES = ['履約期間','申退履保金','履約結束'];
+  // KPI：目前業績 = 成交日期在當年度的訂單成交金額合計（只要今年成交就算，不看履約狀態）
   const _thisYear = new Date().getFullYear();
   let monthDeal = 0;
   orders.forEach(o => {
-    if (_KPI_STATUSES.includes(o.status) && o.dealTwd && o.startDate) {
-      if (new Date(o.startDate).getFullYear() === _thisYear)
-        monthDeal += (parseInt(o.dealTwd) || 0);
-    }
+    const _dd = o.dealDate || o.contractReceivedAt || o.startDate;   // 舊資料無成交日期時回退決標日/訂期起始
+    if (o.dealTwd && _dd && new Date(_dd).getFullYear() === _thisYear)
+      monthDeal += (parseInt(o.dealTwd) || 0);
   });
 
   // Ticker：進行中訂單
@@ -4325,7 +4327,7 @@ function renderClientDashboard(clientId) {
   bar.innerHTML = `
     <div class="dash-stat ${monthDeal > 0 ? 'ok' : ''}">
       <div class="dash-stat-num">${dealWan}<span style="font-size:14px;font-weight:500;">萬</span></div>
-      <div class="dash-stat-label">目前業績<br>（今年已履約合計）</div>
+      <div class="dash-stat-label">目前業績<br>（今年成交合計）</div>
     </div>
     <div class="dash-divider"></div>
     <div class="dash-scroll-area">
@@ -5010,6 +5012,7 @@ function openOrderModal(orderId = null, parentOrderId = null) {
     document.getElementById('orderQuoteRate').value    = o.quoteRate   || '';
     document.getElementById('orderDealRate').value     = o.dealRate    || '';
     document.getElementById('orderDealTwd').value      = o.dealTwd ? Math.round(o.dealTwd).toLocaleString('zh-TW') : '';
+    document.getElementById('orderDealDate').value     = o.dealDate    || '';
     document.getElementById('orderTaxIncluded').checked  = !!o.taxIncluded;
     document.getElementById('orderServiceFee').checked   = !!o.serviceFee;
     document.getElementById('orderServiceFeeRate').value = o.serviceFeeRate || '';
@@ -5022,7 +5025,7 @@ function openOrderModal(orderId = null, parentOrderId = null) {
     ['orderProductType','orderCurrency'].forEach(id => document.getElementById(id).value = id === 'orderCurrency' ? 'USD' : '');
     ['orderProductName','orderCaseName','orderCaseNo','orderStartDate','orderEndDate',
      'orderQuoteDate','orderCostOrig','orderCostTwd','orderQuoteOrig','orderQuoteTwd',
-     'orderQuoteRate','orderDealRate','orderDealTwd','orderBondDeadline','orderDeliveryDate'].forEach(id => document.getElementById(id).value = '');
+     'orderQuoteRate','orderDealRate','orderDealTwd','orderDealDate','orderBondDeadline','orderDeliveryDate'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('orderTaxIncluded').checked = false;
     document.getElementById('orderNeedsContract').checked = false;
     document.getElementById('orderQuoteNote').value = '';
@@ -5116,6 +5119,7 @@ async function handleSaveOrder() {
     quoteRate:   parseFloat(document.getElementById('orderQuoteRate').value) || 0,
     dealRate:    parseFloat(document.getElementById('orderDealRate').value)  || 0,
     dealTwd:     parsePriceInput(document.getElementById('orderDealTwd')),
+    dealDate:    document.getElementById('orderDealDate').value || null,
     taxIncluded:     document.getElementById('orderTaxIncluded').checked,
     serviceFee:      document.getElementById('orderServiceFee').checked,
     serviceFeeRate:  parseFloat(document.getElementById('orderServiceFeeRate').value)||0,
@@ -5681,15 +5685,13 @@ function computeOrderKPI() {
   const now        = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  // KPI：目前業績 = 已進入履約（含已結束）且訂期起始日在當年
-  const _KPI_STATUSES2 = ['履約期間','申退履保金','履約結束'];
+  // KPI：目前業績 = 成交日期在當年度的訂單成交金額合計（只要今年成交就算）
   const _thisYear2 = new Date().getFullYear();
   let monthDeal = 0;
   orders.forEach(o => {
-    if (_KPI_STATUSES2.includes(o.status) && o.dealTwd && o.startDate) {
-      if (new Date(o.startDate).getFullYear() === _thisYear2)
-        monthDeal += (parseInt(o.dealTwd) || 0);
-    }
+    const _dd = o.dealDate || o.contractReceivedAt || o.startDate;
+    if (o.dealTwd && _dd && new Date(_dd).getFullYear() === _thisYear2)
+      monthDeal += (parseInt(o.dealTwd) || 0);
   });
 
   // Ticker：所有進行中訂單（非履約結束），依更新時間排列
@@ -5804,7 +5806,7 @@ function renderOrderDashboard() {
   bar.innerHTML = `
     <div class="dash-stat ${dealCls}">
       <div class="dash-stat-num">${dealWan}<span style="font-size:14px;font-weight:500;">萬</span></div>
-      <div class="dash-stat-label">目前業績<br>（今年已履約合計）</div>
+      <div class="dash-stat-label">目前業績<br>（今年成交合計）</div>
     </div>
     <div class="dash-divider"></div>
     <div class="dash-scroll-area">
@@ -8032,7 +8034,7 @@ function openDeliveryModal(clientId, orderId=null) {
   window._dlvPerfBond = o.perfBondAmount || 0;
   document.getElementById('dlvDeadline').value    = '';
   document.getElementById('dlvQuoteDate').value   = o.quoteDate || '';
-  document.getElementById('dlvDealDate').value    = o.updatedAt?.slice(0,10) || '';
+  document.getElementById('dlvDealDate').value    = o.dealDate || o.contractReceivedAt || o.updatedAt?.slice(0,10) || '';
   document.getElementById('dlvQuoteAmount').value = o.quoteTwd ? `NT$ ${parseInt(o.quoteTwd).toLocaleString('zh-TW')}` : '';
   document.getElementById('dlvDealAmount').value  = o.dealTwd  ? `NT$ ${parseInt(o.dealTwd).toLocaleString('zh-TW')}` : '';
   document.getElementById('dlvDealRate').value    = o.dealRate || '';
