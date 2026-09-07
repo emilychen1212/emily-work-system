@@ -647,7 +647,12 @@ ul { list-style: none; }
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: fixed;
 }
+.contact-table th { position: relative; }
+.contact-table .col-resizer { position:absolute; top:0; right:-3px; width:8px; height:100%; cursor:col-resize; user-select:none; z-index:2; }
+.contact-table .col-resizer:hover, .contact-table .col-resizer.dragging { background: var(--warm); opacity:.5; }
+.contact-table td input { text-overflow: ellipsis; }
 .contact-table th {
   background: var(--surface2);
   color: var(--text-secondary);
@@ -2379,7 +2384,7 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
         <div class="contact-table-wrap">
           <table class="contact-table">
             <colgroup>
-              <col style="width:90px"><col style="width:140px"><col style="width:205px"><col><col style="width:140px"><col style="width:44px">
+              <col style="width:88px"><col style="width:120px"><col style="width:180px"><col style="width:205px"><col style="width:260px"><col style="width:40px">
             </colgroup>
             <thead>
               <tr>
@@ -5424,6 +5429,35 @@ function openContactModal(clientId) {
   updateContactTabCounts();
   const _st = document.getElementById('contactSyncTime'); if (_st) _st.textContent = '';
   openModal('contactModal');
+  _initContactColResize();
+}
+// 聯絡人表格欄寬可拖拉（像 Excel/Google Sheet）
+function _initContactColResize() {
+  const table = document.querySelector('#contactModal .contact-table');
+  if (!table || table._resizeInit) return;
+  table._resizeInit = true;
+  const cols = table.querySelectorAll('colgroup col');
+  const ths  = table.querySelectorAll('thead th');
+  ths.forEach((th, i) => {
+    if (i >= cols.length - 1) return;               // 最後一欄(操作)不放把手
+    const h = document.createElement('span');
+    h.className = 'col-resizer';
+    th.appendChild(h);
+    h.addEventListener('mousedown', e => {
+      e.preventDefault(); e.stopPropagation();
+      h.classList.add('dragging');
+      const startX = e.pageX;
+      const startW = cols[i].offsetWidth || th.offsetWidth;
+      const move = ev => { cols[i].style.width = Math.max(44, startW + (ev.pageX - startX)) + 'px'; };
+      const up = () => {
+        h.classList.remove('dragging');
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  });
 }
 
 function renderContactTable() {
@@ -6190,9 +6224,9 @@ function computeDashboardItems() {
     if (_isLead && o.bondDeadline && (o.hasPerfBond || o.hasBidBond) && !CK.perfBondApplied) {
       _pushItem(_dPlus(o.bondDeadline, -7), '申請履保金', '🔐', 1, `履保金截止 ${fmtDate(o.bondDeadline)}`);
     }
-    // 需做合約 → 繳交合約（預計繳交合約日前3天）
+    // 需做合約 → 繳交合約（預計繳交合約日前3天）；+3/+7 直接改「預計繳交合約日」
     if (_isLead && o.needsContract && o.contractDueDate) {
-      _pushItem(_dPlus(o.contractDueDate, -3), '繳交合約', '✍️', 1, `預計繳交 ${fmtDate(o.contractDueDate)}`);
+      _pushItem(_dPlus(o.contractDueDate, -3), '繳交合約', '✍️', 1, `預計繳交 ${fmtDate(o.contractDueDate)}`, { dueSnoozeOrderId: o.id });
     }
     // 決標日 + 30天 仍未追回回簽合約 → 追回合約
     if (_isLead && o.contractReceivedAt && !CK.contractReturned) {
@@ -6449,6 +6483,7 @@ function refreshDashboardContent() {
         e.stopPropagation();
         const days = parseInt(sb.dataset.snoozeDays);
         if (item.actSnoozeOrderId) snoozeActivation(item.actSnoozeOrderId, days);
+        else if (item.dueSnoozeOrderId) snoozeContractDue(item.dueSnoozeOrderId, days);
         else snoozeOrderAlert(item.snoozeOrderId, days);
       });
     });
@@ -8522,6 +8557,21 @@ function migrateOrdersV2Run(){
 }
 window.migrateOrdersV2=migrateOrdersV2; window.migrateOrdersV2Run=migrateOrdersV2Run;
 
+// 繳交合約專用延後：把日期往後寫進訂單的「預計繳交合約日」(contractDueDate)
+function snoozeContractDue(orderId, days) {
+  const db = dbLoad();
+  const o = db.orders.find(x => x.id === orderId);
+  if (!o || !o.contractDueDate) return;
+  let base = new Date(o.contractDueDate); base.setHours(0,0,0,0);
+  base.setDate(base.getDate() + days);
+  o.contractDueDate = _isoDate(base);
+  o.updatedAt = new Date().toISOString();
+  dbSave(db);
+  renderOrderDashboard();
+  if (typeof renderOrderGrid === 'function') renderOrderGrid();
+  refreshDashboardContent();
+  showToast(`預計繳交合約日延後 ${days} 天（${fmtDate(o.contractDueDate)}）`);
+}
 // 啟用通知專用延後：把日期寫進訂單的「預計製作時間」(activationDueDate)
 function snoozeActivation(orderId, days) {
   const db = dbLoad();
