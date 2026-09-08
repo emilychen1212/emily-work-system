@@ -9037,9 +9037,11 @@ function _tlGrpOf(status){ const s=TL_STAGES.find(x=>x.key===status); return s?s
 function _tlOverdue(order, key){
   const fu=(order.followUp||{})[key];
   const today=_isoDate(new Date());
-  if(fu) return today>=fu;
+  if(fu) return today>=fu;                              // 自己設了下次追蹤日且已過 → 逾期
   const rule=DASH_ORDER_RULES && DASH_ORDER_RULES[key];
-  if(!rule) return false;
+  // 只有「久未更新」型規則（基準=更新日、天數為正）才用時間判逾期；
+  // 綁訂期起始/結束日的階段（如驗收中、申退履保金）不因時間自動判逾期，避免誤報。
+  if(!rule || rule.base!=='updatedAt' || rule.alertDay<=0) return false;
   const base=new Date(order.updatedAt||order.createdAt); base.setHours(0,0,0,0);
   return ((new Date(today)-base)/86400000) >= rule.alertDay;
 }
