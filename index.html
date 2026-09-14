@@ -2811,10 +2811,14 @@ function __applyRoleUI() {
 }
 
 
-async function __api(body) {
+async function __api(body, opts = {}) {
   body.token = __token;
-  const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
-  return r.json();
+  const ctrl = new AbortController();
+  const t = opts.timeout ? setTimeout(() => ctrl.abort(), opts.timeout) : null;
+  try {
+    const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body), signal: ctrl.signal });
+    return r.json();
+  } finally { if (t) clearTimeout(t); }
 }
 
 const cloudStore = (() => {
@@ -2938,16 +2942,31 @@ function __showLogin(msg) {
   if (msg) document.getElementById('loginErr').textContent = msg;
   setTimeout(() => document.getElementById('loginUser').focus(), 50);
 }
-async function __loadAndStart() {
-  const res = await __api({ action: 'load' });
-  if (!res.ok) { window.localStorage.removeItem('ews_token'); __token = ''; __showLogin(''); return; }
-  cloudStore._seed(res.data || {});
-  if (res.role) { __role = res.role; window.localStorage.setItem('ews_role', __role); window.localStorage.setItem('ews_name', res.name || ''); }
-  __applyRoleUI();
-  document.getElementById('loginOverlay').style.display = 'none';
-  document.getElementById('loadingOverlay').style.display = 'none';
-  if (document.readyState === 'complete' || document.readyState === 'interactive') __startApp();
-  else window.addEventListener('DOMContentLoaded', __startApp);
+let __loadAttempt = 0;
+async function __loadAndStart(isRetry) {
+  const ov = document.getElementById('loadingOverlay');
+  if (!isRetry) __loadAttempt = 0;
+  ov.style.display = 'flex';
+  ov.innerHTML = '資料載入中…';
+  try {
+    const res = await __api({ action: 'load' }, { timeout: 30000 });   // 後端超過 30 秒未回應即中止
+    if (!res.ok) { window.localStorage.removeItem('ews_token'); __token = ''; __showLogin(''); return; }
+    cloudStore._seed(res.data || {});
+    if (res.role) { __role = res.role; window.localStorage.setItem('ews_role', __role); window.localStorage.setItem('ews_name', res.name || ''); }
+    __applyRoleUI();
+    document.getElementById('loginOverlay').style.display = 'none';
+    ov.style.display = 'none';
+    if (document.readyState === 'complete' || document.readyState === 'interactive') __startApp();
+    else window.addEventListener('DOMContentLoaded', __startApp);
+  } catch (err) {
+    // 逾時或連線失敗：先自動重試一次，仍失敗則顯示重試按鈕
+    if (__loadAttempt < 1) { __loadAttempt++; ov.innerHTML = '後端回應較慢，正在重試…'; return __loadAndStart(true); }
+    ov.innerHTML = '<div style="text-align:center;max-width:340px;line-height:1.7;">'
+      + '<div style="font-size:15px;margin-bottom:6px;">😥 載入較慢或連線失敗</div>'
+      + '<div style="font-size:12.5px;color:#6b6b6b;margin-bottom:16px;">後端（Google）目前回應較慢，通常稍等即會恢復；你的資料都在雲端，不會遺失。</div>'
+      + '<button onclick="__loadAndStart()" style="background:#3a4a6b;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;cursor:pointer;">重試載入</button>'
+      + '</div>';
+  }
 }
 async function __doLogin() {
   const user = document.getElementById('loginUser').value.trim();
