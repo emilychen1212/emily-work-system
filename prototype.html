@@ -2949,7 +2949,7 @@ async function __loadAndStart(isRetry) {
   ov.style.display = 'flex';
   ov.innerHTML = '資料載入中…';
   try {
-    const res = await __api({ action: 'load' }, { timeout: 30000 });   // 後端超過 30 秒未回應即中止
+    const res = await __api({ action: 'load' }, { timeout: 60000 });   // 後端超過 60 秒未回應才中止（冷啟動可能要 ~30 秒）
     if (!res.ok) { window.localStorage.removeItem('ews_token'); __token = ''; __showLogin(''); return; }
     cloudStore._seed(res.data || {});
     if (res.role) { __role = res.role; window.localStorage.setItem('ews_role', __role); window.localStorage.setItem('ews_name', res.name || ''); }
@@ -2960,7 +2960,7 @@ async function __loadAndStart(isRetry) {
     else window.addEventListener('DOMContentLoaded', __startApp);
   } catch (err) {
     // 逾時或連線失敗：先自動重試一次，仍失敗則顯示重試按鈕
-    if (__loadAttempt < 1) { __loadAttempt++; ov.innerHTML = '後端回應較慢，正在重試…'; return __loadAndStart(true); }
+    if (__loadAttempt < 1) { __loadAttempt++; ov.innerHTML = '後端回應較慢，正在重試…（冷啟動可能需等待約 1 分鐘）'; return __loadAndStart(true); }
     ov.innerHTML = '<div style="text-align:center;max-width:340px;line-height:1.7;">'
       + '<div style="font-size:15px;margin-bottom:6px;">😥 載入較慢或連線失敗</div>'
       + '<div style="font-size:12.5px;color:#6b6b6b;margin-bottom:16px;">後端（Google）目前回應較慢，通常稍等即會恢復；你的資料都在雲端，不會遺失。</div>'
