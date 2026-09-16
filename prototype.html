@@ -6720,6 +6720,96 @@ initClientListDrag();
 renderHomePage();
 renderOrderDashboard();
 showPage('homePage');
+_initQuickCapture();
+
+// ── 快速收件浮動視窗（連按兩下 Esc 呼出；右下角 ⚡ 按鈕亦可）──
+function _qcVisible() { const el = document.getElementById('quickCaptureOverlay'); return el && el.style.display === 'flex'; }
+function _qcBusy() {
+  const ae = document.activeElement;
+  if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return true;
+  if (ae && ae.isContentEditable) return true;
+  // 有其他彈窗開著就不觸發（避免與關閉彈窗的 Esc 衝突）
+  const overlays = document.querySelectorAll('.modal-overlay, #tlModal, #loadingOverlay, #loginOverlay');
+  for (const o of overlays) { if (o.offsetParent !== null && o.id !== 'quickCaptureOverlay') return true; }
+  return false;
+}
+function openQuickCapture() {
+  const ov = document.getElementById('quickCaptureOverlay');
+  if (!ov) return;
+  ov.style.display = 'flex';
+  const inp = document.getElementById('qcInput');
+  inp.value = '';
+  setTimeout(() => inp.focus(), 30);
+}
+function closeQuickCapture() {
+  const ov = document.getElementById('quickCaptureOverlay');
+  if (ov) ov.style.display = 'none';
+}
+function _qcSubmit() {
+  const inp = document.getElementById('qcInput');
+  const desc = inp.value.trim();
+  if (!desc) return;
+  saveTask({ desc, detail: '', type: '任務收件處', category: '', priority: '🟡', clientId: '', dueDate: '', status: '今日收件' });
+  inp.value = '';
+  const list = document.getElementById('qcRecent');
+  const li = document.createElement('div');
+  li.style.cssText = 'padding:5px 8px;border-radius:6px;background:rgba(58,74,107,.07);font-size:12.5px;color:#3a4a6b;margin-top:5px;display:flex;gap:6px;align-items:center;';
+  li.innerHTML = '<span>✓</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + desc.replace(/</g,'&lt;') + '</span>';
+  list.prepend(li);
+  const cnt = document.getElementById('qcCount');
+  cnt.dataset.n = String((parseInt(cnt.dataset.n) || 0) + 1);
+  cnt.textContent = '本次已收 ' + cnt.dataset.n + ' 筆';
+  cnt.style.display = '';
+  // 若正在任務管理頁，即時刷新
+  if (typeof renderWorkQuad === 'function' && document.getElementById('workQuadGrid')) { try { renderWorkQuad(); } catch (e) {} }
+  inp.focus();
+}
+function _initQuickCapture() {
+  if (document.getElementById('quickCaptureOverlay')) return;
+  const ov = document.createElement('div');
+  ov.id = 'quickCaptureOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(20,26,40,.38);display:none;align-items:flex-start;justify-content:center;padding-top:16vh;';
+  ov.innerHTML =
+    '<div id="qcCard" style="width:min(520px,92vw);background:#fff;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.28);padding:18px 18px 16px;">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+    +   '<span style="font-size:16px;">⚡</span><b style="font-size:14px;color:#1B2A41;">快速記一筆待辦</b>'
+    +   '<span style="flex:1;"></span>'
+    +   '<span id="qcCount" style="display:none;font-size:11.5px;color:#7a7a7a;" data-n="0"></span>'
+    + '</div>'
+    + '<input id="qcInput" type="text" placeholder="想到什麼先丟進來…" autocomplete="off" '
+    +   'style="width:100%;box-sizing:border-box;padding:11px 12px;font-size:14px;border:1.5px solid #d8d3c6;border-radius:9px;outline:none;" />'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-top:10px;">'
+    +   '<span style="font-size:11.5px;color:#9a958a;flex:1;">Enter 收一筆並繼續 · Esc 關閉 · 之後到「任務管理」慢慢分類</span>'
+    +   '<button id="qcSaveBtn" style="background:#3a4a6b;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;cursor:pointer;">收進收件匣</button>'
+    + '</div>'
+    + '<div id="qcRecent" style="margin-top:8px;max-height:160px;overflow:auto;"></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  document.getElementById('qcSaveBtn').addEventListener('click', _qcSubmit);
+  document.getElementById('qcInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); _qcSubmit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeQuickCapture(); }
+  });
+  ov.addEventListener('mousedown', e => { if (e.target === ov) closeQuickCapture(); });
+  // 右下角浮動按鈕
+  const fab = document.createElement('button');
+  fab.id = 'qcFab';
+  fab.title = '快速記待辦（連按兩下 Esc 也可呼出）';
+  fab.textContent = '⚡';
+  fab.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99990;width:46px;height:46px;border-radius:50%;border:none;background:#3a4a6b;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25);';
+  fab.addEventListener('click', openQuickCapture);
+  document.body.appendChild(fab);
+  // 連按兩下 Esc 觸發
+  let _lastEsc = 0;
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (_qcVisible()) { _lastEsc = 0; return; }        // 視窗開著時，交給它自己的 Esc 關閉
+    if (_qcBusy()) { _lastEsc = 0; return; }           // 有其他彈窗/正在打字，不觸發
+    const now = Date.now();
+    if (now - _lastEsc < 450) { _lastEsc = 0; openQuickCapture(); }
+    else _lastEsc = now;
+  });
+}
 
 // ── 任務管理按鈕（Modal 由 JS 插入，需在 DOM 完整後綁定）──
 bindId('saveTaskBtn',        'click', handleSaveTask);
