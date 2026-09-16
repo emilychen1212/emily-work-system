@@ -6766,12 +6766,12 @@ function _qcSubmit() {
   inp.focus();
 }
 function _drainQuickInbox() {
-  if (window.__ROLE_VIEWER__) return;
+  if (window.__ROLE_VIEWER__) return 0;
   try {
     const raw = cloudStore.getItem('crm_quick_inbox');
-    if (!raw) return;
+    if (!raw) return 0;
     let arr = JSON.parse(raw);
-    if (!Array.isArray(arr) || !arr.length) return;
+    if (!Array.isArray(arr) || !arr.length) return 0;
     let n = 0;
     arr.forEach(it => {
       const desc = ((it && it.desc) || '').toString().trim();
@@ -6782,7 +6782,20 @@ function _drainQuickInbox() {
     cloudStore.setItem('crm_quick_inbox', '[]');   // 清空暫存區
     if (typeof renderWorkQuad === 'function' && document.getElementById('workQuadGrid')) { try { renderWorkQuad(); } catch (e) {} }
     if (n) showToast(n + ' 筆快速收件已匯入今日收件');
-  } catch (e) {}
+    return n;
+  } catch (e) { return 0; }
+}
+// 手動：重新向後端取回最新暫存區再匯入（不必整頁重載）
+async function _pullQuickInbox() {
+  showToast('收取中…');
+  try {
+    const res = await __api({ action: 'load' }, { timeout: 60000 });
+    if (res && res.ok && res.data && ('crm_quick_inbox' in res.data)) {
+      cloudStore._seed({ crm_quick_inbox: res.data.crm_quick_inbox });
+    }
+  } catch (e) { showToast('收取失敗，後端可能較慢，請稍後再試', 'error'); return; }
+  const n = _drainQuickInbox();
+  if (!n) showToast('目前沒有待收取的快速待辦');
 }
 function _initQuickCapture() {
   if (document.getElementById('quickCaptureOverlay')) return;
@@ -7182,6 +7195,7 @@ function renderWorkPage() {
         <option value="已完成">已完成</option>
         <option value="取消">取消</option>
       </select>
+      <button class="btn btn-ghost btn-sm" id="qcPullBtn">⟳ 收取快速待辦</button>
       <button class="btn btn-ghost btn-sm" id="manageCatBtnTop">⚙ 管理類別</button>
     </div>
     <div class="work-body">
@@ -7223,6 +7237,7 @@ function renderWorkPage() {
 
   // add project
   page.querySelector('#manageCatBtnTop')?.addEventListener('click', () => openCategoryModal());
+  page.querySelector('#qcPullBtn')?.addEventListener('click', _pullQuickInbox);
   page.querySelector('#clientListBtn')?.addEventListener('click', () => openClientListModal());
   page.querySelector('#workExportBtn')?.addEventListener('click', exportWorkCSV);
 
