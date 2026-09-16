@@ -6738,6 +6738,7 @@ renderHomePage();
 renderOrderDashboard();
 showPage('homePage');
 _initQuickCapture();
+_drainQuickInbox();
 
 // ── 快速收件浮動視窗（連按兩下 Esc 呼出；右下角 ⚡ 按鈕亦可）──
 function _qcVisible() { const el = document.getElementById('quickCaptureOverlay'); return el && el.style.display === 'flex'; }
@@ -6780,6 +6781,25 @@ function _qcSubmit() {
   // 若正在任務管理頁，即時刷新
   if (typeof renderWorkQuad === 'function' && document.getElementById('workQuadGrid')) { try { renderWorkQuad(); } catch (e) {} }
   inp.focus();
+}
+function _drainQuickInbox() {
+  if (window.__ROLE_VIEWER__) return;
+  try {
+    const raw = cloudStore.getItem('crm_quick_inbox');
+    if (!raw) return;
+    let arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || !arr.length) return;
+    let n = 0;
+    arr.forEach(it => {
+      const desc = ((it && it.desc) || '').toString().trim();
+      if (!desc) return;
+      saveTask({ desc, detail: '', type: '任務收件處', category: '', priority: '🟡', clientId: '', dueDate: '', status: '今日收件' });
+      n++;
+    });
+    cloudStore.setItem('crm_quick_inbox', '[]');   // 清空暫存區
+    if (typeof renderWorkQuad === 'function' && document.getElementById('workQuadGrid')) { try { renderWorkQuad(); } catch (e) {} }
+    if (n) showToast(n + ' 筆快速收件已匯入今日收件');
+  } catch (e) {}
 }
 function _initQuickCapture() {
   if (document.getElementById('quickCaptureOverlay')) return;
