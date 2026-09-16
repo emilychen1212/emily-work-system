@@ -6779,35 +6779,39 @@ function _initQuickCapture() {
     + '<input id="qcInput" type="text" placeholder="想到什麼先丟進來…" autocomplete="off" '
     +   'style="width:100%;box-sizing:border-box;padding:11px 12px;font-size:14px;border:1.5px solid #d8d3c6;border-radius:9px;outline:none;" />'
     + '<div style="display:flex;align-items:center;gap:10px;margin-top:10px;">'
-    +   '<span style="font-size:11.5px;color:#9a958a;flex:1;">Enter 收一筆並繼續 · Esc 關閉 · 之後到「任務管理」慢慢分類</span>'
+    +   '<span style="font-size:11.5px;color:#9a958a;flex:1;">連按兩下 Enter 收一筆 · Esc 關閉 · 之後到「任務管理」慢慢分類</span>'
     +   '<button id="qcSaveBtn" style="background:#3a4a6b;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;cursor:pointer;">收進收件匣</button>'
     + '</div>'
     + '<div id="qcRecent" style="margin-top:8px;max-height:160px;overflow:auto;"></div>'
     + '</div>';
   document.body.appendChild(ov);
   document.getElementById('qcSaveBtn').addEventListener('click', _qcSubmit);
+  let _qcLastEnter = 0;
   document.getElementById('qcInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); _qcSubmit(); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeQuickCapture(); }
+    if (e.key === 'Enter') {
+      if (e.isComposing || e.keyCode === 229) return;   // 中文選字確認用的 Enter 不算
+      e.preventDefault();
+      const now = Date.now();
+      if (now - _qcLastEnter < 500) { _qcLastEnter = 0; _qcSubmit(); }   // 連按兩下 Enter 才送出
+      else _qcLastEnter = now;
+    } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeQuickCapture(); }
   });
   ov.addEventListener('mousedown', e => { if (e.target === ov) closeQuickCapture(); });
   // 右下角浮動按鈕
   const fab = document.createElement('button');
   fab.id = 'qcFab';
-  fab.title = '快速記待辦（連按兩下 Esc 也可呼出）';
+  fab.title = '快速記待辦（⌘+Esc 也可呼出）';
   fab.textContent = '⚡';
   fab.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99990;width:46px;height:46px;border-radius:50%;border:none;background:#3a4a6b;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25);';
   fab.addEventListener('click', openQuickCapture);
   document.body.appendChild(fab);
-  // 連按兩下 Esc 觸發
-  let _lastEsc = 0;
+  // Cmd + Esc 觸發（系統網頁分頁使用中時，任一頁面皆可呼出）
   document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    if (_qcVisible()) { _lastEsc = 0; return; }        // 視窗開著時，交給它自己的 Esc 關閉
-    if (_qcBusy()) { _lastEsc = 0; return; }           // 有其他彈窗/正在打字，不觸發
-    const now = Date.now();
-    if (now - _lastEsc < 450) { _lastEsc = 0; openQuickCapture(); }
-    else _lastEsc = now;
+    if (e.key === 'Escape' && e.metaKey) {
+      if (_qcVisible()) return;                          // 已開著就不重複開
+      e.preventDefault();
+      openQuickCapture();
+    }
   });
 }
 
