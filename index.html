@@ -6850,18 +6850,20 @@ function _initQuickCapture() {
   // 右下角浮動按鈕
   const fab = document.createElement('button');
   fab.id = 'qcFab';
-  fab.title = '快速記待辦（⌘+Esc 也可呼出）';
+  fab.title = '快速記待辦（連按兩下 Esc 也可呼出）';
   fab.textContent = '⚡';
   fab.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99990;width:46px;height:46px;border-radius:50%;border:none;background:#3a4a6b;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25);';
   fab.addEventListener('click', openQuickCapture);
   document.body.appendChild(fab);
-  // Cmd + Esc 觸發（系統網頁分頁使用中時，任一頁面皆可呼出）
+  // 連按兩下 Esc 觸發（系統網頁任一頁面；有其他彈窗或正在打字時不觸發）
+  let _lastEsc = 0;
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && e.metaKey) {
-      if (_qcVisible()) return;                          // 已開著就不重複開
-      e.preventDefault();
-      openQuickCapture();
-    }
+    if (e.key !== 'Escape') return;
+    if (_qcVisible()) { _lastEsc = 0; return; }        // 視窗開著時，交給它自己的 Esc 關閉
+    if (_qcBusy()) { _lastEsc = 0; return; }           // 有其他彈窗/正在打字，不觸發
+    const now = Date.now();
+    if (now - _lastEsc < 450) { _lastEsc = 0; openQuickCapture(); }
+    else _lastEsc = now;
   });
 }
 
