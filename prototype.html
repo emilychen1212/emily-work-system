@@ -509,6 +509,7 @@ ul { list-style: none; }
 .status-驗收中     { background: #DDE8DE; color: #2A4A2F; }
 /* 柿子橙群 - 追蹤警示 */
 .status-已提案草報價 { background: #F5E5D5; color: #7A3520; }
+.status-提案報價中 { background: #F5E5D5; color: #7A3520; }
 .status-詢價中     { background: #F5E5D5; color: #7A3520; }
 .status-已正式報價  { background: #F5E5D5; color: #7A3520; }
 .status-採購議價   { background: #F5E5D5; color: #7A3520; }
@@ -3011,7 +3012,7 @@ const DB_DEFAULT = {
 };
 
 const STATUSES_MAIN = [
-  '詢價中', '已提案/草報價', '採購議價',
+  '詢價中', '提案報價中', '已提案/草報價', '採購議價',
   '契約書簽訂中', '出貨中', '驗收中', '可開發票', '履約期間', '申退履保金', '履約結束', '未開始'
 ];
 const STATUSES_PENDING = ['發票確認中'];
@@ -3020,6 +3021,7 @@ const STATUSES = [...STATUSES_MAIN, ...STATUSES_PENDING];
 // 追蹤狀態警示設定（天數門檻 + 等級）
 const STATUS_ALERT = {
   '詢價中':       { days: 7,  level: 'danger', msg: '詢價超過7天，確認PM回覆進度' },
+  '提案報價中':  { days: 5,  level: 'warn',   msg: '提案報價中超過5天，盡快製作／寄出報價單' },
   '已提案/草報價':{ days: 7,  level: 'danger', msg: '草報價超過7天，確認客戶回應' },
   '報價中':       { days: 14, level: 'warn',   msg: '報價超過14天，可提醒客戶' },
   '採購議價':     { days: 3,  level: 'danger', msg: '⚠ 採購議價超過3天！最緊急' },
@@ -5667,6 +5669,7 @@ document.getElementById('clearFilterBtn').addEventListener('click', () => {
 // ===== ORDER DASHBOARD =====
 const ORDER_STATUS_ALERT = {
   '詢價中':       { days: 7,  level: 'danger', msg: '詢價超過7天，確認PM回覆進度', snooze: true },
+  '提案報價中':  { days: 5,  level: 'warn',   msg: '提案報價中超過5天，盡快製作／寄出報價單' },
   '已提案/草報價':{ days: 7,  level: 'danger', msg: '草報價超過7天，確認客戶回應' },
   '採購議價':     { days: 3,  level: 'danger', msg: '採購議價超過3天！最緊急' },
   '契約書簽訂中': { days: 7,  level: 'warn',   msg: '契約書超過7天，可追蹤進度', snooze: true },
@@ -5730,7 +5733,7 @@ function computeOrderKPI() {
 
 function getOrderStatusColor(status) {
   if (['採購議價','契約書簽訂中','可開發票','出貨中'].includes(status)) return '#A36B5E';
-  if (['已提案/草報價','詢價中','申退履保金'].includes(status)) return '#C06C4C';
+  if (['提案報價中','已提案/草報價','詢價中','申退履保金'].includes(status)) return '#C06C4C';
   if (['驗收中'].includes(status)) return '#4A5D4E';
   if (['履約期間'].includes(status)) return '#2B3A42';
   if (['履約結束'].includes(status)) return '#8A8378';
@@ -5856,6 +5859,7 @@ let currentOrderStatusTab = 'all';
 const ORDER_STATUS_TABS = [
   { key: 'all',          label: '所有' },
   { key: '詢價中',       label: '詢價中' },
+  { key: '提案報價中',   label: '提案報價中' },
   { key: '已提案/草報價',label: '已提案/草報價' },
   { key: '採購議價',     label: '採購議價' },
   { key: '契約書簽訂中', label: '契約書簽訂中' },
@@ -6050,6 +6054,7 @@ function _priClass(pri) {
 // 訂單狀態警示規則（與首頁儀表板規則.md 同步）
 const DASH_ORDER_RULES = {
   '詢價中':       null, // 詢價中用雙階段邏輯，見下方特殊處理
+  '提案報價中':  { base:'updatedAt', alertDay:5,  advanceDays:1, icon:'📋', label:'製作／寄出報價單',       priW:1 },
   '已提案/草報價':{ base:'updatedAt', alertDay:7,  advanceDays:2, icon:'📋', label:'確認客戶對報價回應',   priW:2 },
   '採購議價':     { base:'updatedAt', alertDay:3,  advanceDays:1, icon:'📝', label:'標案文件/議價追蹤',     priW:0 },
   '契約書簽訂中': { base:'updatedAt', alertDay:7,  advanceDays:2, icon:'✍️', label:'追蹤契約書用印進度',   priW:2 },
@@ -6170,7 +6175,7 @@ function computeDashboardItems() {
 
     // ══════ 訂單任務判斷（新版：依時間軸階段與 checklist）══════
     const CK = o.checks || {};
-    const _GRP = {'詢價中':1,'已提案/草報價':2,'採購議價':3,'契約書簽訂中':4,'出貨中':4,'驗收中':4,'可開發票':4,'履約期間':5,'履約結束':6};
+    const _GRP = {'詢價中':1,'提案報價中':2,'已提案/草報價':2,'採購議價':3,'契約書簽訂中':4,'出貨中':4,'驗收中':4,'可開發票':4,'履約期間':5,'履約結束':6};
     const curGrp = _GRP[o.status] || 0;
     // 購案：進採購議價(grp≥3)後，共用任務只由「主訂單」出一次、以購案名稱稱呼；啟用通知仍照產品各自出
     const _kase = _caseList.find(k => (k.orderIds||[]).includes(o.id)) || null;
@@ -6195,9 +6200,14 @@ function computeDashboardItems() {
       return;
     }
 
-    // 已提案／草報價：製作報價單 → 依「預計追蹤客戶回覆時間」提醒
-    if (o.status === '已提案/草報價') {
+    // 提案報價中：製作報價單 → 寄出報價單（兩者皆完成會自動變成「已提案」）
+    if (o.status === '提案報價中') {
       if (!CK.quoteMade) _pushItem(_dPlus(o.updatedAt, 0), '製作報價單', '📋', 1);
+      else if (!CK.quoteSent) _pushItem(_dPlus(o.updatedAt, 0), '寄出報價單', '📤', 1);
+      return;
+    }
+    // 已提案／草報價：依「預計追蹤客戶回覆時間」提醒追客戶回覆
+    if (o.status === '已提案/草報價') {
       const fu2 = _snoozeDate ? _isoDate(_snoozeDate) : _fu;
       if (fu2) _pushItem(new Date(fu2), '確認客戶對報價回覆', '📋', 2, _snoozeHint);
       return;
@@ -6722,6 +6732,7 @@ renderOrderDashboard();
 showPage('homePage');
 _initQuickCapture();
 _drainQuickInbox();
+_enforceAllProposalStatus();
 
 // ── 快速收件浮動視窗（連按兩下 Esc 呼出；右下角 ⚡ 按鈕亦可）──
 function _qcVisible() { const el = document.getElementById('quickCaptureOverlay'); return el && el.style.display === 'flex'; }
@@ -8670,7 +8681,7 @@ function renderProjectPage() {
 // 用「既有的日期欄位」回填 checklist 完成日，避免上線後手動補；沒有現成日期者以 updatedAt 近似（可再手動改）。
 function migrateOrdersV2(save){
   const db=dbLoad();
-  const GRP={'詢價中':1,'已提案/草報價':2,'採購議價':3,'契約書簽訂中':4,'決標＆契約書簽訂中':4,'出貨中':4,'驗收中':4,'可開發票':4,'發票確認中':4,'履約期間':5,'申退履保金':6,'履約結束':6};
+  const GRP={'詢價中':1,'提案報價中':2,'已提案/草報價':2,'採購議價':3,'契約書簽訂中':4,'決標＆契約書簽訂中':4,'出貨中':4,'驗收中':4,'可開發票':4,'發票確認中':4,'履約期間':5,'申退履保金':6,'履約結束':6};
   let changed=0;
   (db.orders||[]).forEach(o=>{
     let touched=false;
@@ -9130,7 +9141,8 @@ document.addEventListener('mousemove', e => {
 const TL_STAGES = [
   {key:'__base__', label:'訂單資料', grp:0},
   {key:'詢價中', label:'詢價中', grp:1, fu3:true, custom:'inquiry'},
-  {key:'已提案/草報價', label:'已提案／草報價', grp:2, fu3:true, quote:true, custom:'proposal', fuLabel:'預計追蹤客戶回覆時間'},
+  {key:'提案報價中', label:'提案報價中', grp:2, quote:true, custom:'proposalMake', noFu:true},
+  {key:'已提案/草報價', label:'已提案／草報價', grp:2, fu3:true, custom:'proposal', fuLabel:'預計追蹤客戶回覆時間'},
   {key:'採購議價', label:'採購議價', grp:3, custom:'bid', noFu:true},
   {key:'契約書簽訂中', label:'決標＆契約書簽訂中', grp:4, par:true, custom:'contract', noFu:true},
   {key:'出貨中', label:'出貨中', grp:4, par:true, custom:'delivery', delivery:true, noFu:true},
@@ -9160,10 +9172,26 @@ const TL_FIELDS = {
     {f:'__note',l:'備註',t:'textarea',full:1},
   ],
 };
-const _TL_LINEAR = ['詢價中','已提案/草報價','採購議價','契約書簽訂中','出貨中','驗收中','可開發票','發票確認中','履約期間','申退履保金','履約結束'];
+const _TL_LINEAR = ['詢價中','提案報價中','已提案/草報價','採購議價','契約書簽訂中','出貨中','驗收中','可開發票','發票確認中','履約期間','申退履保金','履約結束'];
 let _tlOrderId=null, _tlView='__base__';
 
 function _tlGrpOf(status){ const s=TL_STAGES.find(x=>x.key===status); return s?s.grp:0; }
+// 提案階段狀態不變式：兩個報價框都完成→已提案；否則→提案報價中（回傳是否有變動）
+function _tlEnforceProposal(o){
+  if(o.status==='提案報價中' || o.status==='已提案/草報價'){
+    const both=!!(o.checks && o.checks.quoteMade && o.checks.quoteSent);
+    const tgt=both?'已提案/草報價':'提案報價中';
+    if(o.status!==tgt){ o.status=tgt; return true; }
+  }
+  return false;
+}
+function _enforceAllProposalStatus(){
+  try{
+    const db=dbLoad(); let n=0;
+    (db.orders||[]).forEach(o=>{ if(_tlEnforceProposal(o)){ o.updatedAt=new Date().toISOString(); n++; } });
+    if(n) dbSave(db);
+  }catch(e){}
+}
 function _tlOverdue(order, key){
   const fu=(order.followUp||{})[key];
   const today=_isoDate(new Date());
@@ -9180,6 +9208,10 @@ function _tlStatus(order, stage){
   const cur=_tlGrpOf(order.status);
   if(stage.grp<cur) return 'done';
   if(stage.grp>cur) return 'pending';
+  if(!stage.par){   // 同組非平行階段（提案報價中／已提案）用線性順序細分
+    const oi=_TL_LINEAR.indexOf(order.status), si=_TL_LINEAR.indexOf(stage.key);
+    if(oi>=0 && si>=0){ if(si<oi) return 'done'; if(si>oi) return 'pending'; }
+  }
   return _tlOverdue(order, stage.key)?'overdue':'active';
 }
 
@@ -9299,6 +9331,7 @@ function _tlDetail(){
   else if(stage.custom==='inquiry') bodyInner=_tlInquiryPanel(o);
   else if(stage.custom==='contract') bodyInner=_tlContractPanel(o);
   else if(stage.custom==='invoice') bodyInner=_tlInvoicePanel(o);
+  else if(stage.custom==='proposalMake') bodyInner=_tlProposalMakePanel(o);
   else if(stage.custom==='proposal') bodyInner=_tlProposalPanel(o);
   else if(stage.custom==='delivery') bodyInner=_tlDeliveryPanel(o);
   else if(stage.custom==='service'){ _tlSvc=(o.serviceLog||[]).map(r=>({...r})); bodyInner=_tlServicePanel(o); }
@@ -9396,19 +9429,30 @@ function _tlInquiryPanel(o){
 function _tlInquiryReceived(cb){
   if(cb.checked){
     setTimeout(()=>{
-      if(confirm('已收到詢價 — 是否進入「已提案／草報價」開始製作報價單？')){
-        _tlSave(); _tlSetStatus('已提案/草報價');
+      if(confirm('已收到詢價 — 是否進入「提案報價中」開始製作報價單？')){
+        _tlSave(); _tlSetStatus('提案報價中');
       }
     },50);
   }
 }
 
-// ── 已提案／草報價 ──
-function _tlProposalPanel(o){
+// ── 提案報價中（製作／寄出報價單；兩個都打勾→自動進入「已提案」）──
+function _tlProposalMakePanel(o){
   const qs=(o.checks||{}).quoteSent;
   return `
+    <div class="tl-f full"><span class="hint">兩個都打勾後，狀態會自動變成「已提案／草報價」；之後取消任一勾選會退回本階段。</span></div>
     ${_tlChk(o,'quoteMade','製作報價單')}
     <div class="tl-f full tl-chk"><input type="checkbox" data-check="quoteSent" ${qs?'checked':''} onchange="_tlChkToggle(this)"/><label>已寄出報價單</label><span class="hint" data-checkat="quoteSent">${o.quoteDate?('✅ '+fmtDate(o.quoteDate)+' 寄出（同訂單資料報價日期）'):''}</span></div>
+    <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['提案報價中']||''}</textarea></div>`;
+}
+// ── 已提案／草報價（報價已完成，等客戶回覆；追蹤日在下方）──
+function _tlProposalPanel(o){
+  const c=o.checks||{};
+  const line=(k,l)=> c[k] ? `✅ ${l}（${fmtDate(c[k])}）` : `⬜ ${l}（未完成）`;
+  return `
+    <div class="tl-f full"><span class="hint">報價已完成、等待客戶回覆。要修改報價進度請回上一階段「提案報價中」。</span></div>
+    <div class="tl-f full">${line('quoteMade','製作報價單')}</div>
+    <div class="tl-f full">${line('quoteSent','已寄出報價單')}</div>
     <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['已提案/草報價']||''}</textarea></div>`;
 }
 
@@ -9989,7 +10033,7 @@ function _tlCollect(o, right){
       o.checks[k]= (di && di.value) ? di.value : (o.checks[k] || _isoDate(new Date()));
     } else o.checks[k]=null;
   });
-  if(_tlView==='已提案/草報價'){
+  if(_tlView==='提案報價中' || _tlView==='已提案/草報價'){
     if(o.checks.quoteSent && !o.quoteDate) o.quoteDate=_isoDate(new Date());
     if(o.checks.quoteSent && o.quoteDate) o.checks.quoteSent=o.quoteDate;
   }
@@ -10057,6 +10101,7 @@ function _tlSave(setStatus){
   const o=db.orders[idx]; const right=document.getElementById('tlRight');
   _tlCollect(o, right);
   if(setStatus && _tlView!=='__base__') o.status=_tlView;
+  _tlEnforceProposal(o);   // 提案階段依兩個報價框自動切換
   _tlSyncCase(db, o);
   dbSave(db);
   renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
@@ -10068,6 +10113,7 @@ function _tlSave(setStatus){
 function _tlSetStatus(key){
   const db=dbLoad(); const idx=db.orders.findIndex(x=>x.id===_tlOrderId); if(idx<0) return;
   const o=db.orders[idx]; o.status=key; o.updatedAt=new Date().toISOString();
+  _tlEnforceProposal(o);
   _tlSyncCase(db, o);
   dbSave(db);
   renderOrdersGrid(); if(typeof renderOrderGrid==='function') renderOrderGrid(); if(typeof refreshDashboardContent==='function') refreshDashboardContent();
