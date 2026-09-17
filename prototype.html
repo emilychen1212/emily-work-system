@@ -3233,10 +3233,12 @@ function updateOrderStatus(orderId, status, note) {
     db.orders[idx].status    = status;
     db.orders[idx].statusNote = note || '';
     db.orders[idx].updatedAt = now;
+    _tlEnforceProposal(db.orders[idx]);   // 提案階段依報價兩核取方塊自動校正（更改狀態視窗也適用）
+    const _finalStatus = db.orders[idx].status;
     // 子訂單跟著同步
     db.orders.forEach(o => {
       if (o.parentOrderId === orderId) {
-        o.status    = status;
+        o.status    = _finalStatus;
         o.updatedAt = now;
       }
     });
@@ -6200,10 +6202,11 @@ function computeDashboardItems() {
       return;
     }
 
-    // 提案報價中：製作報價單 → 寄出報價單（兩者皆完成會自動變成「已提案」）
+    // 提案報價中：製作報價單 → 寄出報價單（兩者皆完成會自動變成「已提案」）；有設追蹤日就依追蹤日
     if (o.status === '提案報價中') {
-      if (!CK.quoteMade) _pushItem(_dPlus(o.updatedAt, 0), '製作報價單', '📋', 1);
-      else if (!CK.quoteSent) _pushItem(_dPlus(o.updatedAt, 0), '寄出報價單', '📤', 1);
+      const a = _snoozeDate || (_fu ? new Date(_fu) : _dPlus(o.updatedAt, 0));
+      if (!CK.quoteMade) _pushItem(a, '製作報價單', '📋', 1, _snoozeHint);
+      else if (!CK.quoteSent) _pushItem(a, '寄出報價單', '📤', 1, _snoozeHint);
       return;
     }
     // 已提案／草報價：依「預計追蹤客戶回覆時間」提醒追客戶回覆
@@ -9141,7 +9144,7 @@ document.addEventListener('mousemove', e => {
 const TL_STAGES = [
   {key:'__base__', label:'訂單資料', grp:0},
   {key:'詢價中', label:'詢價中', grp:1, fu3:true, custom:'inquiry'},
-  {key:'提案報價中', label:'提案報價中', grp:2, quote:true, custom:'proposalMake', noFu:true},
+  {key:'提案報價中', label:'提案報價中', grp:2, quote:true, custom:'proposalMake', fu3:true, fuLabel:'下次追蹤日（製作／寄出報價單提醒）'},
   {key:'已提案/草報價', label:'已提案／草報價', grp:2, fu3:true, custom:'proposal', fuLabel:'預計追蹤客戶回覆時間'},
   {key:'採購議價', label:'採購議價', grp:3, custom:'bid', noFu:true},
   {key:'契約書簽訂中', label:'決標＆契約書簽訂中', grp:4, par:true, custom:'contract', noFu:true},
