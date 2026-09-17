@@ -49,33 +49,33 @@
   --tag6-bg:#EDEAE4; --tag6-fg:#5A5650;   /* 結束/未開始 */
 }
 
-/* ══ 主題：夢幻紫粉藍 ══ */
+/* ══ 主題：優雅夢幻（紫/粉/藍）══ */
 body[data-theme="dreamy"]{
-  --navy:#514A7A; --navy-dark:#3E3860; --navy-light:#6B639B; --mid:#9B90B0;
-  --warm:#B87BA6; --sand:#E5D6E8;
-  --bg:#F6F1FA; --surface:#FFFFFF; --surface2:#EFE7F6; --border:#E7DCF0;
-  --text-primary:#2C2740; --text-secondary:#524B66; --text-muted:#948CA6;
-  --success:#6E97A8; --danger:#C06A86; --warning:#C98BB0;
-  --tag1-bg:#EAD9F2; --tag1-fg:#6A3E7A;
-  --tag2-bg:#F7D7E4; --tag2-fg:#8A2C50;
-  --tag3-bg:#D8E2F5; --tag3-fg:#2E3A6B;
-  --tag4-bg:#E0DEF5; --tag4-fg:#453C7C;
-  --tag5-bg:#F0E4F2; --tag5-fg:#6A4A72;
-  --tag6-bg:#ECE8F2; --tag6-fg:#6A6480;
+  --navy:#5B4B8A; --navy-dark:#473A6E; --navy-light:#776AA0; --mid:#9990B2;
+  --warm:#C77BA0; --sand:#E7DAEF;
+  --bg:#F7F8FC; --surface:#FFFFFF; --surface2:#F0EAF8; --border:#E7DEF2;
+  --text-primary:#3A3F56; --text-secondary:#565C74; --text-muted:#9098AC;
+  --success:#059669; --danger:#E11D48; --warning:#D97706;
+  --tag1-bg:#F0E8FF; --tag1-fg:#7C3AED;   /* 洽談/準備 → 處理中紫 */
+  --tag2-bg:#FFE7E9; --tag2-fg:#E11D48;   /* 重要緊急 → 已取消紅 */
+  --tag3-bg:#E6F0FF; --tag3-fg:#2563EB;   /* 履約中 → 已出貨藍 */
+  --tag4-bg:#E8F8EF; --tag4-fg:#059669;   /* 進行/驗收 → 已完成綠 */
+  --tag5-bg:#FFF7E6; --tag5-fg:#D97706;   /* 待確認 → 待付款琥珀 */
+  --tag6-bg:#ECEFF4; --tag6-fg:#475569;   /* 結束/未開始 → 異常灰 */
 }
-/* ══ 主題：護眼藍綠 ══ */
+/* ══ 主題：護眼舒適（藍綠）══ */
 body[data-theme="calm"]{
-  --navy:#2E5A54; --navy-dark:#234641; --navy-light:#3F756D; --mid:#7FA39C;
-  --warm:#4E9488; --sand:#C7E0DA;
-  --bg:#EAF3F0; --surface:#FFFFFF; --surface2:#DCEAE6; --border:#CFE2DD;
-  --text-primary:#16302B; --text-secondary:#3A544E; --text-muted:#7C948E;
-  --success:#3E8C6E; --danger:#C57B5E; --warning:#C9954C;
-  --tag1-bg:#D9EBE6; --tag1-fg:#1F5A4E;
-  --tag2-bg:#CFE6E4; --tag2-fg:#0F4A45;
-  --tag3-bg:#D4E4EE; --tag3-fg:#1D3A50;
-  --tag4-bg:#DCEBDD; --tag4-fg:#265A2F;
-  --tag5-bg:#E8EEDA; --tag5-fg:#4C5A22;
-  --tag6-bg:#E4EBE8; --tag6-fg:#59645F;
+  --navy:#2F6F7E; --navy-dark:#24596C; --navy-light:#3F8593; --mid:#7BA6AC;
+  --warm:#3CB6A8; --sand:#C7E6DF;
+  --bg:#F5FAF8; --surface:#FFFFFF; --surface2:#E7F2EE; --border:#D5E7E1;
+  --text-primary:#2D3748; --text-secondary:#47576A; --text-muted:#8199A0;
+  --success:#059669; --danger:#DC2626; --warning:#B45309;
+  --tag1-bg:#E8F0FE; --tag1-fg:#2563EB;   /* 洽談/準備 → 處理中藍 */
+  --tag2-bg:#FFE7E7; --tag2-fg:#DC2626;   /* 重要緊急 → 已取消紅 */
+  --tag3-bg:#E6F4F3; --tag3-fg:#0F766E;   /* 履約中 → 已出貨藍綠 */
+  --tag4-bg:#E6F7EF; --tag4-fg:#059669;   /* 進行/驗收 → 已完成綠 */
+  --tag5-bg:#FFF8E1; --tag5-fg:#B45309;   /* 待確認 → 待付款琥珀 */
+  --tag6-bg:#E5E7EB; --tag6-fg:#475569;   /* 結束/未開始 → 異常灰 */
 }
 /* 主題切換器（側欄頂端） */
 .theme-switch{display:flex;align-items:center;gap:8px;padding:6px 14px 2px;}
@@ -84,8 +84,8 @@ body[data-theme="calm"]{
 .theme-dot:hover{transform:scale(1.12);}
 .theme-dot.active{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.3);}
 .theme-dot.t-warm{background:linear-gradient(135deg,#A68A6D,#D8CDBC);}
-.theme-dot.t-dreamy{background:linear-gradient(135deg,#B87BA6,#8FA5E0);}
-.theme-dot.t-calm{background:linear-gradient(135deg,#2E5A54,#5B9E8F);}
+.theme-dot.t-dreamy{background:linear-gradient(135deg,#8B6BBE,#E89DB7);}
+.theme-dot.t-calm{background:linear-gradient(135deg,#2F6F7E,#3CB6A8);}
 
 /* ===== Reset ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -6873,8 +6873,13 @@ function _initTheme(){
     try{ localStorage.setItem(KEY,v); }catch(e){}
   };
   apply(t);
+  const NAMES={warm:'暖木調',dreamy:'優雅夢幻',calm:'護眼舒適'};
   document.querySelectorAll('#themeSwitch .theme-dot').forEach(d=>{
-    d.addEventListener('click', ()=>apply(d.dataset.theme));
+    d.addEventListener('click', ()=>{
+      const v=d.dataset.theme;
+      if(v===(document.body.dataset.theme||'warm')) return;
+      if(confirm(`確定要切換成「${NAMES[v]||v}」主題嗎？`)) apply(v);
+    });
   });
 }
 function _initQuickCapture() {
