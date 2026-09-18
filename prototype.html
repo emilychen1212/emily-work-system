@@ -6308,8 +6308,8 @@ function computeDashboardItems() {
     if (_isLead && o.bondDeadline && (o.hasPerfBond || o.hasBidBond) && !CK.perfBondApplied) {
       _pushItem(_dPlus(o.bondDeadline, -7), '申請履保金', '🔐', 1, `履保金截止 ${fmtDate(o.bondDeadline)}`);
     }
-    // 需做合約 → 繳交合約（預計繳交合約日前3天）
-    if (_isLead && o.needsContract && o.contractDueDate) {
+    // 需做合約 → 繳交合約（預計繳交合約日前3天）；打勾「已繳交合約」即移除
+    if (_isLead && o.needsContract && o.contractDueDate && !CK.contractSubmitted) {
       _pushItem(_dPlus(o.contractDueDate, -3), '繳交合約', '✍️', 1, `預計繳交 ${fmtDate(o.contractDueDate)}`, { dueSnoozeOrderId: o.id });
     }
     // 決標日 + 30天 仍未追回回簽合約 → 追回合約
@@ -9543,6 +9543,7 @@ function _tlContractPanel(o){
     <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="needsContract" ${need?'checked':''} onchange="_tlContractToggle(this)"/><label>需做合約</label></div>
     <div class="tl-f"><label>決標日期</label><input type="date" data-tlf="contractReceivedAt" value="${dv(o.contractReceivedAt)}" data-caltitle="決標" ${need?'':'disabled'}/></div>
     <div class="tl-f"><label>預計繳交合約日</label><input type="date" data-tlf="contractDueDate" value="${dv(o.contractDueDate)}" data-nocal ${need?'':'disabled'}/></div>
+    ${need?_tlChk(o,'contractSubmitted','已繳交合約',{word:'繳交'}):''}
     <div class="tl-f"><label>交貨日（交貨型客戶）</label><input type="date" data-tlf="deliveryDate" value="${dv(o.deliveryDate)}" data-caltitle="交貨"/></div>
     <div class="tl-f"><label>履保金繳納截止日</label><input type="date" data-tlf="bondDeadline" value="${dv(o.bondDeadline)}" data-nocal/></div>
     ${hasBid?_tlChk(o,'bidToPerf','押標金已轉履保金'+(bidAmt?('，金額 NT$ '+bidAmt):'')):`
