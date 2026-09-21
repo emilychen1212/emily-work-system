@@ -86,6 +86,12 @@ body[data-theme="calm"]{
 .theme-dot.t-warm{background:linear-gradient(135deg,#A68A6D,#D8CDBC);}
 .theme-dot.t-dreamy{background:linear-gradient(135deg,#8B6BBE,#E89DB7);}
 .theme-dot.t-calm{background:linear-gradient(135deg,#2F6F7E,#3CB6A8);}
+/* 分期開立發票列表 */
+.tl-inv-head,.tl-inv-line{display:grid;grid-template-columns:64px 1fr auto auto;gap:10px;align-items:center;padding:6px 4px;}
+.tl-inv-head{font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);}
+.tl-inv-line{border-bottom:1px dashed var(--border);}
+.tl-inv-no{font-weight:600;color:var(--navy);font-size:13px;}
+.tl-inv-c{display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;cursor:pointer;}
 
 /* ===== Reset ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -6348,9 +6354,17 @@ function computeDashboardItems() {
         }
       }
     }
-    // 可開發票 → 今日申請開發票
-    if (_isLead && o.status === '可開發票' && !o.invoiceAppliedAt) {
+    // 可開發票 → 今日申請開發票（單張；有分期則改用下方分期任務）
+    if (_isLead && o.status === '可開發票' && !o.invoiceAppliedAt && !o.hasInvoiceInstallments) {
       _pushItem(_dPlus(o.updatedAt, 1), '今日申請開發票', '🧾', 1, _snoozeHint);
+    }
+    // 分期開立發票：每期開立日前一週提醒「申請第X期發票開立」（該期已收到即移除）
+    if (_isLead && o.hasInvoiceInstallments && Array.isArray(o.invoicePlan)) {
+      o.invoicePlan.forEach((p, i) => {
+        if (p && p.date && !p.received) {
+          _pushItem(_dPlus(p.date, -7), `申請第${i+1}期發票開立`, '🧾', 1, `開立日 ${fmtDate(p.date)}`);
+        }
+      });
     }
     // 履約期間：客服／維護（依預計完成日；未回覆才提醒）
     if (_isLead && o.status === '履約期間' && Array.isArray(o.serviceLog)) {
@@ -9431,7 +9445,7 @@ function _tlDetail(){
   else if(stage.custom==='accept') bodyInner=_tlAcceptPanel(o);
   else if(stage.custom==='inquiry') bodyInner=_tlInquiryPanel(o);
   else if(stage.custom==='contract') bodyInner=_tlContractPanel(o);
-  else if(stage.custom==='invoice') bodyInner=_tlInvoicePanel(o);
+  else if(stage.custom==='invoice'){ _tlInv=(o.invoicePlan||[]).map(r=>({...r})); bodyInner=_tlInvoicePanel(o); }
   else if(stage.custom==='proposalMake') bodyInner=_tlProposalMakePanel(o);
   else if(stage.custom==='proposal') bodyInner=_tlProposalPanel(o);
   else if(stage.custom==='delivery') bodyInner=_tlDeliveryPanel(o);
@@ -9593,11 +9607,62 @@ function _tlPerfBondToggle(cb){
 }
 
 // ── 可開發票 ──
+let _tlInv=[];
 function _tlInvoicePanel(o){
+  const inst=!!o.hasInvoiceInstallments;
   return `
-    ${_tlChk(o,'invoiceReceived','已收到發票',{word:'收到'})}
-    ${_tlChk(o,'invoiceSent','已寄出發票',{word:'寄出'})}
+    <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="hasInvoiceInstallments" ${inst?'checked':''} onchange="_tlInvInstToggle(this)"/><label>是否有分期開立發票</label></div>
+    <div id="tlInvInstWrap" style="display:${inst?'block':'none'};">
+      <div class="tl-svc-top">
+        <div class="tl-section-label" style="margin:0;">分期開立發票</div>
+        <span style="display:flex;align-items:center;gap:6px;font-size:13px;">分 <input type="number" min="1" max="24" id="tlInvCount" value="${(o.invoicePlan||[]).length||''}" style="width:56px;" placeholder="幾"/> 期
+          <button type="button" class="tl-svc-add" onclick="_tlInvGen()">產生分期</button></span>
+      </div>
+      <div class="tl-svc-scroll"><div id="tlInvList">${_tlInvRows(_tlInv)}</div></div>
+    </div>
+    <div id="tlInvSingle" style="display:${inst?'none':'block'};">
+      ${_tlChk(o,'invoiceReceived','已收到發票',{word:'收到'})}
+      ${_tlChk(o,'invoiceSent','已寄出發票',{word:'寄出'})}
+    </div>
     <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['可開發票']||''}</textarea></div>`;
+}
+function _tlInvRows(rows){
+  const head=`<div class="tl-inv-head"><span>期數</span><span>開立日期</span><span>已收到</span><span>已寄出</span></div>`;
+  if(!rows.length) return head+'<div class="tl-svc-empty">尚未產生分期，填「分幾期」後按「產生分期」</div>';
+  const body=rows.map((r,i)=>`
+    <div class="tl-inv-line" data-inv="${i}">
+      <span class="tl-inv-no">第 ${i+1} 期</span>
+      <input type="date" data-iv="date" value="${String(r.date||'').slice(0,10)}" data-nocal/>
+      <label class="tl-inv-c"><input type="checkbox" data-iv="received" ${r.received?'checked':''}/>收到</label>
+      <label class="tl-inv-c"><input type="checkbox" data-iv="sent" ${r.sent?'checked':''}/>寄出</label>
+    </div>`).join('');
+  return head+body;
+}
+function _tlCollectInv(){
+  document.querySelectorAll('#tlInvList [data-inv]').forEach(row=>{
+    const i=+row.dataset.inv; if(!_tlInv[i]) return;
+    row.querySelectorAll('[data-iv]').forEach(el=>{ const f=el.dataset.iv; _tlInv[i][f]= el.type==='checkbox'?el.checked:el.value; });
+  });
+}
+function _tlRenderInv(){ const l=document.getElementById('tlInvList'); if(l){ l.innerHTML=_tlInvRows(_tlInv); if(typeof refreshRocHints==='function') refreshRocHints(l); } }
+function _tlInvGen(){
+  _tlCollectInv();
+  const n=Math.max(1, Math.min(24, parseInt(document.getElementById('tlInvCount').value)||0));
+  if(!n){ showToast('請先填分幾期','error'); return; }
+  if(n<_tlInv.length && _tlInv.slice(n).some(r=>r.date||r.received||r.sent) && !confirm(`要減少為 ${n} 期嗎？超出的分期資料會被移除。`)) return;
+  const cur=_tlInv.slice(0,n);
+  while(cur.length<n) cur.push({date:'',received:false,sent:false});
+  _tlInv=cur; _tlRenderInv(); _tlAutoSaveScheduled();
+}
+function _tlInvInstToggle(cb){
+  if(!cb.checked){
+    if(!confirm('確定要取消「分期開立發票」嗎？\n已建立的分期資料（日期／收寄勾選）會被清除。')){ cb.checked=true; return; }
+    _tlInv=[];
+  }
+  const w=document.getElementById('tlInvInstWrap'), s=document.getElementById('tlInvSingle');
+  if(w) w.style.display=cb.checked?'block':'none';
+  if(s) s.style.display=cb.checked?'none':'block';
+  _tlRenderInv(); _tlAutoSaveScheduled();
 }
 
 // ── 出貨中 ──
@@ -10143,6 +10208,10 @@ function _tlCollect(o, right){
     _tlCollectSvc();
     o.serviceLog=_tlSvc.filter(r=>r.issue||r.brief||r.due).map(r=>({kind:r.kind||'客服',cat:r.cat||'',brief:r.brief||'',replied:!!r.replied,issue:r.issue||'',due:r.due||null}));
   }
+  if(_tlView==='可開發票'){
+    if(o.hasInvoiceInstallments){ _tlCollectInv(); o.invoicePlan=_tlInv.map(r=>({date:r.date||null,received:!!r.received,sent:!!r.sent})); }
+    else o.invoicePlan=[];
+  }
   if(_tlView==='出貨中'){
     _tlShipCollect();
     const _ns=v=>parseInt(String(v).replace(/[^0-9.\-]/g,''))||0;
@@ -10231,6 +10300,7 @@ window._tlSetFu=_tlSetFu; window._tlOpenQuote=_tlOpenQuote;
 window._tlContractToggle=_tlContractToggle; window._tlPerfBondToggle=_tlPerfBondToggle;
 window._tlChkToggle=_tlChkToggle; window._tlInquiryReceived=_tlInquiryReceived;
 window._tlAddSvc=_tlAddSvc; window._tlRmSvc=_tlRmSvc; window._tlSvcCal=_tlSvcCal;
+window._tlInvInstToggle=_tlInvInstToggle; window._tlInvGen=_tlInvGen;
 window._tlFmtMoney=_tlFmtMoney; window._tlAddCalRaw=_tlAddCalRaw; window._tlAutoSaveScheduled=_tlAutoSaveScheduled;
 window._tlEditStatusNote=_tlEditStatusNote; window._tlCloseNote=_tlCloseNote; window._tlSaveNote=_tlSaveNote;
 window._tlOpenDelivery=_tlOpenDelivery; window._tlOpenInvoice=_tlOpenInvoice; window._tlResetInvoice=_tlResetInvoice;
