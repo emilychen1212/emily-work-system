@@ -6786,6 +6786,13 @@ renderHomePage();
 renderOrderDashboard();
 showPage('homePage');
 _initTheme();
+// 防止滑鼠滾輪誤改數字欄位（type=number 聚焦後滾輪會加減，這裡擋掉）
+document.addEventListener('wheel', function(e){
+  const t = e.target;
+  if (t && t.tagName === 'INPUT' && t.type === 'number' && t === document.activeElement){
+    e.preventDefault(); t.blur();
+  }
+}, { passive: false });
 _initQuickCapture();
 _drainQuickInbox();
 _enforceAllProposalStatus();
