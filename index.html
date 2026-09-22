@@ -6859,7 +6859,7 @@ function _qcSubmit() {
   const inp = document.getElementById('qcInput');
   const desc = inp.value.trim();
   if (!desc) return;
-  saveTask({ desc, detail: '', type: '任務收件處', category: '', priority: '🟡', clientId: '', dueDate: '', status: '今日收件' });
+  saveTask({ desc, detail: '', type: '任務收件處', category: '', priority: '🟡', clientId: '', dueDate: _isoDate(new Date()), status: '今日收件' });
   inp.value = '';
   const list = document.getElementById('qcRecent');
   const li = document.createElement('div');
@@ -6885,7 +6885,7 @@ function _drainQuickInbox() {
     arr.forEach(it => {
       const desc = ((it && it.desc) || '').toString().trim();
       if (!desc) return;
-      saveTask({ desc, detail: '', type: '任務收件處', category: '', priority: '🟡', clientId: '', dueDate: '', status: '今日收件' });
+      saveTask({ desc, detail: '', type: '任務收件處', category: '', priority: '🟡', clientId: '', dueDate: _isoDate(new Date()), status: '今日收件' });
       n++;
     });
     cloudStore.setItem('crm_quick_inbox', '[]');   // 清空暫存區
