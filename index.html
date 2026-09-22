@@ -3185,7 +3185,7 @@ function _renderCaseModal() {
   // 訂單清單（此客戶、非子訂單、非履約結束）＋勾選狀態
   const cases = getCases();
   const orders = getParentOrders(_caseClientId)
-    .filter(o => !['履約結束','未開始'].includes(o.status))
+    .filter(o => o.status !== '履約結束')
     .sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
   const memberSet = new Set(editing ? (editing.orderIds||[]) : []);
   const box = document.getElementById('caseOrders');
