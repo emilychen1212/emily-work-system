@@ -87,11 +87,15 @@ body[data-theme="calm"]{
 .theme-dot.t-dreamy{background:linear-gradient(135deg,#8B6BBE,#E89DB7);}
 .theme-dot.t-calm{background:linear-gradient(135deg,#2F6F7E,#3CB6A8);}
 /* 分期開立發票列表 */
-.tl-inv-head,.tl-inv-line{display:grid;grid-template-columns:64px 1fr auto auto;gap:10px;align-items:center;padding:6px 4px;}
+.tl-inv-head,.tl-inv-line{display:grid;grid-template-columns:56px minmax(0,1fr) 64px 64px;gap:10px;align-items:center;padding:6px 4px;}
 .tl-inv-head{font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);}
+.tl-inv-head span:nth-child(3),.tl-inv-head span:nth-child(4){text-align:center;}
 .tl-inv-line{border-bottom:1px dashed var(--border);}
 .tl-inv-no{font-weight:600;color:var(--navy);font-size:13px;}
-.tl-inv-c{display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;cursor:pointer;}
+.tl-inv-date{display:flex;align-items:center;gap:8px;min-width:0;}
+.tl-inv-date input[type=date]{width:150px;max-width:100%;}
+.tl-inv-date .roc-hint{white-space:nowrap;}
+.tl-inv-c{display:flex;align-items:center;justify-content:center;}
 
 /* ===== Reset ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -9595,7 +9599,7 @@ function _tlInvoicePanel(o){
     <div id="tlInvInstWrap" style="display:${inst?'block':'none'};">
       <div class="tl-svc-top">
         <div class="tl-section-label" style="margin:0;">分期開立發票</div>
-        <span style="display:flex;align-items:center;gap:6px;font-size:13px;">分 <input type="number" min="1" max="24" id="tlInvCount" value="${(o.invoicePlan||[]).length||''}" style="width:56px;" placeholder="幾"/> 期
+        <span style="display:flex;align-items:center;gap:6px;font-size:13px;">分 <input type="number" min="1" max="24" id="tlInvCount" value="${(o.invoicePlan||[]).length||''}" style="width:56px;text-align:center;" placeholder="幾"/> 期
           <button type="button" class="tl-svc-add" onclick="_tlInvGen()">產生分期</button></span>
       </div>
       <div class="tl-svc-scroll"><div id="tlInvList">${_tlInvRows(_tlInv)}</div></div>
@@ -9612,9 +9616,9 @@ function _tlInvRows(rows){
   const body=rows.map((r,i)=>`
     <div class="tl-inv-line" data-inv="${i}">
       <span class="tl-inv-no">第 ${i+1} 期</span>
-      <input type="date" data-iv="date" value="${String(r.date||'').slice(0,10)}" data-nocal/>
-      <label class="tl-inv-c"><input type="checkbox" data-iv="received" ${r.received?'checked':''}/>收到</label>
-      <label class="tl-inv-c"><input type="checkbox" data-iv="sent" ${r.sent?'checked':''}/>寄出</label>
+      <span class="tl-inv-date"><input type="date" data-iv="date" value="${String(r.date||'').slice(0,10)}" data-nocal/></span>
+      <span class="tl-inv-c"><input type="checkbox" data-iv="received" ${r.received?'checked':''}/></span>
+      <span class="tl-inv-c"><input type="checkbox" data-iv="sent" ${r.sent?'checked':''}/></span>
     </div>`).join('');
   return head+body;
 }
