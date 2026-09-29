@@ -9314,6 +9314,8 @@ function _enforceAllProposalStatus(){
   }catch(e){}
 }
 function _tlOverdue(order, key){
+  const _stg=TL_STAGES.find(s=>s.key===key);
+  if(_stg && _stg.noFu) return false;                  // 平行/無追蹤日欄位階段（驗收中等）不在時間軸判逾期，提醒交給首頁儀表板
   const fu=(order.followUp||{})[key];
   const today=_isoDate(new Date());
   if(fu) return today>=fu;                              // 自己設了下次追蹤日且已過 → 逾期
@@ -9409,7 +9411,7 @@ function _tlItemHtml(o,s){
   else if(st==='done') meta='已過';
   else if(st==='active'||st==='overdue'){
     const fu=(o.followUp||{})[s.key];
-    meta = fu ? '下次追蹤：'+fmtDate(fu) : '目前進行中';
+    meta = (fu && !s.noFu) ? '下次追蹤：'+fmtDate(fu) : '目前進行中';
   } else meta='尚未進入';
   return `<div class="tl-item ${st} ${s.key===_tlView?'viewing':''}" data-key="${s.key}">
     <div class="tl-line"></div><div class="tl-node"></div>
