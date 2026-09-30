@@ -10121,8 +10121,10 @@ function _tlDecorateCal(){
 function _tlAddCal(dateVal, title, btn){
   if(!dateVal){ showToast('這個欄位還沒填日期','error'); return; }
   const o=dbLoad().orders.find(x=>x.id===_tlOrderId)||{}; const c=getClientById(o.clientId)||{};
-  const evTitle=`[${title}] ${c.shortName||''} ${o.productName||''}`.trim();
-  const details=`訂單追蹤（工作管理系統）\n客戶：${c.fullName||c.shortName||''}\n產品：${o.productName||''}\n案號：${o.caseNo||''}`;
+  const _k=(typeof caseOfOrder==='function')?caseOfOrder(o.id):null;   // 屬於購案 → 標題用購案名稱
+  const subj=(_k&&_k.name)?_k.name:(o.productName||'');
+  const evTitle=`[${title}] ${c.shortName||''} ${subj}`.trim();
+  const details=`訂單追蹤（工作管理系統）\n客戶：${c.fullName||c.shortName||''}\n${_k?('購案：'+_k.name+'\n產品：'+(o.productName||'')):('產品：'+(o.productName||''))}\n案號：${o.caseNo||''}`;
   _tlAddCalRaw(dateVal, evTitle, details, btn);
 }
 async function _tlAddCalRaw(dateVal, evTitle, details, btn){
