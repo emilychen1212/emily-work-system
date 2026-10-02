@@ -111,6 +111,20 @@ body[data-theme="calm"]{
 .obl-chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 6px;font-size:12px;}
 .obl-chip.done{opacity:.55;}
 .obl-chip button{background:none;border:none;cursor:pointer;color:var(--text-muted);}
+.obl-matrix-wrap{overflow:auto;max-height:64vh;border:1px solid var(--border);border-radius:8px;}
+.obl-matrix{border-collapse:collapse;width:100%;font-size:13px;}
+.obl-matrix th,.obl-matrix td{border:1px solid var(--border);padding:7px 9px;text-align:center;vertical-align:middle;}
+.obl-matrix thead th{position:sticky;top:0;background:var(--surface2);z-index:1;}
+.obl-c0{position:sticky;left:0;background:var(--surface2);font-weight:700;white-space:nowrap;z-index:2;min-width:72px;}
+.obl-colh{min-width:180px;}
+.obl-colh input[type=text]{width:100%;font-weight:600;margin-bottom:5px;box-sizing:border-box;text-align:center;}
+.obl-colh-ctrl{display:flex;gap:5px;align-items:center;justify-content:center;flex-wrap:wrap;}
+.obl-cell input[type=date]{font-size:12.5px;}
+.obl-cell.od{background:#fde8e8;}
+.obl-cell.soon{background:#fff6e0;}
+.obl-cell.done{background:var(--surface2);opacity:.6;}
+.obl-cell.empty{color:var(--text-muted);background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(0,0,0,.03) 5px,rgba(0,0,0,.03) 10px);}
+.obl-ck{display:inline-flex;align-items:center;margin-left:5px;}
 /* 分期開立發票列表 */
 .tl-inv-head,.tl-inv-line{display:grid;grid-template-columns:56px minmax(0,1fr) 64px 64px;gap:10px;align-items:center;padding:6px 4px;}
 .tl-inv-head{font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);}
@@ -2724,9 +2738,9 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 
   <!-- 合約義務 Modal -->
   <div class="modal-overlay" id="obligationModal">
-    <div class="modal" style="max-width:720px;">
+    <div class="modal" style="max-width:min(1120px,95vw);width:min(1120px,95vw);">
       <div class="modal-header"><h2 id="oblTitle">合約義務</h2><button class="modal-close" data-close="obligationModal">✕</button></div>
-      <div class="modal-body" id="oblBody" style="max-height:72vh;overflow:auto;"></div>
+      <div class="modal-body" id="oblBody" style="max-height:80vh;overflow:auto;"></div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-close="obligationModal">關閉</button>
         <button class="btn btn-primary" id="oblSaveBtn">儲存</button>
@@ -8837,33 +8851,46 @@ function _openObligationModal(pid){
 }
 function _oblRender(){
   const b=document.getElementById('oblBody'); if(!b||!_oblState) return;
-  const st=_oblState;
-  const cards=st.obligations.map((o,i)=>{
+  const st=_oblState, obls=st.obligations;
+  const today=_isoDate(new Date()), horizon=_isoDate(new Date(Date.now()+30*86400000));
+  const maxN=obls.reduce((m,o)=>Math.max(m,(o.items||[]).length),0);
+  const heads=obls.map((o,i)=>{
     const needDay=['monthly','quarterly','yearly'].includes(o.freq);
-    const chips=(o.items||[]).map((it,j)=>`<span class="obl-chip ${it.done?'done':''}">
-      <input type="checkbox" data-obl-done="${i}-${j}" ${it.done?'checked':''} title="已完成"/>
-      <input type="date" data-obl-date="${i}-${j}" value="${it.date||''}" data-nocal/>
-      <button type="button" data-obl-rmitem="${i}-${j}" title="刪除此期">✕</button></span>`).join('');
-    return `<div class="obl-card" data-obl="${i}">
-      <div class="obl-row1">
-        <input type="text" data-obl-name="${i}" value="${(o.name||'').replace(/"/g,'&quot;')}" placeholder="義務名稱（例：每月定期維護、每季維護報告、發票）"/>
+    return `<th class="obl-colh" data-obl="${i}">
+      <input type="text" data-obl-name="${i}" value="${(o.name||'').replace(/"/g,'&quot;')}" placeholder="義務名稱"/>
+      <div class="obl-colh-ctrl">
         <select data-obl-freq="${i}">${Object.keys(OBL_FREQ).map(k=>`<option value="${k}" ${o.freq===k?'selected':''}>${OBL_FREQ[k]}</option>`).join('')}</select>
-        ${needDay?`<input type="number" min="1" max="31" data-obl-day="${i}" value="${o.day||''}" placeholder="幾號" style="width:70px;" title="每期截止為該月幾號"/>`:''}
-        ${needDay?`<button type="button" class="btn btn-ghost btn-sm" data-obl-gen="${i}">↻ 產生排程</button>`:''}
-        <button type="button" class="btn btn-ghost btn-sm" data-obl-additem="${i}">＋ 加一期</button>
+        ${needDay?`<input type="number" min="1" max="31" data-obl-day="${i}" value="${o.day||''}" placeholder="號" style="width:52px;" title="每期截止為該月幾號"/>`:''}
+        ${needDay?`<button type="button" class="tl-mini-btn" data-obl-gen="${i}" title="依合約起訖自動產生每期">↻ 產生</button>`:''}
         <button type="button" class="obl-del" data-obl-rm="${i}" title="刪除此義務">🗑</button>
-      </div>
-      <div class="obl-items">${chips||'<span class="oblig-empty">尚無期數，按「產生排程」或「加一期」</span>'}</div>
-    </div>`;
+      </div></th>`;
   }).join('');
+  const rowCells=(i)=> obls.map((o,oi)=>{
+    const it=(o.items||[])[i];
+    if(!it) return '<td class="obl-cell empty">—</td>';
+    let cls='obl-cell';
+    if(it.done) cls+=' done'; else if(it.date && it.date<today) cls+=' od'; else if(it.date && it.date<=horizon) cls+=' soon';
+    return `<td class="${cls}"><input type="date" data-obl-date="${oi}-${i}" value="${it.date||''}" data-nocal/><label class="obl-ck"><input type="checkbox" data-obl-done="${oi}-${i}" ${it.done?'checked':''}/></label></td>`;
+  }).join('');
+  const rowIsDone=(i)=>{ const cs=obls.map(o=>(o.items||[])[i]).filter(Boolean); return cs.length>0 && cs.every(c=>c.done); };
+  let activeRows='', doneRows='', doneCount=0;
+  for(let i=0;i<maxN;i++){
+    const r=`<tr><td class="obl-c0">第 ${i+1} 期</td>${rowCells(i)}</tr>`;
+    if(rowIsDone(i)){ doneRows+=r; doneCount++; } else activeRows+=r;
+  }
+  const colg=`<tr><th class="obl-c0">期數＼義務</th>${heads}</tr>`;
+  const table=(rows)=>`<table class="obl-matrix"><thead>${colg}</thead><tbody>${rows}</tbody></table>`;
   b.innerHTML=`
     <div class="obl-contract">
       <label>合約起始 <input type="date" id="oblCStart" value="${st.contractStart||''}" data-nocal/></label>
       <label>合約結束 <input type="date" id="oblCEnd" value="${st.contractEnd||''}" data-nocal/></label>
-      <span class="hint" style="font-size:11px;">填起訖後，按各義務「產生排程」自動帶出每期日期（可再手動改、勾完成）。</span>
+      <button type="button" class="tl-mini-btn" id="oblPlusYear">＋一年</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="oblAddBtn">＋ 義務</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="oblAddRow">＋ 加一期</button>
+      <span class="hint" style="font-size:11px;">填起訖後按義務欄的「↻ 產生」自動帶出每期日期（可手動改）。紅＝逾期、黃＝30天內到期。</span>
     </div>
-    <div id="oblCards">${cards||'<div class="oblig-empty">尚無合約義務，點下方「＋ 新增義務」</div>'}</div>
-    <button type="button" class="btn btn-ghost btn-sm" id="oblAddBtn" style="margin-top:8px;">＋ 新增義務</button>`;
+    <div class="obl-matrix-wrap">${obls.length?table(activeRows||'<tr><td colspan="99" class="oblig-empty" style="padding:16px;">目前沒有待辦期數 🎉</td></tr>'):'<div class="oblig-empty" style="padding:16px;">尚無義務，點「＋ 義務」新增欄位</div>'}</div>
+    ${doneCount?`<div class="obl-done-wrap"><button type="button" class="proj-done-toggle" id="oblDoneToggle">查看已完成期數（${doneCount}）</button><div id="oblDoneSec" style="display:none;margin-top:6px;">${table(doneRows)}</div></div>`:''}`;
   if(typeof refreshRocHints==='function') refreshRocHints(b);
   _oblWire();
 }
@@ -8871,23 +8898,23 @@ function _oblCollect(){
   const st=_oblState; if(!st) return;
   const cs=document.getElementById('oblCStart'), ce=document.getElementById('oblCEnd');
   if(cs) st.contractStart=cs.value; if(ce) st.contractEnd=ce.value;
-  document.querySelectorAll('#oblCards [data-obl]').forEach(card=>{
-    const i=+card.dataset.obl; const o=st.obligations[i]; if(!o) return;
-    const nm=card.querySelector(`[data-obl-name="${i}"]`); if(nm) o.name=nm.value;
-    const fq=card.querySelector(`[data-obl-freq="${i}"]`); if(fq) o.freq=fq.value;
-    const dy=card.querySelector(`[data-obl-day="${i}"]`); o.day = (dy&&dy.value)?parseInt(dy.value):'';
-    card.querySelectorAll('[data-obl-date]').forEach(inp=>{ const p=inp.dataset.oblDate.split('-'); const j=+p[1]; if(o.items[j]) o.items[j].date=inp.value; });
-    card.querySelectorAll('[data-obl-done]').forEach(inp=>{ const p=inp.dataset.oblDone.split('-'); const j=+p[1]; if(o.items[j]) o.items[j].done=inp.checked; });
-  });
+  document.querySelectorAll('#oblBody [data-obl-name]').forEach(inp=>{ const i=+inp.dataset.oblName; if(st.obligations[i]) st.obligations[i].name=inp.value; });
+  document.querySelectorAll('#oblBody [data-obl-freq]').forEach(sel=>{ const i=+sel.dataset.oblFreq; if(st.obligations[i]) st.obligations[i].freq=sel.value; });
+  document.querySelectorAll('#oblBody [data-obl-day]').forEach(inp=>{ const i=+inp.dataset.oblDay; if(st.obligations[i]) st.obligations[i].day=inp.value?parseInt(inp.value):''; });
+  document.querySelectorAll('#oblBody [data-obl-date]').forEach(inp=>{ const p=inp.dataset.oblDate.split('-'); const o=st.obligations[+p[0]]; if(o&&o.items[+p[1]]) o.items[+p[1]].date=inp.value; });
+  document.querySelectorAll('#oblBody [data-obl-done]').forEach(inp=>{ const p=inp.dataset.oblDone.split('-'); const o=st.obligations[+p[0]]; if(o&&o.items[+p[1]]) o.items[+p[1]].done=inp.checked; });
 }
 function _oblWire(){
   const b=document.getElementById('oblBody'); if(!b) return;
   b.querySelector('#oblAddBtn')?.addEventListener('click',()=>{ _oblCollect(); _oblState.obligations.push({name:'',freq:'monthly',day:'',items:[]}); _oblRender(); });
+  b.querySelector('#oblAddRow')?.addEventListener('click',()=>{ _oblCollect(); if(!_oblState.obligations.length){ showToast('請先新增義務','error'); return;} _oblState.obligations.forEach(o=>{ o.items=o.items||[]; o.items.push({date:'',done:false}); }); _oblRender(); });
+  b.querySelector('#oblPlusYear')?.addEventListener('click',()=>{ _oblCollect(); const s=_oblState.contractStart; if(!s){ showToast('請先填合約起始日','error'); return;} const d=new Date(s+'T00:00:00'); d.setFullYear(d.getFullYear()+1); d.setDate(d.getDate()-1); _oblState.contractEnd=_isoDate(d); _oblRender(); });
+  b.querySelector('#oblDoneToggle')?.addEventListener('click',(e)=>{ const sec=document.getElementById('oblDoneSec'); if(!sec) return; const show=sec.style.display==='none'; sec.style.display=show?'block':'none'; e.currentTarget.textContent=(show?'隱藏':'查看')+'已完成期數（'+sec.querySelectorAll('tbody tr').length+'）'; });
   b.querySelectorAll('[data-obl-gen]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); const i=+btn.dataset.oblGen; const o=_oblState.obligations[i]; const gen=_genOblItems(_oblState.contractStart,_oblState.contractEnd,o.freq,o.day); if(!gen.length){ showToast('請先填合約起訖日與「幾號」','error'); return;} o.items=gen; _oblRender(); }));
-  b.querySelectorAll('[data-obl-additem]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); _oblState.obligations[+btn.dataset.oblAdditem].items.push({date:'',done:false}); _oblRender(); }));
-  b.querySelectorAll('[data-obl-rmitem]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); const p=btn.dataset.oblRmitem.split('-'); _oblState.obligations[+p[0]].items.splice(+p[1],1); _oblRender(); }));
-  b.querySelectorAll('[data-obl-rm]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); const i=+btn.dataset.oblRm; if((_oblState.obligations[i].items||[]).length && !confirm('刪除此義務及其所有期數？')) return; _oblState.obligations.splice(i,1); _oblRender(); }));
+  b.querySelectorAll('[data-obl-rm]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); const i=+btn.dataset.oblRm; if((_oblState.obligations[i].items||[]).some(x=>x.date) && !confirm('刪除此義務及其所有期數？')) return; _oblState.obligations.splice(i,1); _oblRender(); }));
   b.querySelectorAll('[data-obl-freq]').forEach(sel=>sel.addEventListener('change',()=>{ _oblCollect(); _oblRender(); }));
+  b.querySelectorAll('[data-obl-date]').forEach(inp=>inp.addEventListener('change',()=>{ _oblCollect(); _oblRender(); }));
+  b.querySelectorAll('[data-obl-done]').forEach(cb=>cb.addEventListener('change',()=>{ if(!cb.checked){ if(!confirm('是否確定取消這一期的「已完成」？')){ cb.checked=true; return; } } _oblCollect(); _oblRender(); }));
 }
 function _oblSaveModal(){
   _oblCollect(); const st=_oblState; if(!st) return;
@@ -8912,13 +8939,13 @@ function renderProjectPage() {
     bodyHtml = `
       <div id="obligSummary" class="oblig-summary"></div>
       <div style="display:flex;gap:0;flex:1;overflow:hidden;height:calc(100vh - 300px);min-height:220px;">
-        <div class="project-column" style="flex:1;border-right:1px solid var(--border);overflow-y:auto;">
-          <div class="project-section-header"><span class="project-section-title">🍳 Cooking 中 <span class="proj-sub-note">未成交 · 追進度</span></span></div>
-          <div id="sysCookingList"></div>
-        </div>
-        <div class="project-column" style="flex:1;overflow-y:auto;">
+        <div class="project-column" style="flex:2;border-right:1px solid var(--border);overflow-y:auto;">
           <div class="project-section-header"><span class="project-section-title">📑 執案中 <span class="proj-sub-note">已成交 · 客戶頁有訂單</span></span></div>
           <div id="sysExecList"></div>
+        </div>
+        <div class="project-column" style="flex:1;overflow-y:auto;">
+          <div class="project-section-header"><span class="project-section-title">🍳 Cooking 中 <span class="proj-sub-note">未成交 · 追進度</span></span></div>
+          <div id="sysCookingList"></div>
         </div>
       </div>`;
   } else if (isSys && isDone) {
