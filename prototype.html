@@ -4434,6 +4434,7 @@ function renderClientDashboard(clientId) {
   orders.forEach(o => {
     const cfg = ORDER_STATUS_ALERT[o.status];
     if (!cfg || !o.updatedAt) return;
+    if (o.status === '可開發票' && o.hasInvoiceInstallments) return;   // 分期開發票：改由各期時間點提醒，不套用舊的可開發票警示
     const daysSince = (now - new Date(o.updatedAt)) / 86400000;
     if (daysSince < cfg.days) return;
     const maxSnoozeDate = o.status === '詢價中'
@@ -5835,6 +5836,7 @@ function computeOrderKPI() {
   orders.forEach(o => {
     const cfg = ORDER_STATUS_ALERT[o.status];
     if (!cfg || !o.updatedAt) return;
+    if (o.status === '可開發票' && o.hasInvoiceInstallments) return;   // 分期開發票：改由各期時間點提醒，不套用舊的可開發票警示
     const daysSince = (now - new Date(o.updatedAt)) / 86400000;
     if (daysSince < cfg.days) return;
     // 詢價中：最多延到 updatedAt + 21 天，超過後強制顯示
@@ -6063,7 +6065,7 @@ function renderOmOrders() {
         <span class="om-card-prod"><b>${c.shortName||'—'}</b>｜${o.productName||'（未命名）'}</span>
         ${_omStage?'':`<span class="om-card-tag" style="background:${color};">${o.status||'未設定'}</span>`}
       </div>
-      <div class="om-card-meta">訂期 ${period}　·　更新 ${fmtDateTime(o.updatedAt).slice(5,16)}</div>
+      <div class="om-card-meta">訂期 ${period}　·　更新 ${(()=>{const d=new Date(o.updatedAt); if(isNaN(d.getTime()))return '—'; const z=n=>String(n).padStart(2,'0'); return z(d.getMonth()+1)+'/'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes());})()}</div>
       ${note}
       ${alertBadge}
     </div>`;
