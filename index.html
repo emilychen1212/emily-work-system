@@ -111,7 +111,7 @@ body[data-theme="calm"]{
 .obl-chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 6px;font-size:12px;}
 .obl-chip.done{opacity:.55;}
 .obl-chip button{background:none;border:none;cursor:pointer;color:var(--text-muted);}
-.obl-matrix-wrap{overflow:auto;max-height:74vh;border:1px solid var(--border);border-radius:8px;}
+.obl-matrix-wrap{overflow:auto;max-height:calc(92vh - 200px);border:1px solid var(--border);border-radius:8px;}
 .obl-matrix{border-collapse:collapse;width:100%;font-size:13px;}
 .obl-matrix th,.obl-matrix td{border:1px solid var(--border);padding:7px 9px;text-align:center;vertical-align:middle;}
 .obl-matrix thead th{position:sticky;top:0;background:var(--surface2);z-index:1;}
@@ -124,7 +124,9 @@ body[data-theme="calm"]{
 .obl-cell.soon{background:#fff6e0;}
 .obl-cell.done{background:var(--surface2);opacity:.6;}
 .obl-cell.empty{color:var(--text-muted);background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(0,0,0,.03) 5px,rgba(0,0,0,.03) 10px);}
-.obl-ck{display:inline-flex;align-items:center;margin-left:5px;}
+.obl-ck{display:inline-flex;align-items:center;}
+.obl-cell-in{display:flex;align-items:center;gap:8px;justify-content:center;}
+.obl-cell-in .roc-hint{white-space:nowrap;font-size:12px;color:var(--warm);margin-left:6px;}
 /* 分期開立發票列表 */
 .tl-inv-head,.tl-inv-line{display:grid;grid-template-columns:56px minmax(0,1fr) 64px 64px;gap:10px;align-items:center;padding:6px 4px;}
 .tl-inv-head{font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);}
@@ -2738,9 +2740,9 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 
   <!-- 合約義務 Modal -->
   <div class="modal-overlay" id="obligationModal">
-    <div class="modal" style="max-width:94vw;width:94vw;">
+    <div class="modal" style="max-width:96vw;width:96vw;height:92vh;display:flex;flex-direction:column;">
       <div class="modal-header"><h2 id="oblTitle">合約義務</h2><button class="modal-close" data-close="obligationModal">✕</button></div>
-      <div class="modal-body" id="oblBody" style="max-height:86vh;overflow:auto;"></div>
+      <div class="modal-body" id="oblBody" style="flex:1;overflow:auto;"></div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-close="obligationModal">關閉</button>
         <button class="btn btn-primary" id="oblSaveBtn">儲存</button>
@@ -7750,8 +7752,8 @@ function renderTypedProjectList(type, containerId, sysStage) {
       <div class="project-card-header">
         <span class="project-toggle">▶</span>
         <span class="project-name">${p.name}</span>
+        ${clientName ? `<span class="project-client-tag solid" style="background:${(TAG_COLORS.find(t=>t.key===clientMap[p.clientId]?.color)||{}).bg||'#6b7280'};color:#fff;border:none;">${clientName}</span>` : ''}
         ${p.color?`<span class="project-client-tag tag-color-${p.color}">${TAG_COLORS.find(c=>c.key===p.color)?.label||''}</span>`:''}
-        ${clientName ? `<span class="project-client-tag">${clientName}</span>` : ''}
         ${doneToggleBtn}
         <span class="project-progress">${done}/${items.length}</span>
         <button class="project-done-btn" data-proj-done="${p.id}" title="完成專案" style="opacity:0;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;padding:2px 4px;border-radius:4px;transition:all 0.15s;">✓</button>
@@ -8768,7 +8770,7 @@ function renderTypedDoneProjectList(type, containerId) {
     card.innerHTML = `
       <div class="project-card-header" style="cursor:default;">
         <span class="project-name" style="text-decoration:line-through;color:var(--text-muted);">${p.name}</span>
-        ${clientName ? `<span class="project-client-tag">${clientName}</span>` : ''}
+        ${clientName ? `<span class="project-client-tag solid" style="background:${(TAG_COLORS.find(t=>t.key===clientMap[p.clientId]?.color)||{}).bg||'#6b7280'};color:#fff;border:none;">${clientName}</span>` : ''}
         <span class="project-progress">${done}/${items.length}</span>
         <button class="project-edit-btn" data-proj-restore="${p.id}" title="還原為進行中" style="font-size:11px;">↩ 還原</button>
       </div>
@@ -8870,7 +8872,7 @@ function _oblRender(){
     if(!it) return '<td class="obl-cell empty">—</td>';
     let cls='obl-cell';
     if(it.done) cls+=' done'; else if(it.date && it.date<today) cls+=' od'; else if(it.date && it.date<=horizon) cls+=' soon';
-    return `<td class="${cls}"><input type="date" data-obl-date="${oi}-${i}" value="${it.date||''}" data-nocal/><label class="obl-ck"><input type="checkbox" data-obl-done="${oi}-${i}" ${it.done?'checked':''}/></label></td>`;
+    return `<td class="${cls}"><div class="obl-cell-in"><label class="obl-ck"><input type="checkbox" data-obl-done="${oi}-${i}" ${it.done?'checked':''}/></label><input type="date" data-obl-date="${oi}-${i}" value="${it.date||''}" data-nocal/></div></td>`;
   }).join('');
   const rowIsDone=(i)=>{ const cs=obls.map(o=>(o.items||[])[i]).filter(Boolean); return cs.length>0 && cs.every(c=>c.done); };
   let activeRows='', doneRows='', doneCount=0;
