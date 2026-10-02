@@ -111,7 +111,7 @@ body[data-theme="calm"]{
 .obl-chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 6px;font-size:12px;}
 .obl-chip.done{opacity:.55;}
 .obl-chip button{background:none;border:none;cursor:pointer;color:var(--text-muted);}
-.obl-matrix-wrap{overflow:auto;max-height:64vh;border:1px solid var(--border);border-radius:8px;}
+.obl-matrix-wrap{overflow:auto;max-height:74vh;border:1px solid var(--border);border-radius:8px;}
 .obl-matrix{border-collapse:collapse;width:100%;font-size:13px;}
 .obl-matrix th,.obl-matrix td{border:1px solid var(--border);padding:7px 9px;text-align:center;vertical-align:middle;}
 .obl-matrix thead th{position:sticky;top:0;background:var(--surface2);z-index:1;}
@@ -2738,9 +2738,9 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 
   <!-- 合約義務 Modal -->
   <div class="modal-overlay" id="obligationModal">
-    <div class="modal" style="max-width:min(1120px,95vw);width:min(1120px,95vw);">
+    <div class="modal" style="max-width:94vw;width:94vw;">
       <div class="modal-header"><h2 id="oblTitle">合約義務</h2><button class="modal-close" data-close="obligationModal">✕</button></div>
-      <div class="modal-body" id="oblBody" style="max-height:80vh;overflow:auto;"></div>
+      <div class="modal-body" id="oblBody" style="max-height:86vh;overflow:auto;"></div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-close="obligationModal">關閉</button>
         <button class="btn btn-primary" id="oblSaveBtn">儲存</button>
