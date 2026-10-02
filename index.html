@@ -86,6 +86,7 @@ body[data-theme="calm"]{
 .theme-dot.t-warm{background:linear-gradient(135deg,#A68A6D,#D8CDBC);}
 .theme-dot.t-dreamy{background:linear-gradient(135deg,#8B6BBE,#E89DB7);}
 .theme-dot.t-calm{background:linear-gradient(135deg,#2F6F7E,#3CB6A8);}
+.proj-sub-note{font-size:11px;font-weight:400;color:var(--text-muted);margin-left:4px;}
 /* 分期開立發票列表 */
 .tl-inv-head,.tl-inv-line{display:grid;grid-template-columns:56px minmax(0,1fr) 64px 64px;gap:10px;align-items:center;padding:6px 4px;}
 .tl-inv-head{font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);}
@@ -2667,10 +2668,17 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
           </div>
           <div class="form-group">
             <label>專案類型</label>
-            <select id="projectType">
+            <select id="projectType" onchange="_toggleSysStageField()">
               <option value="系統">🖥 系統專案</option>
               <option value="服務">🏥 服務專案</option>
               <option value="活動">🎡 活動專案</option>
+            </select>
+          </div>
+          <div class="form-group" id="sysStageGroup">
+            <label>系統專案階段</label>
+            <select id="projectSysStage">
+              <option value="cooking">🍳 Cooking 中（未成交）</option>
+              <option value="exec">📑 執案中（已成交）</option>
             </select>
           </div>
           <div class="form-group">
@@ -7629,12 +7637,13 @@ function renderProjectList() {
   renderTypedProjectList('活動', 'actProjectList');
 }
 
-function renderTypedProjectList(type, containerId) {
+function renderTypedProjectList(type, containerId, sysStage) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const clientMap = {};
   getClients().forEach(c => { clientMap[c.id] = c; });
-  const projects = getProjects().filter(p => (p.projectType||'系統') === type && p.status !== '已完成' && p.status !== '取消' && p.status !== 'done');
+  let projects = getProjects().filter(p => (p.projectType||'系統') === type && p.status !== '已完成' && p.status !== '取消' && p.status !== 'done');
+  if (sysStage) projects = projects.filter(p => (p.sysStage||'cooking') === sysStage);
 
   if (!projects.length) {
     container.innerHTML = `<div class="project-empty" style="padding:14px 16px;font-size:12px;color:var(--text-muted);">尚無${type}專案<br><span style="font-size:11px;opacity:0.7;">點上方 ＋ 新增</span></div>`;
@@ -7917,6 +7926,12 @@ async function handleDeleteTask() {
 }
 
 // ─ Project Modal ─
+function _toggleSysStageField(){
+  const t=document.getElementById('projectType')?.value;
+  const g=document.getElementById('sysStageGroup');
+  if(g) g.style.display = (t==='系統')?'':'none';
+}
+window._toggleSysStageField=_toggleSysStageField;
 function openProjectModal(projectId = null, defaultType = null) {
   editingProjectId = projectId;
   document.getElementById('projectModalTitle').textContent = projectId ? '編輯專案' : '新增專案';
@@ -7929,15 +7944,18 @@ function openProjectModal(projectId = null, defaultType = null) {
     document.getElementById('projectName').value   = p.name   || '';
     document.getElementById('projectDesc').value   = p.desc   || '';
     document.getElementById('projectType').value   = p.projectType || '系統';
+    document.getElementById('projectSysStage').value = p.sysStage || 'cooking';
     document.getElementById('projectClient').value = p.clientId || '';
     _projectColorPick=p.color||''; _refreshProjectColorBtn();
   } else {
     document.getElementById('projectName').value   = '';
     document.getElementById('projectDesc').value   = '';
     document.getElementById('projectType').value   = defaultType || '系統';
+    document.getElementById('projectSysStage').value = 'cooking';
     document.getElementById('projectClient').value = '';
     _projectColorPick=''; _refreshProjectColorBtn();
   }
+  _toggleSysStageField();
   openModal('projectModal');
 }
 function handleSaveProject() {
@@ -7949,6 +7967,7 @@ function handleSaveProject() {
     name,
     color:       _projectColorPick||'',
     projectType: document.getElementById('projectType').value || '系統',
+    sysStage:    document.getElementById('projectSysStage').value || 'cooking',
     desc:        document.getElementById('projectDesc').value.trim(),
     clientId:    document.getElementById('projectClient').value,
     status:      '每日追蹤',
@@ -8658,17 +8677,20 @@ function updateSplitTotal() {
 // ── 啟動 ──
 // ===== PROJECT PAGE =====
 let _projectPageTab = 'active'; // 'active' | 'done'
+let _projectPageType = '系統'; // '系統' | '活動'
 
 function refreshProjectPageLists() {
-  if (!document.getElementById('sysProjectList2')) return;
-  if (_projectPageTab === 'done') {
-    renderTypedDoneProjectList('系統', 'sysProjectList2');
-    renderTypedDoneProjectList('服務', 'svcProjectList2');
-    renderTypedDoneProjectList('活動', 'actProjectList2');
+  const isSys = _projectPageType === '系統';
+  const isDone = _projectPageTab === 'done';
+  if (isSys) {
+    if (isDone) { if (document.getElementById('sysDoneList')) renderTypedDoneProjectList('系統', 'sysDoneList'); }
+    else {
+      if (document.getElementById('sysCookingList')) renderTypedProjectList('系統', 'sysCookingList', 'cooking');
+      if (document.getElementById('sysExecList'))    renderTypedProjectList('系統', 'sysExecList', 'exec');
+    }
   } else {
-    renderTypedProjectList('系統', 'sysProjectList2');
-    renderTypedProjectList('服務', 'svcProjectList2');
-    renderTypedProjectList('活動', 'actProjectList2');
+    if (isDone) { if (document.getElementById('actDoneList')) renderTypedDoneProjectList('活動', 'actDoneList'); }
+    else { if (document.getElementById('actProjectList')) renderTypedProjectList('活動', 'actProjectList'); }
   }
 }
 
@@ -8720,50 +8742,51 @@ function renderProjectPage() {
   document.getElementById('projectPanelBtn')?.classList.add('active');
   document.querySelectorAll('.client-item').forEach(li => li.classList.remove('active'));
 
+  const isSys = _projectPageType === '系統';
+  const isDone = _projectPageTab === 'done';
+  let bodyHtml;
+  if (isSys) {
+    bodyHtml = isDone
+      ? `<div class="project-column" style="flex:1;overflow-y:auto;"><div class="project-section-header"><span class="project-section-title">🖥 系統專案（已完成）</span></div><div id="sysDoneList"></div></div>`
+      : `<div class="project-column" style="flex:1;border-right:1px solid var(--border);overflow-y:auto;">
+           <div class="project-section-header"><span class="project-section-title">🍳 Cooking 中 <span class="proj-sub-note">未成交 · 追進度</span></span></div>
+           <div id="sysCookingList"></div>
+         </div>
+         <div class="project-column" style="flex:1;overflow-y:auto;">
+           <div class="project-section-header"><span class="project-section-title">📑 執案中 <span class="proj-sub-note">已成交 · 客戶頁有訂單</span></span></div>
+           <div id="sysExecList"></div>
+         </div>`;
+  } else {
+    bodyHtml = `<div class="project-column" style="flex:1;overflow-y:auto;"><div class="project-section-header"><span class="project-section-title">🎡 活動${isDone?'（已完成）':''}</span></div><div id="${isDone?'actDoneList':'actProjectList'}"></div></div>`;
+  }
+
   const page = document.getElementById('projectPage');
   page.innerHTML = `
     <div class="page-header">
       <h1>📁 專案面板</h1>
       <div class="page-header-actions">
-        <button class="btn btn-ghost btn-sm" id="addSysProjectBtn2">＋ 系統專案</button>
-        <button class="btn btn-ghost btn-sm" id="addSvcProjectBtn2">＋ 服務專案</button>
-        <button class="btn btn-ghost btn-sm" id="addActProjectBtn2">＋ 活動專案</button>
+        ${isDone?'':`<button class="btn btn-ghost btn-sm" id="addProjectBtn">＋ 新增${isSys?'系統專案':'活動'}</button>`}
       </div>
+    </div>
+    <div class="stage-tabs" id="projectTypeTabs">
+      <button class="stage-tab${isSys?' active':''}" data-proj-type="系統">🖥 系統專案</button>
+      <button class="stage-tab${!isSys?' active':''}" data-proj-type="活動">🎡 活動</button>
     </div>
     <div class="stage-tabs" id="projectPageTabs">
-      <button class="stage-tab${_projectPageTab==='active'?' active':''}" data-proj-tab="active">進行中</button>
-      <button class="stage-tab${_projectPageTab==='done'?' active':''}" data-proj-tab="done">已完成</button>
+      <button class="stage-tab${!isDone?' active':''}" data-proj-tab="active">進行中</button>
+      <button class="stage-tab${isDone?' active':''}" data-proj-tab="done">已完成</button>
     </div>
-    <div style="display:flex;gap:0;flex:1;overflow:hidden;height:calc(100vh - 108px);">
-      <div class="project-column" style="flex:1;border-right:1px solid var(--border);overflow-y:auto;">
-        <div class="project-section-header"><span class="project-section-title">🖥 系統專案</span></div>
-        <div id="sysProjectList2"></div>
-      </div>
-      <div class="project-column" style="flex:1;border-right:1px solid var(--border);overflow-y:auto;">
-        <div class="project-section-header"><span class="project-section-title">🏥 服務專案</span></div>
-        <div id="svcProjectList2"></div>
-      </div>
-      <div class="project-column" style="flex:1;overflow-y:auto;">
-        <div class="project-section-header"><span class="project-section-title">🎡 活動專案</span></div>
-        <div id="actProjectList2"></div>
-      </div>
+    <div style="display:flex;gap:0;flex:1;overflow:hidden;height:calc(100vh - 150px);">
+      ${bodyHtml}
     </div>`;
 
-  page.querySelectorAll('[data-proj-tab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      _projectPageTab = btn.dataset.projTab;
-      page.querySelectorAll('[data-proj-tab]').forEach(b => b.classList.toggle('active', b.dataset.projTab === _projectPageTab));
-      const isActive = _projectPageTab === 'active';
-      page.querySelector('#addSysProjectBtn2').style.display = isActive ? '' : 'none';
-      page.querySelector('#addSvcProjectBtn2').style.display = isActive ? '' : 'none';
-      page.querySelector('#addActProjectBtn2').style.display = isActive ? '' : 'none';
-      refreshProjectPageLists();
-    });
+  page.querySelectorAll('[data-proj-type]').forEach(btn => {
+    btn.addEventListener('click', () => { _projectPageType = btn.dataset.projType; renderProjectPage(); });
   });
-
-  page.querySelector('#addSysProjectBtn2')?.addEventListener('click', () => openProjectModal(null, '系統'));
-  page.querySelector('#addSvcProjectBtn2')?.addEventListener('click', () => openProjectModal(null, '服務'));
-  page.querySelector('#addActProjectBtn2')?.addEventListener('click', () => openProjectModal(null, '活動'));
+  page.querySelectorAll('[data-proj-tab]').forEach(btn => {
+    btn.addEventListener('click', () => { _projectPageTab = btn.dataset.projTab; renderProjectPage(); });
+  });
+  page.querySelector('#addProjectBtn')?.addEventListener('click', () => openProjectModal(null, _projectPageType));
 
   refreshProjectPageLists();
 }
