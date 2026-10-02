@@ -87,6 +87,30 @@ body[data-theme="calm"]{
 .theme-dot.t-dreamy{background:linear-gradient(135deg,#8B6BBE,#E89DB7);}
 .theme-dot.t-calm{background:linear-gradient(135deg,#2F6F7E,#3CB6A8);}
 .proj-sub-note{font-size:11px;font-weight:400;color:var(--text-muted);margin-left:4px;}
+.oblig-summary{border-bottom:1px solid var(--border);padding:8px 14px 10px;background:var(--surface2);max-height:34vh;overflow:auto;}
+.oblig-sum-head{font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.oblig-badge{background:var(--danger);color:#fff;font-size:11px;padding:1px 8px;border-radius:999px;}
+.oblig-empty{font-size:12px;color:var(--text-muted);padding:4px 0;}
+.oblig-list{display:flex;flex-direction:column;gap:3px;}
+.oblig-row{display:grid;grid-template-columns:116px 1fr 1.3fr auto;gap:10px;align-items:center;padding:5px 8px;border-radius:6px;font-size:12.5px;cursor:pointer;background:var(--surface);}
+.oblig-row:hover{background:var(--sand);}
+.oblig-row.od{background:#fde8e8;color:#a33;}
+.oblig-row.od .oblig-stat{color:#a33;font-weight:700;}
+.oblig-date{font-weight:600;}
+.oblig-no{color:var(--text-muted);font-size:11px;}
+.oblig-stat{font-size:11px;color:var(--warm);white-space:nowrap;}
+.project-obl-btn{background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);padding:2px 4px;border-radius:4px;}
+.project-obl-btn:hover{background:var(--sand);}
+.obl-contract{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:4px 0 12px;border-bottom:1px dashed var(--border);margin-bottom:12px;font-size:13px;}
+.obl-contract label{display:flex;gap:6px;align-items:center;}
+.obl-card{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;}
+.obl-row1{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;}
+.obl-row1 input[type=text]{flex:1;min-width:150px;}
+.obl-del{background:none;border:none;cursor:pointer;margin-left:auto;}
+.obl-items{display:flex;flex-wrap:wrap;gap:8px;}
+.obl-chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:6px;padding:3px 6px;font-size:12px;}
+.obl-chip.done{opacity:.55;}
+.obl-chip button{background:none;border:none;cursor:pointer;color:var(--text-muted);}
 /* 分期開立發票列表 */
 .tl-inv-head,.tl-inv-line{display:grid;grid-template-columns:56px minmax(0,1fr) 64px 64px;gap:10px;align-items:center;padding:6px 4px;}
 .tl-inv-head{font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);}
@@ -2694,6 +2718,18 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
         <button class="btn btn-danger btn-sm" id="deleteProjectBtn" style="margin-right:auto;display:none;">刪除專案</button>
         <button class="btn btn-secondary" data-close="projectModal">取消</button>
         <button class="btn btn-primary" id="saveProjectBtn">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 合約義務 Modal -->
+  <div class="modal-overlay" id="obligationModal">
+    <div class="modal" style="max-width:720px;">
+      <div class="modal-header"><h2 id="oblTitle">合約義務</h2><button class="modal-close" data-close="obligationModal">✕</button></div>
+      <div class="modal-body" id="oblBody" style="max-height:72vh;overflow:auto;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="obligationModal">關閉</button>
+        <button class="btn btn-primary" id="oblSaveBtn">儲存</button>
       </div>
     </div>
   </div>
@@ -7705,6 +7741,7 @@ function renderTypedProjectList(type, containerId, sysStage) {
         ${doneToggleBtn}
         <span class="project-progress">${done}/${items.length}</span>
         <button class="project-done-btn" data-proj-done="${p.id}" title="完成專案" style="opacity:0;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;padding:2px 4px;border-radius:4px;transition:all 0.15s;">✓</button>
+        ${sysStage==='exec'?`<button class="project-obl-btn" data-proj-obl="${p.id}" title="合約義務">📋${(()=>{const n=(p.obligations||[]).reduce((a,o)=>a+(o.items||[]).filter(x=>!x.done&&x.date).length,0);return n?' '+n:'';})()}</button>`:''}
         <button class="project-edit-btn" data-proj-edit="${p.id}">✎</button>
       </div>
       <div class="project-checklist">
@@ -7744,6 +7781,7 @@ function renderTypedProjectList(type, containerId, sysStage) {
       e.stopPropagation();
       openProjectModal(p.id);
     });
+    card.querySelector('[data-proj-obl]')?.addEventListener('click', e => { e.stopPropagation(); _openObligationModal(p.id); });
     // checklist toggle done
     // 查看已完成事項 toggle
     card.querySelector('[data-proj-done-toggle]')?.addEventListener('click', e => {
@@ -8687,6 +8725,7 @@ function refreshProjectPageLists() {
     else {
       if (document.getElementById('sysCookingList')) renderTypedProjectList('系統', 'sysCookingList', 'cooking');
       if (document.getElementById('sysExecList'))    renderTypedProjectList('系統', 'sysExecList', 'exec');
+      if (document.getElementById('obligSummary'))   { try { _renderObligSummary(); } catch(e){} }
     }
   } else {
     if (isDone) { if (document.getElementById('actDoneList')) renderTypedDoneProjectList('活動', 'actDoneList'); }
@@ -8735,6 +8774,129 @@ function renderTypedDoneProjectList(type, containerId) {
   });
 }
 
+const OBL_FREQ = {monthly:'每月',quarterly:'每季',yearly:'每年',phased:'分期(自訂)',once:'一次性'};
+function _oblClampDate(y,m,d){ const last=new Date(y,m+1,0).getDate(); return new Date(y,m,Math.min(d,last)); }
+function _genOblItems(start,end,freq,day){
+  const items=[]; if(!start) return items;
+  const s=new Date(start+'T00:00:00'); const e=end?new Date(end+'T00:00:00'):null;
+  const step = freq==='monthly'?1 : freq==='quarterly'?3 : freq==='yearly'?12 : 0;
+  if(!step) return items;
+  const dd = day || s.getDate();
+  let y=s.getFullYear(), m=s.getMonth(), guard=0;
+  while(guard++<240){
+    const dt=_oblClampDate(y,m,dd);
+    if(e && dt>e) break;
+    if(dt>=s) items.push({date:_isoDate(dt),done:false});
+    m+=step; while(m>11){m-=12;y++;}
+    if(!e && items.length>=36) break;
+  }
+  return items;
+}
+function _collectObligations(){
+  const today=_isoDate(new Date());
+  const horizon=_isoDate(new Date(Date.now()+30*86400000));
+  const clientMap={}; getClients().forEach(c=>clientMap[c.id]=c);
+  const rows=[];
+  getProjects().filter(p=>(p.projectType||'系統')==='系統' && (p.sysStage||'cooking')==='exec' && p.status!=='已完成' && p.status!=='取消').forEach(p=>{
+    (p.obligations||[]).forEach(ob=>{
+      const items=(ob.items||[]).filter(it=>it.date).slice().sort((a,b)=>a.date.localeCompare(b.date));
+      items.forEach((it,idx)=>{
+        if(it.done) return;
+        const overdue = it.date < today;
+        const upcoming = it.date>=today && it.date<=horizon;
+        if(overdue||upcoming) rows.push({pid:p.id,pname:p.name||'',client:clientMap[p.clientId]?.shortName||'',ob:ob.name||'義務',no:idx+1,total:items.length,date:it.date,overdue});
+      });
+    });
+  });
+  rows.sort((a,b)=> a.overdue!==b.overdue ? (a.overdue?-1:1) : a.date.localeCompare(b.date));
+  return rows;
+}
+function _renderObligSummary(){
+  const el=document.getElementById('obligSummary'); if(!el) return;
+  let rows=[]; try{ rows=_collectObligations(); }catch(e){ rows=[]; }
+  const od=rows.filter(r=>r.overdue).length;
+  if(!rows.length){ el.innerHTML='<div class="oblig-sum-head">📅 合約義務 — 逾期／未來 30 天</div><div class="oblig-empty">目前沒有逾期或 30 天內到期的義務 🎉（在「執案中」專案卡按 📋 設定合約義務）</div>'; return; }
+  const body=rows.map(r=>`<div class="oblig-row ${r.overdue?'od':''}" data-obl-open="${r.pid}">
+    <span class="oblig-date">${r.overdue?'⚠️ ':''}${fmtDate(r.date)}</span>
+    <span class="oblig-proj">${r.client?('['+r.client+'] '):''}${(r.pname||'').replace(/</g,'&lt;')}</span>
+    <span class="oblig-name">${(r.ob||'').replace(/</g,'&lt;')} <span class="oblig-no">第${r.no}/${r.total}期</span></span>
+    <span class="oblig-stat">${r.overdue?'逾期':'即將到期'}</span>
+  </div>`).join('');
+  el.innerHTML='<div class="oblig-sum-head">📅 合約義務 — 逾期／未來 30 天 '+(od?('<span class="oblig-badge">逾期 '+od+'</span>'):'')+'</div><div class="oblig-list">'+body+'</div>';
+  el.querySelectorAll('[data-obl-open]').forEach(r=>r.addEventListener('click',()=>_openObligationModal(r.dataset.oblOpen)));
+}
+let _oblState=null;
+function _openObligationModal(pid){
+  const p=getProjects().find(x=>x.id===pid); if(!p){ showToast('找不到專案','error'); return; }
+  _oblState={ pid, contractStart:p.contractStart||'', contractEnd:p.contractEnd||'',
+    obligations:(p.obligations||[]).map(o=>({name:o.name||'',freq:o.freq||'monthly',day:o.day||'',items:(o.items||[]).map(it=>({date:it.date||'',done:!!it.done}))})) };
+  document.getElementById('oblTitle').textContent='合約義務 — '+(p.name||'');
+  const sb=document.getElementById('oblSaveBtn'); if(sb) sb.onclick=_oblSaveModal;
+  _oblRender();
+  openModal('obligationModal');
+}
+function _oblRender(){
+  const b=document.getElementById('oblBody'); if(!b||!_oblState) return;
+  const st=_oblState;
+  const cards=st.obligations.map((o,i)=>{
+    const needDay=['monthly','quarterly','yearly'].includes(o.freq);
+    const chips=(o.items||[]).map((it,j)=>`<span class="obl-chip ${it.done?'done':''}">
+      <input type="checkbox" data-obl-done="${i}-${j}" ${it.done?'checked':''} title="已完成"/>
+      <input type="date" data-obl-date="${i}-${j}" value="${it.date||''}" data-nocal/>
+      <button type="button" data-obl-rmitem="${i}-${j}" title="刪除此期">✕</button></span>`).join('');
+    return `<div class="obl-card" data-obl="${i}">
+      <div class="obl-row1">
+        <input type="text" data-obl-name="${i}" value="${(o.name||'').replace(/"/g,'&quot;')}" placeholder="義務名稱（例：每月定期維護、每季維護報告、發票）"/>
+        <select data-obl-freq="${i}">${Object.keys(OBL_FREQ).map(k=>`<option value="${k}" ${o.freq===k?'selected':''}>${OBL_FREQ[k]}</option>`).join('')}</select>
+        ${needDay?`<input type="number" min="1" max="31" data-obl-day="${i}" value="${o.day||''}" placeholder="幾號" style="width:70px;" title="每期截止為該月幾號"/>`:''}
+        ${needDay?`<button type="button" class="btn btn-ghost btn-sm" data-obl-gen="${i}">↻ 產生排程</button>`:''}
+        <button type="button" class="btn btn-ghost btn-sm" data-obl-additem="${i}">＋ 加一期</button>
+        <button type="button" class="obl-del" data-obl-rm="${i}" title="刪除此義務">🗑</button>
+      </div>
+      <div class="obl-items">${chips||'<span class="oblig-empty">尚無期數，按「產生排程」或「加一期」</span>'}</div>
+    </div>`;
+  }).join('');
+  b.innerHTML=`
+    <div class="obl-contract">
+      <label>合約起始 <input type="date" id="oblCStart" value="${st.contractStart||''}" data-nocal/></label>
+      <label>合約結束 <input type="date" id="oblCEnd" value="${st.contractEnd||''}" data-nocal/></label>
+      <span class="hint" style="font-size:11px;">填起訖後，按各義務「產生排程」自動帶出每期日期（可再手動改、勾完成）。</span>
+    </div>
+    <div id="oblCards">${cards||'<div class="oblig-empty">尚無合約義務，點下方「＋ 新增義務」</div>'}</div>
+    <button type="button" class="btn btn-ghost btn-sm" id="oblAddBtn" style="margin-top:8px;">＋ 新增義務</button>`;
+  if(typeof refreshRocHints==='function') refreshRocHints(b);
+  _oblWire();
+}
+function _oblCollect(){
+  const st=_oblState; if(!st) return;
+  const cs=document.getElementById('oblCStart'), ce=document.getElementById('oblCEnd');
+  if(cs) st.contractStart=cs.value; if(ce) st.contractEnd=ce.value;
+  document.querySelectorAll('#oblCards [data-obl]').forEach(card=>{
+    const i=+card.dataset.obl; const o=st.obligations[i]; if(!o) return;
+    const nm=card.querySelector(`[data-obl-name="${i}"]`); if(nm) o.name=nm.value;
+    const fq=card.querySelector(`[data-obl-freq="${i}"]`); if(fq) o.freq=fq.value;
+    const dy=card.querySelector(`[data-obl-day="${i}"]`); o.day = (dy&&dy.value)?parseInt(dy.value):'';
+    card.querySelectorAll('[data-obl-date]').forEach(inp=>{ const p=inp.dataset.oblDate.split('-'); const j=+p[1]; if(o.items[j]) o.items[j].date=inp.value; });
+    card.querySelectorAll('[data-obl-done]').forEach(inp=>{ const p=inp.dataset.oblDone.split('-'); const j=+p[1]; if(o.items[j]) o.items[j].done=inp.checked; });
+  });
+}
+function _oblWire(){
+  const b=document.getElementById('oblBody'); if(!b) return;
+  b.querySelector('#oblAddBtn')?.addEventListener('click',()=>{ _oblCollect(); _oblState.obligations.push({name:'',freq:'monthly',day:'',items:[]}); _oblRender(); });
+  b.querySelectorAll('[data-obl-gen]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); const i=+btn.dataset.oblGen; const o=_oblState.obligations[i]; const gen=_genOblItems(_oblState.contractStart,_oblState.contractEnd,o.freq,o.day); if(!gen.length){ showToast('請先填合約起訖日與「幾號」','error'); return;} o.items=gen; _oblRender(); }));
+  b.querySelectorAll('[data-obl-additem]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); _oblState.obligations[+btn.dataset.oblAdditem].items.push({date:'',done:false}); _oblRender(); }));
+  b.querySelectorAll('[data-obl-rmitem]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); const p=btn.dataset.oblRmitem.split('-'); _oblState.obligations[+p[0]].items.splice(+p[1],1); _oblRender(); }));
+  b.querySelectorAll('[data-obl-rm]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); const i=+btn.dataset.oblRm; if((_oblState.obligations[i].items||[]).length && !confirm('刪除此義務及其所有期數？')) return; _oblState.obligations.splice(i,1); _oblRender(); }));
+  b.querySelectorAll('[data-obl-freq]').forEach(sel=>sel.addEventListener('change',()=>{ _oblCollect(); _oblRender(); }));
+}
+function _oblSaveModal(){
+  _oblCollect(); const st=_oblState; if(!st) return;
+  saveProject({ id:st.pid, contractStart:st.contractStart||'', contractEnd:st.contractEnd||'',
+    obligations:st.obligations.filter(o=>o.name||(o.items||[]).length).map(o=>({name:o.name||'',freq:o.freq||'monthly',day:o.day||'',items:(o.items||[]).filter(it=>it.date).map(it=>({date:it.date,done:!!it.done}))})) });
+  closeModal('obligationModal');
+  refreshProjectPageLists();
+  showToast('合約義務已儲存');
+}
 function renderProjectPage() {
   showPage('projectPage');
   document.getElementById('homeBtn')?.classList.remove('active');
@@ -8745,19 +8907,24 @@ function renderProjectPage() {
   const isSys = _projectPageType === '系統';
   const isDone = _projectPageTab === 'done';
   let bodyHtml;
-  if (isSys) {
-    bodyHtml = isDone
-      ? `<div class="project-column" style="flex:1;overflow-y:auto;"><div class="project-section-header"><span class="project-section-title">🖥 系統專案（已完成）</span></div><div id="sysDoneList"></div></div>`
-      : `<div class="project-column" style="flex:1;border-right:1px solid var(--border);overflow-y:auto;">
-           <div class="project-section-header"><span class="project-section-title">🍳 Cooking 中 <span class="proj-sub-note">未成交 · 追進度</span></span></div>
-           <div id="sysCookingList"></div>
-         </div>
-         <div class="project-column" style="flex:1;overflow-y:auto;">
-           <div class="project-section-header"><span class="project-section-title">📑 執案中 <span class="proj-sub-note">已成交 · 客戶頁有訂單</span></span></div>
-           <div id="sysExecList"></div>
-         </div>`;
+  const _H='height:calc(100vh - 150px);';
+  if (isSys && !isDone) {
+    bodyHtml = `
+      <div id="obligSummary" class="oblig-summary"></div>
+      <div style="display:flex;gap:0;flex:1;overflow:hidden;height:calc(100vh - 300px);min-height:220px;">
+        <div class="project-column" style="flex:1;border-right:1px solid var(--border);overflow-y:auto;">
+          <div class="project-section-header"><span class="project-section-title">🍳 Cooking 中 <span class="proj-sub-note">未成交 · 追進度</span></span></div>
+          <div id="sysCookingList"></div>
+        </div>
+        <div class="project-column" style="flex:1;overflow-y:auto;">
+          <div class="project-section-header"><span class="project-section-title">📑 執案中 <span class="proj-sub-note">已成交 · 客戶頁有訂單</span></span></div>
+          <div id="sysExecList"></div>
+        </div>
+      </div>`;
+  } else if (isSys && isDone) {
+    bodyHtml = `<div style="display:flex;${_H}overflow:hidden;"><div class="project-column" style="flex:1;overflow-y:auto;"><div class="project-section-header"><span class="project-section-title">🖥 系統專案（已完成）</span></div><div id="sysDoneList"></div></div></div>`;
   } else {
-    bodyHtml = `<div class="project-column" style="flex:1;overflow-y:auto;"><div class="project-section-header"><span class="project-section-title">🎡 活動${isDone?'（已完成）':''}</span></div><div id="${isDone?'actDoneList':'actProjectList'}"></div></div>`;
+    bodyHtml = `<div style="display:flex;${_H}overflow:hidden;"><div class="project-column" style="flex:1;overflow-y:auto;"><div class="project-section-header"><span class="project-section-title">🎡 活動${isDone?'（已完成）':''}</span></div><div id="${isDone?'actDoneList':'actProjectList'}"></div></div></div>`;
   }
 
   const page = document.getElementById('projectPage');
@@ -8776,9 +8943,7 @@ function renderProjectPage() {
       <button class="stage-tab${!isDone?' active':''}" data-proj-tab="active">進行中</button>
       <button class="stage-tab${isDone?' active':''}" data-proj-tab="done">已完成</button>
     </div>
-    <div style="display:flex;gap:0;flex:1;overflow:hidden;height:calc(100vh - 150px);">
-      ${bodyHtml}
-    </div>`;
+    ${bodyHtml}`;
 
   page.querySelectorAll('[data-proj-type]').forEach(btn => {
     btn.addEventListener('click', () => { _projectPageType = btn.dataset.projType; renderProjectPage(); });
