@@ -6043,6 +6043,7 @@ function renderOmOrders() {
   const clients = getClients(); const cmap = {}; clients.forEach(c => cmap[c.id] = c);
   let orders = getOrders().filter(o => !o.parentOrderId);
   if (_omStage) orders = orders.filter(o => o.status === _omStage);
+  const _postAward = ['契約書簽訂中','出貨中','驗收中','可開發票','發票確認中','履約期間','申退履保金','履約結束'];
   // 需警示的訂單 → 卡片紅底標示（取代原本右欄的訂單警示）
   let alertMap = {};
   try { (computeOrderKPI().alerts || []).forEach(a => { alertMap[a.orderId] = a; }); } catch (e) {}
@@ -6057,9 +6058,11 @@ function renderOmOrders() {
     const period = o.startDate ? `${fmtDate(o.startDate)}~${o.endDate?fmtDate(o.endDate):''}` : '未設定訂期';
     const note = (o.statusNote && o.statusNote.trim()) ? `<div class="om-card-note">📝 ${o.statusNote.replace(/</g,'&lt;')}</div>` : '';
     const al = alertMap[o.id];
-    const alertCls = al ? (al.level === 'danger' ? ' alert-danger' : ' alert-warn') : '';
+    const dealRateWarn = (o.currency && o.currency !== 'TWD' && !o.dealRate && _postAward.includes(o.status));
+    const alertCls = al ? (al.level === 'danger' ? ' alert-danger' : ' alert-warn') : (dealRateWarn ? ' alert-warn' : '');
     const alertBadge = al ? `<div class="om-card-alert">⚠ ${(al.text.split('—')[1]||'需追蹤').trim()}
       <span class="om-card-snooze"><button onclick="event.stopPropagation();snoozeOrderAlert('${o.id}',3)">+3天</button><button onclick="event.stopPropagation();snoozeOrderAlert('${o.id}',7)">+7天</button></span></div>` : '';
+    const dealRateBadge = dealRateWarn ? `<div class="om-card-alert">⚠ 已決標但尚未填「成交匯率」，公司底價可能用報價匯率計算，請回「訂單資料」補填</div>` : '';
     return `<div class="om-card${alertCls}" data-oid="${o.id}">
       <div class="om-card-top">
         <span class="om-card-prod"><b>${c.shortName||'—'}</b>｜${o.productName||'（未命名）'}</span>
@@ -6068,6 +6071,7 @@ function renderOmOrders() {
       <div class="om-card-meta">訂期 ${period}　·　更新 ${(()=>{const d=new Date(o.updatedAt); if(isNaN(d.getTime()))return '—'; const z=n=>String(n).padStart(2,'0'); return z(d.getMonth()+1)+'/'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes());})()}</div>
       ${note}
       ${alertBadge}
+      ${dealRateBadge}
     </div>`;
   }).join('') + `</div>`;
   el.querySelectorAll('.om-card[data-oid]').forEach(card =>
