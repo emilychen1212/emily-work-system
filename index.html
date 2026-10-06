@@ -8814,21 +8814,40 @@ function renderTypedDoneProjectList(type, containerId) {
   });
 }
 
-const OBL_FREQ = {monthly:'每月',quarterly:'每季',yearly:'每年',phased:'分期(自訂)',once:'一次性'};
+const OBL_FREQ = {monthly:'每月',quarterly_s:'每季（季初 1/4/7/10）',quarterly_e:'每季（季末 3/6/9/12）',yearly:'每年',phased:'分期(自訂)',once:'一次性'};
 function _oblClampDate(y,m,d){ const last=new Date(y,m+1,0).getDate(); return new Date(y,m,Math.min(d,last)); }
 function _genOblItems(start,end,freq,day){
   const items=[]; if(!start) return items;
   const s=new Date(start+'T00:00:00'); const e=end?new Date(end+'T00:00:00'):null;
-  const step = freq==='monthly'?1 : freq==='quarterly'?3 : freq==='yearly'?12 : 0;
-  if(!step) return items;
   const dd = day || s.getDate();
-  let y=s.getFullYear(), m=s.getMonth(), guard=0;
-  while(guard++<240){
-    const dt=_oblClampDate(y,m,dd);
-    if(e && dt>e) break;
-    if(dt>=s) items.push({date:_isoDate(dt),done:false});
-    m+=step; while(m>11){m-=12;y++;}
-    if(!e && items.length>=36) break;
+  if(freq==='monthly' || freq==='yearly'){
+    const step = freq==='monthly'?1:12;
+    let y=s.getFullYear(), m=s.getMonth(), guard=0;
+    while(guard++<240){
+      const dt=_oblClampDate(y,m,dd);
+      if(e && dt>e) break;
+      if(dt>=s) items.push({date:_isoDate(dt),done:false});
+      m+=step; while(m>11){m-=12;y++;}
+      if(!e && items.length>=36) break;
+    }
+    return items;
+  }
+  if(freq==='quarterly_s' || freq==='quarterly_e' || freq==='quarterly'){
+    const months = (freq==='quarterly_s') ? [0,3,6,9] : [2,5,8,11];   // 季初=1/4/7/10；季末=3/6/9/12
+    const endY = e ? e.getFullYear() : s.getFullYear()+8;
+    let guard=0;
+    for(let y=s.getFullYear(); y<=endY && guard<240; y++){
+      for(const m of months){
+        guard++;
+        const dt=_oblClampDate(y,m,dd);
+        if(dt<s) continue;
+        if(e && dt>e) continue;
+        items.push({date:_isoDate(dt),done:false});
+        if(!e && items.length>=24){ items.sort((a,b)=>a.date.localeCompare(b.date)); return items; }
+      }
+    }
+    items.sort((a,b)=>a.date.localeCompare(b.date));
+    return items;
   }
   return items;
 }
@@ -8869,7 +8888,7 @@ let _oblState=null;
 function _openObligationModal(pid){
   const p=getProjects().find(x=>x.id===pid); if(!p){ showToast('找不到專案','error'); return; }
   _oblState={ pid, locked:(p.obligations||[]).length>0, contractStart:p.contractStart||'', contractEnd:p.contractEnd||'',
-    obligations:(p.obligations||[]).map(o=>({name:o.name||'',note:o.note||'',freq:o.freq||'monthly',day:o.day||'',items:(o.items||[]).map(it=>({date:it.date||'',done:!!it.done}))})) };
+    obligations:(p.obligations||[]).map(o=>({name:o.name||'',note:o.note||'',freq:(o.freq==='quarterly'?'quarterly_e':(o.freq||'monthly')),day:o.day||'',items:(o.items||[]).map(it=>({date:it.date||'',done:!!it.done}))})) };
   document.getElementById('oblTitle').textContent='合約義務 — '+(p.name||'');
   const sb=document.getElementById('oblSaveBtn'); if(sb) sb.onclick=_oblSaveModal;
   _oblRender();
@@ -8882,7 +8901,7 @@ function _oblRender(){
   const today=_isoDate(new Date()), horizon=_isoDate(new Date(Date.now()+30*86400000));
   const maxN=obls.reduce((m,o)=>Math.max(m,(o.items||[]).length),0);
   const heads=obls.map((o,i)=>{
-    const needDay=['monthly','quarterly','yearly'].includes(o.freq);
+    const needDay=['monthly','quarterly_s','quarterly_e','quarterly','yearly'].includes(o.freq);
     return `<th class="obl-colh" data-obl="${i}">
       <div class="obl-colh-name"><input type="text" data-obl-name="${i}" value="${(o.name||'').replace(/"/g,'&quot;')}" placeholder="義務名稱"${L}/><button type="button" class="obl-note-btn" data-obl-note="${i}" title="備註／詳細資訊">📝${o.note?'<span class="obl-note-dot">•</span>':''}</button></div>
       <div class="obl-colh-ctrl">
