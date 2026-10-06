@@ -8908,6 +8908,7 @@ function _oblRender(){
         <select data-obl-freq="${i}"${L}>${Object.keys(OBL_FREQ).map(k=>`<option value="${k}" ${o.freq===k?'selected':''}>${OBL_FREQ[k]}</option>`).join('')}</select>
         ${needDay?`<input type="number" min="1" max="31" data-obl-day="${i}" value="${o.day||''}" placeholder="號" style="width:52px;" title="每期截止為該月幾號"${L}/>`:''}
         ${needDay&&!locked?`<button type="button" class="tl-mini-btn" data-obl-gen="${i}" title="依合約起訖自動產生每期">↻ 產生</button>`:''}
+        ${locked?'':`<button type="button" class="tl-mini-btn" data-obl-colitem="${i}" title="為此義務新增一個日期（一次性／分期用）">＋期</button>`}
         ${locked?'':`<button type="button" class="obl-del" data-obl-rm="${i}" title="刪除此義務">🗑</button>`}
       </div></th>`;
   }).join('');
@@ -8987,6 +8988,7 @@ function _oblWire(){
   b.querySelector('#oblDoneToggle')?.addEventListener('click',(e)=>{ const sec=document.getElementById('oblDoneSec'); if(!sec) return; const show=sec.style.display==='none'; sec.style.display=show?'block':'none'; e.currentTarget.textContent=(show?'隱藏':'查看')+'已完成期數（'+sec.querySelectorAll('tbody tr').length+'）'; });
   b.querySelectorAll('[data-obl-gen]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); const i=+btn.dataset.oblGen; const o=_oblState.obligations[i]; const gen=_genOblItems(_oblState.contractStart,_oblState.contractEnd,o.freq,o.day); if(!gen.length){ showToast('請先填合約起訖日與「幾號」','error'); return;} o.items=gen; _oblRender(); _oblPersist(); }));
   b.querySelectorAll('[data-obl-rm]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); const i=+btn.dataset.oblRm; if((_oblState.obligations[i].items||[]).some(x=>x.date) && !confirm('刪除此義務及其所有期數？')) return; _oblState.obligations.splice(i,1); _oblRender(); _oblPersist(); }));
+  b.querySelectorAll('[data-obl-colitem]').forEach(btn=>btn.addEventListener('click',()=>{ _oblCollect(); const i=+btn.dataset.oblColitem; const o=_oblState.obligations[i]; o.items=o.items||[]; o.items.push({date:'',done:false}); _oblRender(); _oblPersist(); }));
   b.querySelectorAll('[data-obl-note]').forEach(btn=>btn.addEventListener('click',(e)=>{ e.stopPropagation(); _oblCollect(); _oblOpenNote(+btn.dataset.oblNote); }));
   b.querySelectorAll('[data-obl-freq]').forEach(sel=>sel.addEventListener('change',()=>{ _oblCollect(); _oblRender(); _oblPersist(); }));
   b.querySelectorAll('[data-obl-date]').forEach(inp=>inp.addEventListener('change',()=>{ _oblCollect(); _oblRender(); _oblPersist(); }));
