@@ -6353,10 +6353,11 @@ function computeDashboardItems() {
       else if (!CK.quoteSent) _pushItem(a, '寄出報價單', '📤', 1, _snoozeHint);
       return;
     }
-    // 已提案／草報價：依「預計追蹤客戶回覆時間」提醒追客戶回覆
+    // 已提案／草報價：以「預計追蹤客戶回覆時間」為準，到那天才出現（+3/+7 直接改這個日期）；未填才預設 updatedAt+7
     if (o.status === '已提案/草報價') {
-      const fu2 = _snoozeDate ? _isoDate(_snoozeDate) : _fu;
-      if (fu2) _pushItem(new Date(fu2), '確認客戶對報價回覆', '📋', 2, _snoozeHint);
+      const fuDate = _fu || _isoDate(_dPlus(o.updatedAt, 7));
+      const tip = _fu ? `預計追蹤客戶回覆 ${fmtDate(_fu)}` : '未設追蹤日，預設更新日＋7（可 +3/+7 調整）';
+      _pushItem(new Date(fuDate), '確認客戶對報價回覆', '📋', 2, tip, { fuSnoozeOrderId: o.id });
       return;
     }
 
@@ -6668,6 +6669,7 @@ function refreshDashboardContent() {
         const days = parseInt(sb.dataset.snoozeDays);
         if (item.actSnoozeOrderId) snoozeActivation(item.actSnoozeOrderId, days);
         else if (item.dueSnoozeOrderId) snoozeContractDue(item.dueSnoozeOrderId, days);
+        else if (item.fuSnoozeOrderId) snoozeFollowUp(item.fuSnoozeOrderId, days);
         else snoozeOrderAlert(item.snoozeOrderId, days);
       });
     });
@@ -9146,6 +9148,24 @@ function snoozeActivation(orderId, days) {
   if (typeof renderOrderGrid === 'function') renderOrderGrid();
   refreshDashboardContent();
   showToast(`啟用通知預計製作時間延後 ${days} 天（${fmtDate(o.activationDueDate)}）`);
+}
+// 追蹤日延後：把當階段的「下次追蹤日」(followUp[status]) 往後推（從現有追蹤日起算，與時間軸同步）
+function snoozeFollowUp(orderId, days) {
+  const db = dbLoad();
+  const o = db.orders.find(x => x.id === orderId);
+  if (!o || !o.status) return;
+  o.followUp = o.followUp || {};
+  const cur = o.followUp[o.status];
+  let base = cur ? new Date(cur + 'T00:00:00') : new Date();
+  base.setHours(0,0,0,0);
+  base.setDate(base.getDate() + days);
+  o.followUp[o.status] = _isoDate(base);
+  o.updatedAt = new Date().toISOString();
+  dbSave(db);
+  renderOrderDashboard();
+  if (typeof renderOrderGrid === 'function') renderOrderGrid();
+  refreshDashboardContent();
+  showToast(`追蹤日延後 ${days} 天（${fmtDate(o.followUp[o.status])}）`);
 }
 function snoozeOrderAlert(orderId, days) {
   const db = dbLoad();
