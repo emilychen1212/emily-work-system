@@ -10383,10 +10383,11 @@ function _tlSameBidClose(){
 function _tlAcceptPanel(o){
   const need=!!o.needAcceptance;
   const dv=v=>String(v||'').slice(0,10);
+  const dtv=v=>{v=String(v||'');if(v&&v.length===10)v=v+'T09:00';return v.slice(0,16);};
   const baseStart=dv(o.startDate);
   return `
     <div class="tl-f full tl-chk"><input type="checkbox" data-tlf="needAcceptance" ${need?'checked':''} onchange="_tlAcceptToggle()"/><label>是否需要參與驗收</label></div>
-    <div class="tl-f" id="tlAccBook"><label>預約驗收日</label><input type="date" data-tlf="acceptBookDate" value="${dv(o.acceptBookDate)}" data-caltitle="驗收" ${need?'':'disabled'}/></div>
+    <div class="tl-f" id="tlAccBook"><label>預約驗收時間</label><input type="datetime-local" data-tlf="acceptBookDate" value="${dtv(o.acceptBookDate)}" data-caltitle="驗收" ${need?'':'disabled'}/></div>
     <div class="tl-f"><label>客戶驗收完成（選填）</label><input type="date" data-tlf="clientAcceptedAt" value="${dv(o.clientAcceptedAt)}" data-nocal/></div>
     <div class="tl-f full"><label>訂期起始日（鎖定，須至「訂單資料」修改）</label><input type="date" value="${baseStart}" data-nocal disabled/><span class="hint">此欄強制帶入訂單資料的訂期起始日，無法在此變更。</span></div>
     ${o.parentOrderId ? '' : `<div class="tl-f full"><label>啟用通知 預計製作時間 <span class="hint" style="font-weight:400;">首頁「製作啟用通知」任務會排在這天；不填則預設訂期起始前5天。首頁 +3/+7 也會改這裡。</span></label><input type="date" data-tlf="activationDueDate" value="${dv(o.activationDueDate)}" data-nocal/></div>`}
