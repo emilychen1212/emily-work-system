@@ -3189,7 +3189,46 @@ function dbLoad() {
 
 function dbSave(data) {
   cloudStore.setItem(DB_KEY, JSON.stringify(data));
+  if (typeof _scheduleOrderSheetSync === 'function') _scheduleOrderSheetSync();
 }
+// ── 訂單總表 Google Sheet 同步 ──
+function _buildOrderSheet(){
+  const db=dbLoad(); const cmap={}; (db.clients||[]).forEach(c=>cmap[c.id]=c);
+  const headers=['客戶','產品名稱／合約','訂期','幣別','成交金額(台幣)','原幣報價','成交匯率','報價匯率','報價(台幣)','原幣底價','底價(台幣)','含稅','議價%'];
+  const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,''));return isNaN(n)?'':n;};
+  const rows=(db.orders||[]).map(o=>{
+    const c=cmap[o.clientId]||{};
+    const period=(o.startDate||o.endDate)?((o.startDate?_rocSlash(o.startDate):'—')+' ~ '+(o.endDate?_rocSlash(o.endDate):'—')):'';
+    const bpct=(o.dealTwd&&o.quoteTwd)?((o.dealTwd/o.quoteTwd*100).toFixed(1)+'%'):'';
+    return [ c.shortName||c.fullName||'', o.productName||'', period, o.currency||'',
+      num(o.dealTwd), num(o.quoteOrig), num(o.dealRate), num(o.quoteRate), num(o.quoteTwd),
+      num(o.costOrig), num(o.costTwd), o.taxIncluded?'是':'否', bpct ];
+  });
+  return {headers, rows};
+}
+let _orderSheetSyncing=false, _orderSheetTimer=null;
+async function _syncOrderSheetNow(manual){
+  if(window.__ROLE_VIEWER__) return;
+  if(_orderSheetSyncing){ if(manual) showToast('同步進行中，請稍候…'); return; }
+  _orderSheetSyncing=true;
+  if(manual) showToast('同步訂單總表中…');
+  try{
+    const {headers,rows}=_buildOrderSheet();
+    const res=await __api({action:'syncOrderSheet', headers, rows}, {timeout:60000});
+    if(res&&res.ok){
+      if(res.url){ try{ localStorage.setItem('order_sheet_url', res.url); }catch(e){}
+        const lk=document.getElementById('orderSheetLink'); if(lk){ lk.href=res.url; lk.style.display=''; } }
+      if(manual){ showToast(`已同步 ${res.n} 筆到訂單總表`); if(res.url) window.open(res.url,'_blank'); }
+    } else if(manual){ showToast('同步失敗：'+((res&&res.error)||'後端尚未部署 syncOrderSheet'),'error'); }
+  }catch(e){ if(manual) showToast('同步失敗：'+e.message,'error'); }
+  finally{ _orderSheetSyncing=false; }
+}
+function _scheduleOrderSheetSync(){
+  if(window.__ROLE_VIEWER__) return;
+  clearTimeout(_orderSheetTimer);
+  _orderSheetTimer=setTimeout(()=>{ _syncOrderSheetNow(false); }, 6000);
+}
+window._syncOrderSheetNow=_syncOrderSheetNow;
 
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -6125,6 +6164,8 @@ function renderHomePage() {
           <input type="file" accept=".json" id="importFileInput" style="display:none;" />
         </label>
         <button class="btn btn-ghost btn-sm" onclick="migrateOrdersV2Run()" title="一次性：把舊訂單資料轉成新版時間軸的 checklist 與階段（用既有日期回填）">🔄 一次性資料轉換</button>
+        <button class="btn btn-ghost btn-sm" onclick="_syncOrderSheetNow(true)" title="把所有訂單同步到一張可讀的 Google 試算表">📊 同步訂單總表</button>
+        <a id="orderSheetLink" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;display:${(()=>{try{return localStorage.getItem('order_sheet_url')?'':'none'}catch(e){return 'none'}})()};" href="${(()=>{try{return localStorage.getItem('order_sheet_url')||'#'}catch(e){return '#'}})()}">📄 開啟總表</a>
       </div>
     </div>
     <div id="orderDashboardSlot"></div>
