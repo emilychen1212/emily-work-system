@@ -3196,7 +3196,9 @@ function _buildOrderSheet(){
   const db=dbLoad(); const cmap={}; (db.clients||[]).forEach(c=>cmap[c.id]=c);
   const headers=['客戶','產品名稱／合約','訂期','幣別','成交金額(台幣)','原幣報價','成交匯率','報價匯率','報價(台幣)','原幣底價','底價(台幣)','含稅','議價%'];
   const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,''));return isNaN(n)?'':n;};
-  const rows=(db.orders||[]).map(o=>{
+  const _cn=o=>(cmap[o.clientId]||{}).shortName||(cmap[o.clientId]||{}).fullName||'';
+  const ordersSorted=(db.orders||[]).slice().sort((a,b)=> _cn(a).localeCompare(_cn(b),'zh-Hant') || (a.productName||'').localeCompare(b.productName||'','zh-Hant'));
+  const rows=ordersSorted.map(o=>{
     const c=cmap[o.clientId]||{};
     const period=(o.startDate||o.endDate)?((o.startDate?_rocSlash(o.startDate):'—')+' ~ '+(o.endDate?_rocSlash(o.endDate):'—')):'';
     const bpct=(o.dealTwd&&o.quoteTwd)?((o.dealTwd/o.quoteTwd*100).toFixed(1)+'%'):'';
