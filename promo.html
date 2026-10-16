@@ -67,7 +67,7 @@ ul{list-style:none;}
 .stage-tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:700;}
 .stage-tab:hover:not(.active){color:var(--text-primary);background:var(--surface2);}
 .promo-container{padding:16px 28px 40px;}
-".promo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-content:start;}
+".promo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:12px;align-content:start;}
 .om-split{display:flex;gap:20px;padding:6px 28px 28px;align-items:stretch;height:calc(100vh - 230px);min-height:460px;}
 .om-stages{flex:0 0 240px;overflow-y:auto;padding:8px 0;background:var(--surface2);border:1px solid var(--border);border-radius:14px;}
 .om-orders{flex:1;min-width:0;overflow-y:auto;}
@@ -85,7 +85,13 @@ ul{list-style:none;}
 .om-stage-item.all .om-stage-cnt{background:var(--warm);}
 .om-orders-head{font-size:15px;font-weight:700;color:var(--navy);margin:2px 2px 12px;font-family:"Noto Serif TC",serif;}
 .promo-empty{text-align:center;color:var(--text-muted);font-size:13.5px;padding:50px 0;}
-.promo-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:visible;transition:box-shadow var(--t);}
+.promo-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:visible;transition:box-shadow var(--t);display:flex;flex-direction:column;}
+.pc-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:10px 12px 0;}
+.pc-title{font-size:14px;font-weight:700;color:var(--text-primary);line-height:1.3;padding:6px 12px 8px;word-break:break-word;}
+.pc-foot{display:flex;align-items:center;gap:5px;padding:8px 12px;border-top:1px solid var(--border);margin-top:auto;}
+.pc-btn{background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-secondary);padding:3px 7px;border-radius:6px;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;}
+.pc-btn:hover{background:var(--surface2);}
+.pc-more,.pc-noact{font-size:11px;color:var(--text-muted);padding:2px 0;}
 .promo-card:hover{box-shadow:var(--shadow);}
 .promo-row{display:flex;align-items:center;gap:8px;padding:10px 14px;flex-wrap:nowrap;overflow:hidden;position:relative;}
 .promo-stage-tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff;cursor:pointer;transition:opacity var(--t);white-space:nowrap;flex-shrink:0;}
@@ -835,8 +841,9 @@ function buildPromoCard(r){
   const clientName=viewMode==='progress'?(getClientById(r.clientId)?.shortName||''):'';
   const card=document.createElement('div');card.className='promo-card';card.dataset.id=r.id;
   const footerRight=r.closed?`<span class="promo-closed-label" data-unclose="${r.id}" title="點兩下可逆轉">✓ 標案議價</span>`:`<button class="btn btn-success btn-sm" data-convert="${r.id}">→ 轉為訂單</button>`;
+  const _acts=[...pendingActions,...doneActions];
   card.innerHTML=`
-    <div class="promo-row">
+    <div class="pc-head">
       <div class="stage-pop-wrap">
         <span class="promo-stage-tag ${si.cls}" data-stage-open="${r.id}">${si.label}</span>
         <div class="stage-inline-pop" id="stagePop_${r.id}">
@@ -846,24 +853,24 @@ function buildPromoCard(r){
       </div>
       <span class="promo-type-badge ${r.type==='續訂'?'type-renew':'type-new'}">${r.type||'新訂'}</span>
       ${r.dept?`<span class="promo-dept-text">${r.dept}</span>`:''}
-      ${clientName?`<span class="promo-client-name">${clientName}</span>`:''}
-      <span class="promo-product-name">${r.product||'—'}</span>
-      <div class="promo-row-actions">
-        <button class="btn btn-ghost btn-sm" data-notes-promo="${r.id}" title="筆記">📝 筆記${(r.notes&&r.notes.length)?` <span class="notes-count">${r.notes.length}</span>`:''}</button>
-        <button class="btn btn-ghost btn-sm" data-toggle-panel="${r.id}">＋行動</button>
-        ${footerRight}
-        <button class="btn btn-ghost btn-sm" data-edit-promo="${r.id}">✎</button>
-      </div>
     </div>
+    <div class="pc-title">${clientName?`<span class="promo-client-name">${clientName}</span> `:''}${r.product||'—'}</div>
     <div class="promo-actions-panel" id="actionPanel_${r.id}">
       ${hasActions
-        ? [...pendingActions,...doneActions].map(a=>`
+        ? _acts.slice(0,4).map(a=>`
             <div class="promo-action-row${a.done?' done-action':''}">
               <div class="promo-action-check${a.done?' checked':''}" data-toggle="${r.id}" data-action="${a.id}">${a.done?'✓':''}</div>
               <span class="promo-action-date ${dueDateCls(a.date)}">${actionDateLabel(a.date)}</span>
               <span class="promo-action-desc${a.done?' done-desc':''}">${a.desc||''}</span>
-            </div>`).join('')
-        : ''}
+            </div>`).join('') + (_acts.length>4?`<div class="pc-more">還有 ${_acts.length-4} 項…</div>`:'')
+        : '<div class="pc-noact">尚無行動</div>'}
+    </div>
+    <div class="pc-foot">
+      <button class="pc-btn" data-notes-promo="${r.id}" title="筆記">📝${(r.notes&&r.notes.length)?`<span class="notes-count">${r.notes.length}</span>`:''}</button>
+      <button class="pc-btn" data-toggle-panel="${r.id}" title="新增／編輯行動">＋行動</button>
+      <span style="flex:1;"></span>
+      ${footerRight}
+      <button class="pc-btn" data-edit-promo="${r.id}" title="編輯">✎</button>
     </div>`;
   let _selStage=r.stage;
   card.querySelector('[data-stage-open]').addEventListener('click',e=>{e.stopPropagation();const pop=document.getElementById(`stagePop_${r.id}`);const was=pop.classList.contains('open');document.querySelectorAll('.stage-inline-pop.open').forEach(p=>p.classList.remove('open'));if(!was)pop.classList.add('open');});
