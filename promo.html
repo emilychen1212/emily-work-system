@@ -239,10 +239,9 @@ ul{list-style:none;}
           <select id="promoType"><option value="新訂">新訂推廣</option><option value="續訂">續訂追蹤</option></select></div>
         <div class="form-group"><label>推廣階段 <span class="required">*</span></label>
           <select id="promoStage">
-            <option value="draft">信件草稿</option><option value="waiting">等待回覆</option>
-            <option value="needcheck">需求確認</option><option value="trial">試用中</option>
-            <option value="recommending">薦購中</option><option value="discuss">方案討論</option>
-            <option value="prepquote">準備報價</option><option value="pause">暫結案</option>
+            <option value="intro">介紹</option><option value="interview">需求訪談</option>
+            <option value="trial">試用申請／試用中</option><option value="proposal">提案報價／方案討論</option>
+            <option value="clientdiscuss">客戶討論中</option><option value="evaluate">評估採購</option>
           </select></div>
         <div class="form-group full"><label>備註</label><textarea id="promoNote" rows="2" placeholder="推廣說明、客戶反應…"></textarea></div>
         <!-- 訂單資訊：僅續訂顯示 -->
@@ -480,6 +479,7 @@ if (__token) { __loadAndStart(); } else { __showLogin(''); }
 </script>
 <script>
 function __startApp() {
+_migratePromoStages();
 
 // ===== DASHBOARD =====
 const GOAL_WEEK  = 8;
@@ -683,16 +683,23 @@ const DB_KEY='crm_data';
 const PROMO_KEY='promo_data';
 const CURRENCY_SYMBOLS={USD:'US$',EUR:'€',TWD:'NT$'};
 const STAGES=[
-  {key:'draft',        label:'信件草稿', cls:'stage-draft'       },
-  {key:'waiting',      label:'等待回覆', cls:'stage-waiting'     },
-  {key:'needcheck',    label:'需求確認', cls:'stage-needcheck'   },
-  {key:'trial',        label:'試用中',   cls:'stage-trial'       },
-  {key:'recommending', label:'薦購中',   cls:'stage-recommending'},
-  {key:'discuss',      label:'方案討論', cls:'stage-discuss'     },
-  {key:'prepquote',    label:'準備報價', cls:'stage-prepquote'   },
-  {key:'pause',        label:'暫結案',   cls:'stage-pause'       },
+  {key:'intro',        label:'介紹',             cls:'stage-draft'       },
+  {key:'interview',    label:'需求訪談',         cls:'stage-needcheck'   },
+  {key:'trial',        label:'試用申請／試用中', cls:'stage-trial'       },
+  {key:'proposal',     label:'提案報價／方案討論', cls:'stage-prepquote' },
+  {key:'clientdiscuss',label:'客戶討論中',       cls:'stage-recommending'},
+  {key:'evaluate',     label:'評估採購',         cls:'stage-discuss'     },
 ];
-function stageInfo(key){return STAGES.find(s=>s.key===key)||{label:key,cls:'stage-draft'};}
+const PROMO_LEGACY_LABELS={pause:'暫結案',draft:'介紹',waiting:'需求訪談',needcheck:'需求訪談',recommending:'客戶討論中',discuss:'提案報價／方案討論',prepquote:'提案報價／方案討論'};
+function stageInfo(key){return STAGES.find(s=>s.key===key)||{label:PROMO_LEGACY_LABELS[key]||key,cls:'stage-pause'};}
+function _migratePromoStages(){
+  try{
+    const map={draft:'intro',waiting:'interview',needcheck:'interview',recommending:'clientdiscuss',discuss:'proposal',prepquote:'proposal'};
+    const d=promoLoad(); let n=0;
+    (d.records||[]).forEach(r=>{ if(map[r.stage]){ r.stage=map[r.stage]; n++; } });
+    if(n) promoSave(d);
+  }catch(e){}
+}
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function dbLoad(){try{const raw=cloudStore.getItem(DB_KEY);if(!raw)return{clients:[],orders:[],contracts:[],contacts:[]};const d=JSON.parse(raw);d.clients=d.clients||[];d.orders=d.orders||[];d.contracts=d.contracts||[];d.contacts=d.contacts||[];return d;}catch{return{clients:[],orders:[],contracts:[],contacts:[]};}}
 function dbSave(d){cloudStore.setItem(DB_KEY,JSON.stringify(d));}
@@ -738,7 +745,7 @@ function renderClientList(filter=''){
 function selectClient(clientId){currentClientId=clientId;document.querySelectorAll('.client-item').forEach(li=>li.classList.toggle('active',li.dataset.id===clientId));showPromoPage();}
 function showPromoPage(){document.getElementById('emptyState').style.display='none';document.getElementById('promoPage').style.display='block';renderPromoPage();}
 function buildStageTabs(){
-  const all=[{key:'all',label:'所有'},...STAGES,{key:'closed',label:'✓ 已成案',cls:''}];
+  const all=[{key:'all',label:'所有'},...STAGES,{key:'closed',label:'✓ 標案議價',cls:''}];
   return all.map(s=>`<button class="stage-tab${s.key===currentStageTab?' active':''}" data-stage-tab="${s.key}">${s.label}</button>`).join('');
 }
 function renderPromoPage(){
@@ -797,7 +804,7 @@ function buildPromoCard(r){
   const hasActions=(r.actions||[]).length>0;
   const clientName=viewMode==='progress'?(getClientById(r.clientId)?.shortName||''):'';
   const card=document.createElement('div');card.className='promo-card';card.dataset.id=r.id;
-  const footerRight=r.closed?`<span class="promo-closed-label" data-unclose="${r.id}" title="點兩下可逆轉">✓ 已成案</span>`:`<button class="btn btn-success btn-sm" data-convert="${r.id}">→ 轉為訂單</button>`;
+  const footerRight=r.closed?`<span class="promo-closed-label" data-unclose="${r.id}" title="點兩下可逆轉">✓ 標案議價</span>`:`<button class="btn btn-success btn-sm" data-convert="${r.id}">→ 轉為訂單</button>`;
   card.innerHTML=`
     <div class="promo-row">
       <div class="stage-pop-wrap">
@@ -843,7 +850,7 @@ function buildPromoCard(r){
   return card;
 }
 async function reverseClosed(promoId,linkedOrderId){
-  const ok=await showConfirm('確定要逆轉已成案？相關訂單將從訂單系統中刪除。','逆轉已成案');
+  const ok=await showConfirm('確定要逆轉標案議價？相關訂單將從訂單系統中刪除。','逆轉標案議價');
   if(!ok)return;
   if(linkedOrderId){const db=dbLoad();db.orders=db.orders.filter(o=>o.id!==linkedOrderId);dbSave(db);}
   setPromoClosed(promoId,false,null);renderPromoGrid();showToast('已逆轉成案，相關訂單已刪除');
@@ -1070,7 +1077,7 @@ async function importPromoBackup(file){
     reader.readAsText(file);
   });
 }
-function exportCSV(){const records=viewMode==='client'?getPromoRecordsByClient(currentClientId):getAllPromoRecords();const clientMap={};getClients().forEach(c=>{clientMap[c.id]=c;});const headers=['客戶','產品名稱','科部','類型','推廣階段','備註','後續行動（未完成）','更新時間'];const rows=records.map(r=>[clientMap[r.clientId]?.shortName||'',r.product,r.dept||'',r.type||'',r.closed?'已成案':stageInfo(r.stage).label,r.note||'',(r.actions||[]).filter(a=>!a.done).map(a=>`${fmtDate(a.date)} ${a.desc}`).join(' | '),fmtDateTime(r.updatedAt)]);const csv=[headers,...rows].map(row=>row.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`推廣記錄_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);showToast('匯出成功');}
+function exportCSV(){const records=viewMode==='client'?getPromoRecordsByClient(currentClientId):getAllPromoRecords();const clientMap={};getClients().forEach(c=>{clientMap[c.id]=c;});const headers=['客戶','產品名稱','科部','類型','推廣階段','備註','後續行動（未完成）','更新時間'];const rows=records.map(r=>[clientMap[r.clientId]?.shortName||'',r.product,r.dept||'',r.type||'',r.closed?'標案議價':stageInfo(r.stage).label,r.note||'',(r.actions||[]).filter(a=>!a.done).map(a=>`${fmtDate(a.date)} ${a.desc}`).join(' | '),fmtDateTime(r.updatedAt)]);const csv=[headers,...rows].map(row=>row.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`推廣記錄_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);showToast('匯出成功');}
 document.getElementById('viewByClient').addEventListener('click',()=>{viewMode='client';document.getElementById('viewByClient').classList.add('active');document.getElementById('viewByProgress').classList.remove('active');renderClientList();if(currentClientId)showPromoPage();else{document.getElementById('emptyState').style.display='flex';document.getElementById('promoPage').style.display='none';}});
 document.getElementById('viewByProgress').addEventListener('click',()=>{viewMode='progress';document.getElementById('viewByProgress').classList.add('active');document.getElementById('viewByClient').classList.remove('active');document.querySelectorAll('.client-item').forEach(li=>li.classList.remove('active'));renderClientList();showPromoPage();});
 document.getElementById('clientSearch').addEventListener('input',e=>{

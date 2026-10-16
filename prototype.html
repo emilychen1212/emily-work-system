@@ -9465,7 +9465,7 @@ function _inWeek(iso, wk) {
 }
 function _mmdd(d) { return _isoDate(d).slice(5).replace('-', '/'); }
 
-const _PROMO_STAGE_LABELS = { draft:'信件草稿', waiting:'等待回覆', needcheck:'需求確認', trial:'試用中', recommending:'薦購中', discuss:'方案討論', prepquote:'準備報價', pause:'暫結案', closed:'已成案' };
+const _PROMO_STAGE_LABELS = { intro:'介紹', interview:'需求訪談', trial:'試用申請／試用中', proposal:'提案報價／方案討論', clientdiscuss:'客戶討論中', evaluate:'評估採購', closed:'標案議價', draft:'介紹', waiting:'需求訪談', needcheck:'需求訪談', recommending:'客戶討論中', discuss:'提案報價／方案討論', prepquote:'提案報價／方案討論', pause:'暫結案' };
 const _MILESTONE_LABELS = [
   ['contractReceivedAt', '收到合約電子檔'],
   ['deliveryOrderSubmittedAt', '出貨單完成'],
