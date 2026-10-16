@@ -67,7 +67,23 @@ ul{list-style:none;}
 .stage-tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:700;}
 .stage-tab:hover:not(.active){color:var(--text-primary);background:var(--surface2);}
 .promo-container{padding:16px 28px 40px;}
-.promo-grid{display:flex;flex-direction:column;gap:8px;}
+".promo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-content:start;}
+.om-split{display:flex;gap:20px;padding:6px 28px 28px;align-items:stretch;height:calc(100vh - 230px);min-height:460px;}
+.om-stages{flex:0 0 240px;overflow-y:auto;padding:8px 0;background:var(--surface2);border:1px solid var(--border);border-radius:14px;}
+.om-orders{flex:1;min-width:0;overflow-y:auto;}
+.om-stage-item{position:relative;display:flex;align-items:center;gap:10px;padding:10px 16px 10px 40px;cursor:pointer;border-left:3px solid transparent;}
+.om-stage-item:hover{background:rgba(0,0,0,.03);}
+.om-stage-item.active{background:var(--surface);border-left-color:var(--navy);}
+.om-stage-node{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:12px;height:12px;border-radius:50%;border:2.5px solid #c9c4b4;background:var(--surface);z-index:2;}
+.om-stage-item.active .om-stage-node{border-color:var(--navy);background:var(--navy);box-shadow:0 0 0 4px rgba(43,58,66,.14);}
+.om-stage-node.all{border-color:var(--warm);background:var(--warm);}
+.om-stage-line{position:absolute;left:21px;top:-50%;height:100%;width:2px;background:var(--border);z-index:1;}
+.om-stage-lbl{font-size:13px;font-weight:600;color:var(--text-primary);flex:1;line-height:1.3;}
+.om-stage-item.empty .om-stage-lbl{color:var(--text-muted);font-weight:500;}
+.om-stage-cnt{font-size:12px;font-weight:700;color:#fff;background:var(--navy);border-radius:11px;min-width:22px;text-align:center;padding:1px 7px;}
+.om-stage-item.empty .om-stage-cnt{background:#c9c4b4;}
+.om-stage-item.all .om-stage-cnt{background:var(--warm);}
+.om-orders-head{font-size:15px;font-weight:700;color:var(--navy);margin:2px 2px 12px;font-family:"Noto Serif TC",serif;}
 .promo-empty{text-align:center;color:var(--text-muted);font-size:13.5px;padding:50px 0;}
 .promo-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);overflow:visible;transition:box-shadow var(--t);}
 .promo-card:hover{box-shadow:var(--shadow);}
@@ -631,7 +647,7 @@ function renderDashboard(){
 
   // insert before stage-tabs
   const page=document.getElementById('promoPage');
-  const stageTabs=page.querySelector('.stage-tabs');
+  const stageTabs=page.querySelector('.om-split');
   if(stageTabs) page.insertBefore(bar,stageTabs);
   else page.insertBefore(bar,page.firstChild);
 
@@ -652,7 +668,7 @@ function renderDashboard(){
     renderPromoGrid();
     renderDashboard(); // re-render to refresh active state
   }));
-  const stageTabsEl=page.querySelector('.stage-tabs');
+  const stageTabsEl=page.querySelector('.om-split');
   if(stageTabsEl) page.insertBefore(typeBar,stageTabsEl);
 
   // Start auto-scroll ticker
@@ -758,7 +774,7 @@ function renderPromoPage(){
   } else {
     headerHtml=`<div class="page-header"><h1>全部推廣記錄</h1><div class="page-header-actions"><button class="btn btn-ghost btn-sm" id="exportBtn">⬇ 匯出 CSV</button><button class="btn btn-ghost btn-sm" id="exportBackupBtn">⬆ 匯出備份</button><label class="btn btn-ghost btn-sm" style="cursor:pointer;">⬇ 匯入備份<input type="file" accept=".json" id="importBackupInput" style="display:none;"/></label></div></div>`;
   }
-  page.innerHTML=headerHtml+`<div class="stage-tabs">${buildStageTabs()}</div><div class="promo-container"><div class="promo-grid" id="promoGrid"></div></div>`;
+  page.innerHTML=headerHtml+`<div class="om-split"><div class="om-stages" id="promoStages"></div><div class="om-orders"><div class="om-orders-head" id="promoGridHead"></div><div class="promo-grid" id="promoGrid"></div></div></div>`;
   page.querySelectorAll('[data-stage-tab]').forEach(btn=>btn.addEventListener('click',()=>{currentStageTab=btn.dataset.stageTab;renderPromoPage();}));
   page.querySelector('#addPromoBtn')?.addEventListener('click',()=>openPromoModal());
   page.querySelector('#exportBtn')?.addEventListener('click',exportCSV);
@@ -771,30 +787,44 @@ function nearestActionDate(r){
   const pending=(r.actions||[]).filter(a=>!a.done&&a.date).map(a=>a.date).sort();
   return pending.length?pending[0]:'9999-99-99';
 }
-function renderPromoGrid(){
-  const grid=document.getElementById('promoGrid');if(!grid)return;
+function _promoBaseRecords(){
   const _searchVal=document.getElementById('clientSearch')?.value?.trim()||'';
   let records;
   if(viewMode==='client'){
     records=getPromoRecordsByClient(currentClientId);
   } else {
     const allClients=getClients();
-    const matchedIds=_searchVal
-      ?allClients.filter(c=>c.shortName.includes(_searchVal)).map(c=>c.id)
-      :allClients.map(c=>c.id);
+    const matchedIds=_searchVal?allClients.filter(c=>c.shortName.includes(_searchVal)).map(c=>c.id):allClients.map(c=>c.id);
     records=getAllPromoRecords().filter(r=>matchedIds.includes(r.clientId));
   }
-  // 類型篩選
   if(currentTypeFilter!=='all') records=records.filter(r=>r.type===currentTypeFilter);
-  // 階段篩選
+  return records;
+}
+function renderPromoStages(){
+  const el=document.getElementById('promoStages'); if(!el) return;
+  const base=_promoBaseRecords();
+  const countOf=key=> key==='all'?base.filter(r=>!r.closed).length : key==='closed'?base.filter(r=>r.closed).length : base.filter(r=>!r.closed&&r.stage===key).length;
+  const items=[{key:'all',label:'全部',all:true},...STAGES,{key:'closed',label:'標案議價'}];
+  el.innerHTML=items.map(s=>{
+    const c=countOf(s.key); const active=currentStageTab===s.key;
+    return `<div class="om-stage-item ${active?'active':''} ${s.all?'all':''} ${c?'':'empty'}" data-stage-tab="${s.key}">
+      ${s.all?'':'<div class="om-stage-line"></div>'}<div class="om-stage-node ${s.all?'all':''}"></div>
+      <div class="om-stage-lbl">${s.label}</div><div class="om-stage-cnt">${c}</div></div>`;
+  }).join('');
+  el.querySelectorAll('.om-stage-item').forEach(it=>it.addEventListener('click',()=>{ currentStageTab=it.dataset.stageTab; renderPromoGrid(); }));
+}
+function renderPromoGrid(){
+  const grid=document.getElementById('promoGrid');if(!grid)return;
+  let records=_promoBaseRecords();
   if(currentStageTab==='all'){records=records.filter(r=>!r.closed);}
   else if(currentStageTab==='closed'){records=records.filter(r=>r.closed);}
   else{records=records.filter(r=>!r.closed&&r.stage===currentStageTab);}
-  // 按最近未完成行動日期排序（從近到遠），無行動的排最後
   records=records.sort((a,b)=>nearestActionDate(a).localeCompare(nearestActionDate(b)));
-  if(!records.length){grid.innerHTML='<div class="promo-empty">此階段目前沒有推廣記錄</div>';return;}
-  grid.innerHTML='';
-  records.forEach((r,i)=>{const card=buildPromoCard(r);card.style.animationDelay=`${i*20}ms`;grid.appendChild(card);});
+  const head=document.getElementById('promoGridHead');
+  if(head){ const lbl=currentStageTab==='all'?'全部':(currentStageTab==='closed'?'標案議價':stageInfo(currentStageTab).label); head.textContent=`${lbl}（${records.length}）`; }
+  if(!records.length){ grid.innerHTML='<div class="promo-empty">此階段目前沒有推廣記錄</div>'; }
+  else { grid.innerHTML=''; records.forEach((r,i)=>{const card=buildPromoCard(r);card.style.animationDelay=`${i*20}ms`;grid.appendChild(card);}); }
+  renderPromoStages();
 }
 function buildPromoCard(r){
   const si=stageInfo(r.stage);
