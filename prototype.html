@@ -105,6 +105,12 @@ body[data-theme="mono"]{ font-family:"Noto Sans TC","PingFang TC","Microsoft Jhe
 .theme-dot.t-dreamy{background:linear-gradient(135deg,#8B6BBE,#E89DB7);}
 .theme-dot.t-calm{background:linear-gradient(135deg,#2F6F7E,#3CB6A8);}
 .theme-dot.t-mono{background:linear-gradient(135deg,#111,#e5e5e5);}
+.task-row{cursor:grab;}
+.task-row:active{cursor:grabbing;}
+.task-drag-source{opacity:.32;}
+.task-dragging{box-shadow:0 12px 28px rgba(0,0,0,.24);border-radius:10px;background:var(--surface);border:1px solid var(--border);transform:rotate(3deg) scale(1.03);animation:taskWobble .5s ease-in-out infinite;}
+@keyframes taskWobble{0%,100%{transform:rotate(3deg) scale(1.03);}50%{transform:rotate(-2.5deg) scale(1.03);}}
+.work-quad.drag-over{outline:2px dashed var(--warm);outline-offset:-4px;background:var(--surface2);}
 .proj-sub-note{font-size:11px;font-weight:400;color:var(--text-muted);margin-left:4px;}
 .oblig-summary{border-bottom:1px solid var(--border);padding:8px 14px 10px;background:var(--surface2);max-height:34vh;overflow:auto;}
 .oblig-sum-head{font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:6px;display:flex;align-items:center;gap:8px;}
@@ -7602,6 +7608,58 @@ function buildTaskRow(item) {
     </div>`;
 }
 
+function _moveTaskPriority(id, kind, priority){
+  const d=workLoad();
+  if(kind==='task'){ const t=d.tasks.find(x=>x.id===id); if(!t||t.priority===priority) return; t.priority=priority; t.updatedAt=new Date().toISOString(); }
+  else { const c=d.checklist.find(x=>x.id===id); if(!c||c.priority===priority) return; c.priority=priority; }
+  workSave(d); renderWorkQuad(); if(typeof renderProjectList==='function') renderProjectList();
+}
+function _initTaskDrag(row, priority){
+  row.addEventListener('pointerdown', e=>{
+    if(e.button!==0) return;
+    if(e.target.closest('[data-check],[data-edit]')) return;
+    const startX=e.clientX, startY=e.clientY;
+    const id=row.dataset.id, kind=row.dataset.kind;
+    let dragging=false, clone=null, offX=0, offY=0;
+    const onMove=ev=>{
+      const dx=ev.clientX-startX, dy=ev.clientY-startY;
+      if(!dragging){
+        if(Math.hypot(dx,dy)<6) return;
+        dragging=true;
+        const r=row.getBoundingClientRect();
+        offX=startX-r.left; offY=startY-r.top;
+        clone=row.cloneNode(true);
+        clone.classList.add('task-dragging');
+        clone.style.cssText+=`position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;margin:0;z-index:100000;pointer-events:none;`;
+        document.body.appendChild(clone);
+        row.classList.add('task-drag-source');
+        document.body.style.userSelect='none';
+      }
+      clone.style.left=(ev.clientX-offX)+'px';
+      clone.style.top=(ev.clientY-offY)+'px';
+      const el=document.elementFromPoint(ev.clientX, ev.clientY);
+      const quad=el&&el.closest('.work-quad');
+      document.querySelectorAll('.work-quad.drag-over').forEach(q=>{ if(q!==quad) q.classList.remove('drag-over'); });
+      if(quad) quad.classList.add('drag-over');
+    };
+    const onUp=ev=>{
+      document.removeEventListener('pointermove',onMove);
+      document.removeEventListener('pointerup',onUp);
+      if(dragging){
+        const el=document.elementFromPoint(ev.clientX, ev.clientY);
+        const quad=el&&el.closest('.work-quad');
+        const targetPri=quad?quad.dataset.priority:null;
+        if(clone) clone.remove();
+        document.querySelectorAll('.work-quad.drag-over').forEach(q=>q.classList.remove('drag-over'));
+        row.classList.remove('task-drag-source');
+        document.body.style.userSelect='';
+        if(targetPri && targetPri!==priority) _moveTaskPriority(id, kind, targetPri);
+      }
+    };
+    document.addEventListener('pointermove',onMove);
+    document.addEventListener('pointerup',onUp);
+  });
+}
 function renderWorkQuad() {
   const grid = document.getElementById('workQuadGrid');
   if (!grid) return;
@@ -7675,6 +7733,8 @@ function renderWorkQuad() {
         else openChecklistModal(checklistProjectId || '', el.dataset.edit);
       });
     });
+    div.dataset.priority = q.priority;
+    div.querySelectorAll('.task-row').forEach(row => _initTaskDrag(row, q.priority));
     grid.appendChild(div);
   });
 
