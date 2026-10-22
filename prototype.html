@@ -128,6 +128,9 @@ body[data-theme="navyorange"] .btn.btn-success:active{transform:translateY(3px);
 .theme-dot.t-navyorange{background:linear-gradient(135deg,#0E2A4C,#F28A1E);}
 body[data-theme="navyorange"] .dash-stat{background:var(--navy-light);border-color:var(--navy-light);}
 body[data-theme="navyorange"] .dash-stat .dash-stat-num,body[data-theme="navyorange"] .dash-stat .dash-stat-label,body[data-theme="navyorange"] .dash-stat .cu-num{color:#fff;}
+body[data-theme="navyorange"] .om-card-tag[data-state="draft"]{background:#FFF8F0!important;color:#B4560A!important;border:1.5px dashed #F28A1E!important;}
+body[data-theme="navyorange"] .om-card-tag[data-state="active"]{background:var(--navy-light)!important;color:#fff!important;border:none!important;}
+body[data-theme="navyorange"] .om-card-tag[data-state="done"]{background:#E6EEF9!important;color:#1C4C84!important;border:none!important;}
 .task-row{cursor:grab;}
 .task-row:active{cursor:grabbing;}
 .task-drag-source{opacity:.32;}
@@ -969,6 +972,7 @@ ul { list-style: none; }
 }
 .sidebar-home-btn:hover { background: rgba(255,255,255,0.10); color: #fff; }
 .sidebar-home-btn.active { background: rgba(255,255,255,0.18); color: #fff; }
+.sidebar-home-btn .nav-ico{width:17px;height:17px;vertical-align:-3px;margin-right:9px;flex-shrink:0;}
 
 /* ===== 訂單表格式列 ===== */
 .orders-table-wrap {
@@ -2089,13 +2093,13 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
     <div class="sidebar-search">
       <input type="text" id="clientSearch" placeholder="搜尋客戶…" />
     </div>
-    <button class="sidebar-home-btn" id="dashboardBtn">🏠 首頁總覽</button>
-    <button class="sidebar-home-btn active" id="homeBtn">📋 訂單管理</button>
-    <button class="sidebar-home-btn" id="workBtn">📤 任務管理</button>
-    <button class="sidebar-home-btn" id="projectPanelBtn">📁 專案面板</button>
-    <button class="sidebar-home-btn" id="orderSearchBtn">🔍 查詢訂單</button>
-    <button class="sidebar-home-btn" onclick="location.href='promo.html'">📣 推廣系統</button>
-    <button class="sidebar-home-btn" id="userMgmtBtn" style="display:none;" onclick="__openUserMgmt()">👤 帳號管理</button>
+    <button class="sidebar-home-btn" id="dashboardBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首頁總覽</button>
+    <button class="sidebar-home-btn active" id="homeBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>訂單管理</button>
+    <button class="sidebar-home-btn" id="workBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 13 7 5h10l2 8v6H5z"/></svg>任務管理</button>
+    <button class="sidebar-home-btn" id="projectPanelBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>專案面板</button>
+    <button class="sidebar-home-btn" id="orderSearchBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>查詢訂單</button>
+    <button class="sidebar-home-btn" onclick="location.href='promo.html'"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8.5a4 4 0 0 1 0 7"/></svg>推廣系統</button>
+    <button class="sidebar-home-btn" id="userMgmtBtn" style="display:none;" onclick="__openUserMgmt()"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號管理</button>
     <ul class="client-list" id="clientList"></ul>
   </aside>
 
@@ -5964,6 +5968,9 @@ function computeOrderKPI() {
   return { monthDeal, tickerOrders, alerts, clientMap };
 }
 
+const _STATE_DRAFT=new Set(['詢價中','提案報價中','已提案/草報價','採購議價']);
+const _STATE_DONE=new Set(['履約結束']);
+function _statusState(s){ if(_STATE_DRAFT.has(s)) return 'draft'; if(_STATE_DONE.has(s)) return 'done'; return 'active'; }
 function getOrderStatusColor(status) {
   if (['採購議價','契約書簽訂中','可開發票','出貨中'].includes(status)) return '#A36B5E';
   if (['提案報價中','已提案/草報價','詢價中','申退履保金'].includes(status)) return '#C06C4C';
@@ -6172,7 +6179,7 @@ function renderOmOrders() {
     return `<div class="om-card${alertCls}" data-oid="${o.id}">
       <div class="om-card-top">
         <span class="om-card-prod"><b>${c.shortName||'—'}</b>｜${o.productName||'（未命名）'}</span>
-        ${_omStage?'':`<span class="om-card-tag" style="background:${color};">${o.status||'未設定'}</span>`}
+        ${_omStage?'':`<span class="om-card-tag" data-state="${_statusState(o.status)}" style="background:${color};">${o.status||'未設定'}</span>`}
       </div>
       <div class="om-card-meta">訂期 ${period}　·　更新 ${(()=>{const d=new Date(o.updatedAt); if(isNaN(d.getTime()))return '—'; const z=n=>String(n).padStart(2,'0'); return z(d.getMonth()+1)+'/'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes());})()}</div>
       ${note}
