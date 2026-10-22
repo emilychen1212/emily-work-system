@@ -9401,7 +9401,7 @@ function snoozeOrderAlert(orderId, days) {
 // ===== 開發票申請 =====
 const INV_TPL_KEY = 'invoice_template';
 const INV_TPL_DEFAULT =
-`Dear Sylvia,
+`Dear 佳佳,
 
 請協助開立 {TYPE}
 日期：{DATE}
@@ -9411,10 +9411,12 @@ const INV_TPL_DEFAULT =
 總金額：{AMOUNT}
 備註：{NOTE}
 
-再麻煩了，謝謝Sylvia～`;
+再麻煩了，謝謝佳佳～`;
 
 function getInvTemplate() {
-  return cloudStore.getItem(INV_TPL_KEY) || INV_TPL_DEFAULT;
+  let t = cloudStore.getItem(INV_TPL_KEY);
+  if (t && t.indexOf('Sylvia') !== -1) { t = t.replace(/Sylvia/g, '佳佳'); try{ cloudStore.setItem(INV_TPL_KEY, t); }catch(e){} }  // 行政助理換人：自動把已存模板的 Sylvia 改成佳佳
+  return t || INV_TPL_DEFAULT;
 }
 
 function fmtInvDate(dateStr) {
