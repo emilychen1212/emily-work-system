@@ -98,23 +98,23 @@ body[data-theme="mono"]{
 body[data-theme="mono"]{ font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; font-variant-numeric: tabular-nums; }
 /* ══ 主題：導視藍橘（深藍為主、橘色點綴）══ */
 body[data-theme="navyorange"]{
-  --navy:#12305C; --navy-dark:#0D2142; --navy-light:#1E5FB4; --mid:#5A6B85;
+  --navy:#0E2A4C; --navy-dark:#081C34; --navy-light:#1C4C84; --mid:#5A6B85;
   --warm:#F28A1E; --sand:#FFE8CC;
   --bg:#F5F7FB; --surface:#FFFFFF; --surface2:#E6EEF9; --border:#D9E2EF;
   --text-primary:#12305C; --text-secondary:#5A6B85; --text-muted:#8697B0;
-  --success:#1E5FB4; --danger:#C0362C; --warning:#B4560A;
+  --success:#1C4C84; --danger:#C0362C; --warning:#B4560A;
   --tag1-bg:#FFF8F0; --tag1-fg:#B4560A;   /* 洽談/準備 → 橘(草稿感) */
   --tag2-bg:#FBE6E3; --tag2-fg:#B4302A;   /* 重要緊急 → 紅 */
-  --tag3-bg:#E6EEF9; --tag3-fg:#1E5FB4;   /* 履約中 → 藍 */
-  --tag4-bg:#E6EEF9; --tag4-fg:#1E5FB4;   /* 進行/驗收 → 藍(完成感) */
+  --tag3-bg:#E6EEF9; --tag3-fg:#1C4C84;   /* 履約中 → 藍 */
+  --tag4-bg:#E6EEF9; --tag4-fg:#1C4C84;   /* 進行/驗收 → 藍(完成感) */
   --tag5-bg:#FFF8F0; --tag5-fg:#B4560A;   /* 待確認 → 橘 */
   --tag6-bg:#EEF2F8; --tag6-fg:#5A6B85;   /* 結束/未開始 → 灰 */
 }
 /* 導視藍橘：主按鈕實心下緣立體感（按下會沉） */
-body[data-theme="navyorange"] .btn-primary{box-shadow:0 4px 0 #0D2142;transition:transform .12s,box-shadow .12s;}
-body[data-theme="navyorange"] .btn-primary:active{transform:translateY(3px);box-shadow:0 1px 0 #0D2142;}
-body[data-theme="navyorange"] .btn.btn-success{box-shadow:0 4px 0 #15467F;}
-body[data-theme="navyorange"] .btn.btn-success:active{transform:translateY(3px);box-shadow:0 1px 0 #15467F;}
+body[data-theme="navyorange"] .btn-primary{box-shadow:0 4px 0 #081C34;transition:transform .12s,box-shadow .12s;}
+body[data-theme="navyorange"] .btn-primary:active{transform:translateY(3px);box-shadow:0 1px 0 #081C34;}
+body[data-theme="navyorange"] .btn.btn-success{box-shadow:0 4px 0 #123A68;}
+body[data-theme="navyorange"] .btn.btn-success:active{transform:translateY(3px);box-shadow:0 1px 0 #123A68;}
 /* 主題切換器（側欄頂端） */
 .theme-switch{display:flex;align-items:center;gap:8px;padding:6px 14px 2px;}
 .theme-switch .lbl{font-size:11px;color:rgba(255,255,255,.55);}
@@ -125,7 +125,9 @@ body[data-theme="navyorange"] .btn.btn-success:active{transform:translateY(3px);
 .theme-dot.t-dreamy{background:linear-gradient(135deg,#8B6BBE,#E89DB7);}
 .theme-dot.t-calm{background:linear-gradient(135deg,#2F6F7E,#3CB6A8);}
 .theme-dot.t-mono{background:linear-gradient(135deg,#111,#e5e5e5);}
-.theme-dot.t-navyorange{background:linear-gradient(135deg,#12305C,#F28A1E);}
+.theme-dot.t-navyorange{background:linear-gradient(135deg,#0E2A4C,#F28A1E);}
+body[data-theme="navyorange"] .dash-stat{background:var(--navy-light);border-color:var(--navy-light);}
+body[data-theme="navyorange"] .dash-stat .dash-stat-num,body[data-theme="navyorange"] .dash-stat .dash-stat-label,body[data-theme="navyorange"] .dash-stat .cu-num{color:#fff;}
 .task-row{cursor:grab;}
 .task-row:active{cursor:grabbing;}
 .task-drag-source{opacity:.32;}
@@ -2081,11 +2083,8 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
     </div>
     <div class="theme-switch" id="themeSwitch">
       <span class="lbl">主題</span>
-      <button class="theme-dot t-warm"   data-theme="warm"   title="暖木調（原本）"></button>
-      <button class="theme-dot t-dreamy" data-theme="dreamy" title="夢幻紫粉藍"></button>
-      <button class="theme-dot t-calm"   data-theme="calm"   title="護眼藍綠"></button>
-      <button class="theme-dot t-mono"   data-theme="mono"   title="極簡黑白"></button>
       <button class="theme-dot t-navyorange" data-theme="navyorange" title="導視藍橘"></button>
+      <button class="theme-dot t-mono"   data-theme="mono"   title="極簡黑白"></button>
     </div>
     <div class="sidebar-search">
       <input type="text" id="clientSearch" placeholder="搜尋客戶…" />
@@ -7088,7 +7087,8 @@ async function _pullQuickInbox() {
 }
 function _initTheme(){
   const KEY='ews_theme';
-  let t='warm'; try{ t=localStorage.getItem(KEY)||'warm'; }catch(e){}
+  let t='navyorange'; try{ t=localStorage.getItem(KEY)||'navyorange'; }catch(e){}
+  if(['navyorange','mono'].indexOf(t)===-1) t='navyorange';
   const apply=(v)=>{
     document.body.dataset.theme=v;
     document.querySelectorAll('#themeSwitch .theme-dot').forEach(d=>d.classList.toggle('active', d.dataset.theme===v));

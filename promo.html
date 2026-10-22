@@ -49,16 +49,16 @@ body[data-theme="mono"]{
 body[data-theme="mono"]{ font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; font-variant-numeric: tabular-nums; }
 /* ══ 主題：導視藍橘（深藍為主、橘色點綴）══ */
 body[data-theme="navyorange"]{
-  --navy:#12305C; --navy-dark:#0D2142; --navy-light:#1E5FB4; --mid:#5A6B85;
+  --navy:#0E2A4C; --navy-dark:#081C34; --navy-light:#1C4C84; --mid:#5A6B85;
   --warm:#F28A1E; --sand:#FFE8CC;
   --bg:#F5F7FB; --surface:#FFFFFF; --surface2:#E6EEF9; --border:#D9E2EF;
   --text-primary:#12305C; --text-secondary:#5A6B85; --text-muted:#8697B0;
-  --success:#1E5FB4; --danger:#C0362C; --warning:#B4560A;
+  --success:#1C4C84; --danger:#C0362C; --warning:#B4560A;
 }
-body[data-theme="navyorange"] .btn-primary{box-shadow:0 4px 0 #0D2142;transition:transform .12s,box-shadow .12s;}
-body[data-theme="navyorange"] .btn-primary:active{transform:translateY(3px);box-shadow:0 1px 0 #0D2142;}
-body[data-theme="navyorange"] .btn-success{box-shadow:0 4px 0 #15467F;}
-body[data-theme="navyorange"] .btn-success:active{transform:translateY(3px);box-shadow:0 1px 0 #15467F;}
+body[data-theme="navyorange"] .btn-primary{box-shadow:0 4px 0 #081C34;transition:transform .12s,box-shadow .12s;}
+body[data-theme="navyorange"] .btn-primary:active{transform:translateY(3px);box-shadow:0 1px 0 #081C34;}
+body[data-theme="navyorange"] .btn-success{box-shadow:0 4px 0 #123A68;}
+body[data-theme="navyorange"] .btn-success:active{transform:translateY(3px);box-shadow:0 1px 0 #123A68;}
 /* 主題切換器（側欄頂端） */
 .theme-switch{display:flex;align-items:center;gap:8px;padding:2px 0 8px;}
 .theme-switch .lbl{font-size:11px;color:rgba(255,255,255,.55);}
@@ -69,7 +69,9 @@ body[data-theme="navyorange"] .btn-success:active{transform:translateY(3px);box-
 .theme-dot.t-dreamy{background:linear-gradient(135deg,#8B6BBE,#E89DB7);}
 .theme-dot.t-calm{background:linear-gradient(135deg,#2F6F7E,#3CB6A8);}
 .theme-dot.t-mono{background:linear-gradient(135deg,#111,#e5e5e5);}
-.theme-dot.t-navyorange{background:linear-gradient(135deg,#12305C,#F28A1E);}
+.theme-dot.t-navyorange{background:linear-gradient(135deg,#0E2A4C,#F28A1E);}
+body[data-theme="navyorange"] .dash-stat{background:var(--navy-light);border-color:var(--navy-light);}
+body[data-theme="navyorange"] .dash-stat .dash-stat-num,body[data-theme="navyorange"] .dash-stat .dash-stat-label,body[data-theme="navyorange"] .dash-stat .cu-num{color:#fff;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
 body{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;color:var(--text-primary);background:var(--bg);display:flex;overflow:hidden;}
@@ -287,7 +289,7 @@ ul{list-style:none;}
 <aside class="sidebar">
   <div class="sidebar-header">
     <span class="sidebar-title">📣 推廣管理</span>
-    <div class="theme-switch" id="themeSwitch"><span class="lbl">主題</span><button class="theme-dot t-warm" data-theme="warm" title="暖木調（原本）"></button><button class="theme-dot t-dreamy" data-theme="dreamy" title="夢幻紫粉藍"></button><button class="theme-dot t-calm" data-theme="calm" title="護眼藍綠"></button><button class="theme-dot t-mono" data-theme="mono" title="極簡黑白"></button><button class="theme-dot t-navyorange" data-theme="navyorange" title="導視藍橘"></button></div>
+    <div class="theme-switch" id="themeSwitch"><span class="lbl">主題</span><button class="theme-dot t-navyorange" data-theme="navyorange" title="導視藍橘"></button><button class="theme-dot t-mono" data-theme="mono" title="極簡黑白"></button></div>
     <div class="view-toggle">
       <button class="view-btn active" id="viewByClient">按客戶</button>
       <button class="view-btn" id="viewByProgress">按進度</button>
@@ -557,7 +559,8 @@ if (__token) { __loadAndStart(); } else { __showLogin(''); }
 <script>
 function _initTheme(){
   const KEY='ews_theme';
-  let t='warm'; try{ t=localStorage.getItem(KEY)||'warm'; }catch(e){}
+  let t='navyorange'; try{ t=localStorage.getItem(KEY)||'navyorange'; }catch(e){}
+  if(['navyorange','mono'].indexOf(t)===-1) t='navyorange';
   const apply=(v)=>{
     document.body.dataset.theme=v;
     document.querySelectorAll('#themeSwitch .theme-dot').forEach(d=>d.classList.toggle('active', d.dataset.theme===v));
