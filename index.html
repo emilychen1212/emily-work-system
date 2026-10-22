@@ -973,6 +973,12 @@ ul { list-style: none; }
 .sidebar-home-btn:hover { background: rgba(255,255,255,0.10); color: #fff; }
 .sidebar-home-btn.active { background: rgba(255,255,255,0.18); color: #fff; }
 .sidebar-home-btn .nav-ico{width:17px;height:17px;vertical-align:-3px;margin-right:9px;flex-shrink:0;}
+.sidebar-tile-row{display:flex;}
+.sidebar-tile{flex:1;flex-direction:column!important;align-items:center!important;justify-content:center;gap:6px!important;padding:16px 6px!important;text-align:center!important;white-space:normal!important;}
+.sidebar-tile:first-child{border-right:1px solid rgba(255,255,255,0.10);}
+.sidebar-tile .nav-ico{width:22px;height:22px;margin-right:0!important;}
+.sidebar-tile span{font-size:12px;}
+.btn-ico{width:14px;height:14px;vertical-align:-2px;margin-right:5px;flex-shrink:0;}
 
 /* ===== 訂單表格式列 ===== */
 .orders-table-wrap {
@@ -2094,11 +2100,13 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
       <input type="text" id="clientSearch" placeholder="搜尋客戶…" />
     </div>
     <button class="sidebar-home-btn" id="dashboardBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首頁總覽</button>
-    <button class="sidebar-home-btn active" id="homeBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>訂單管理</button>
-    <button class="sidebar-home-btn" id="workBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 13 7 5h10l2 8v6H5z"/></svg>任務管理</button>
+    <button class="sidebar-home-btn" onclick="location.href='promo.html'"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8.5a4 4 0 0 1 0 7"/></svg>推廣系統</button>
+    <div class="sidebar-tile-row">
+      <button class="sidebar-home-btn sidebar-tile active" id="homeBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span>訂單管理</span></button>
+      <button class="sidebar-home-btn sidebar-tile" id="workBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 13 7 5h10l2 8v6H5z"/></svg><span>任務管理</span></button>
+    </div>
     <button class="sidebar-home-btn" id="projectPanelBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>專案面板</button>
     <button class="sidebar-home-btn" id="orderSearchBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>查詢訂單</button>
-    <button class="sidebar-home-btn" onclick="location.href='promo.html'"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8.5a4 4 0 0 1 0 7"/></svg>推廣系統</button>
     <button class="sidebar-home-btn" id="userMgmtBtn" style="display:none;" onclick="__openUserMgmt()"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號管理</button>
     <ul class="client-list" id="clientList"></ul>
   </aside>
@@ -6218,14 +6226,14 @@ function renderHomePage() {
       <h1>訂單管理</h1>
       <div class="page-header-actions">
         <span id="orderHomeCount" style="font-size:12px;color:var(--text-muted);"></span>
-        <button class="btn btn-ghost btn-sm" id="exportDataBtn">⬆ 匯出備份</button>
+        <button class="btn btn-ghost btn-sm" id="exportDataBtn"><svg class="btn-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M4 20h16"/></svg>匯出備份</button>
         <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
-          ⬇ 匯入備份
+          <svg class="btn-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>匯入備份
           <input type="file" accept=".json" id="importFileInput" style="display:none;" />
         </label>
-        <button class="btn btn-ghost btn-sm" onclick="migrateOrdersV2Run()" title="一次性：把舊訂單資料轉成新版時間軸的 checklist 與階段（用既有日期回填）">🔄 一次性資料轉換</button>
-        <button class="btn btn-ghost btn-sm" onclick="_syncOrderSheetNow(true)" title="把所有訂單同步到一張可讀的 Google 試算表">📊 同步訂單總表</button>
-        <a id="orderSheetLink" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;display:${(()=>{try{return localStorage.getItem('order_sheet_url')?'':'none'}catch(e){return 'none'}})()};" href="${(()=>{try{return localStorage.getItem('order_sheet_url')||'#'}catch(e){return '#'}})()}">📄 開啟總表</a>
+        <button class="btn btn-ghost btn-sm" onclick="migrateOrdersV2Run()" title="一次性：把舊訂單資料轉成新版時間軸的 checklist 與階段（用既有日期回填）"><svg class="btn-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>一次性資料轉換</button>
+        <button class="btn btn-ghost btn-sm" onclick="_syncOrderSheetNow(true)" title="把所有訂單同步到一張可讀的 Google 試算表"><svg class="btn-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>同步訂單總表</button>
+        <a id="orderSheetLink" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;display:${(()=>{try{return localStorage.getItem('order_sheet_url')?'':'none'}catch(e){return 'none'}})()};" href="${(()=>{try{return localStorage.getItem('order_sheet_url')||'#'}catch(e){return '#'}})()}"><svg class="btn-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"/></svg>開啟總表</a>
       </div>
     </div>
     <div id="orderDashboardSlot"></div>
