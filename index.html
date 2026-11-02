@@ -10797,12 +10797,18 @@ function openProgressLog(orderId){
     <div class="prog-foot">
       <textarea id="progTa" placeholder="隨手記這次的進度／拜訪重點，例如：今天去 NTU，館員說要等預算核定…"></textarea>
       <div class="prog-acts">
-        <button type="button" class="pclose" onclick="_progClose()">關閉</button>
-        <button type="button" class="padd" onclick="_progAdd('${orderId}')">＋ 新增一筆</button>
+        <button type="button" class="pclose">關閉</button>
+        <button type="button" class="padd">＋ 新增一筆</button>
       </div>
     </div></div>`;
   pop.addEventListener('click',e=>{ if(e.target===pop) _progClose(); });
   document.body.appendChild(pop);
+  // 用 addEventListener 綁定（函式在 __startApp 作用域內，inline onclick 讀不到）
+  pop.querySelector('.pclose').addEventListener('click', _progClose);
+  pop.querySelector('.padd').addEventListener('click', () => _progAdd(orderId));
+  pop.querySelector('#progList').addEventListener('click', (e) => {
+    const b = e.target.closest('.pdel'); if (b) _progDel(orderId, b.dataset.id);
+  });
   _progRenderList(orderId);
   setTimeout(()=>document.getElementById('progTa')?.focus(),30);
 }
@@ -10813,7 +10819,7 @@ function _progRenderList(orderId){
   log.sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
   if(!log.length){ box.innerHTML=`<div class="prog-empty">還沒有任何紀錄<br>在下面打一筆，就會留在這裡 🌱</div>`; return; }
   box.innerHTML=log.map(e=>`<div class="prog-item">
-    <button class="pdel" title="刪除這筆" onclick="_progDel('${orderId}','${e.id}')">✕</button>
+    <button class="pdel" title="刪除這筆" data-id="${e.id}">✕</button>
     <div class="meta">${_progFmt(e.ts)}</div>
     <div class="txt">${String(e.text||'').replace(/</g,'&lt;')}</div>
   </div>`).join('');
