@@ -134,6 +134,7 @@ body[data-theme="navyorange"] .om-card-tag[data-state="done"]{background:#E6EEF9
 .task-row{cursor:grab;}
 .task-row:active{cursor:grabbing;}
 .task-drag-source{opacity:.32;}
+.task-arming{background:var(--surface2);transition:background .18s;}
 .task-dragging{box-shadow:0 12px 28px rgba(0,0,0,.24);border-radius:10px;background:var(--surface);border:1px solid var(--border);transform:rotate(3deg) scale(1.03);animation:taskWobble .5s ease-in-out infinite;}
 @keyframes taskWobble{0%,100%{transform:rotate(3deg) scale(1.03);}50%{transform:rotate(-2.5deg) scale(1.03);}}
 .work-quad.drag-over{outline:2px dashed var(--warm);outline-offset:-4px;background:var(--surface2);}
@@ -7830,24 +7831,51 @@ function _moveTaskPriority(id, kind, priority){
 }
 function _initTaskDrag(row, priority){
   row.addEventListener('pointerdown', e=>{
-    if(e.button!==0) return;
+    if(e.pointerType==='mouse' && e.button!==0) return;
     if(e.target.closest('[data-check],[data-edit]')) return;
+    const isTouch = e.pointerType==='touch';
     const startX=e.clientX, startY=e.clientY;
     const id=row.dataset.id, kind=row.dataset.kind;
-    let dragging=false, clone=null, offX=0, offY=0;
+    // 手機（觸控）需「長按」才進入拖曳；滑鼠維持原本（移動即拖）
+    let dragging=false, armed=!isTouch, clone=null, offX=0, offY=0, lpTimer=null, blockTouch=null;
+    const MOVE_CANCEL = 12;   // 長按前手指移動超過此距離 → 視為捲動，放棄拖曳
+
+    const cleanup=()=>{
+      if(lpTimer){ clearTimeout(lpTimer); lpTimer=null; }
+      document.removeEventListener('pointermove',onMove);
+      document.removeEventListener('pointerup',onUp);
+      document.removeEventListener('pointercancel',onUp);
+      if(blockTouch){ document.removeEventListener('touchmove',blockTouch,{passive:false}); blockTouch=null; }
+      row.classList.remove('task-arming');
+    };
+
+    const startDrag=()=>{
+      dragging=true;
+      const r=row.getBoundingClientRect();
+      offX=startX-r.left; offY=startY-r.top;
+      clone=row.cloneNode(true);
+      clone.classList.add('task-dragging');
+      clone.style.cssText+=`position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;margin:0;z-index:100000;pointer-events:none;`;
+      document.body.appendChild(clone);
+      row.classList.add('task-drag-source');
+      row.classList.remove('task-arming');
+      document.body.style.userSelect='none';
+      // 拖曳期間擋掉頁面捲動（觸控）
+      blockTouch=ev=>ev.preventDefault();
+      document.addEventListener('touchmove',blockTouch,{passive:false});
+      try{ row.setPointerCapture(e.pointerId); }catch(_){}
+    };
+
     const onMove=ev=>{
       const dx=ev.clientX-startX, dy=ev.clientY-startY;
+      if(!armed){
+        // 長按計時還沒到：移動太多就當作在捲動 → 放手，不拖曳
+        if(Math.hypot(dx,dy)>MOVE_CANCEL) cleanup();
+        return;
+      }
       if(!dragging){
-        if(Math.hypot(dx,dy)<6) return;
-        dragging=true;
-        const r=row.getBoundingClientRect();
-        offX=startX-r.left; offY=startY-r.top;
-        clone=row.cloneNode(true);
-        clone.classList.add('task-dragging');
-        clone.style.cssText+=`position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;margin:0;z-index:100000;pointer-events:none;`;
-        document.body.appendChild(clone);
-        row.classList.add('task-drag-source');
-        document.body.style.userSelect='none';
+        if(Math.hypot(dx,dy)<6) return;   // 滑鼠：移動一點才開始
+        startDrag();
       }
       clone.style.left=(ev.clientX-offX)+'px';
       clone.style.top=(ev.clientY-offY)+'px';
@@ -7857,8 +7885,6 @@ function _initTaskDrag(row, priority){
       if(quad) quad.classList.add('drag-over');
     };
     const onUp=ev=>{
-      document.removeEventListener('pointermove',onMove);
-      document.removeEventListener('pointerup',onUp);
       if(dragging){
         const el=document.elementFromPoint(ev.clientX, ev.clientY);
         const quad=el&&el.closest('.work-quad');
@@ -7869,9 +7895,20 @@ function _initTaskDrag(row, priority){
         document.body.style.userSelect='';
         if(targetPri && targetPri!==priority) _moveTaskPriority(id, kind, targetPri);
       }
+      cleanup();
     };
+
     document.addEventListener('pointermove',onMove);
     document.addEventListener('pointerup',onUp);
+    document.addEventListener('pointercancel',onUp);
+    if(isTouch){
+      row.classList.add('task-arming');
+      lpTimer=setTimeout(()=>{
+        lpTimer=null; armed=true;
+        if(navigator.vibrate){ try{ navigator.vibrate(25); }catch(_){} }
+        startDrag();   // 長按時間到 → 直接進入拖曳
+      }, 320);
+    }
   });
 }
 function renderWorkQuad() {
