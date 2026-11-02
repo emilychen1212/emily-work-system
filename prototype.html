@@ -2172,6 +2172,16 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 
   /* 進度筆記彈窗手機微調 */
   .prog-card { width: 94vw; max-height: 90vh; }
+
+  /* 首頁總覽：手機只顯示「今天」那一格 */
+  .db-wrap { padding: 14px 12px; height: auto; }
+  .db-week-grid { grid-template-columns: 1fr; }
+  .db-day-col { display: none; }
+  .db-day-col.today { display: block; }
+  /* 週末預覽（沒有今天那格）→ 顯示第一格（下週一），避免空白 */
+  .db-week-grid:not(:has(.db-day-col.today)) .db-day-col:first-child { display: block; }
+  /* 手機只看今天，不顯示「下週到期預告」 */
+  .db-nextweek { display: none; }
 }
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
