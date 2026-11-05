@@ -2112,6 +2112,43 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .tl-btn.ghost{background:var(--surface2);color:var(--text-secondary);border:1px solid var(--border);}
 .tl-btn.setcur{background:#4A5D4E;color:#fff;}
 
+/* ── 報價作業系統 ── */
+.q-wrap{ padding:20px 28px 40px; }
+.q-empty{ text-align:center; color:var(--text-muted); font-size:14px; line-height:2; padding:50px 0; }
+.q-list-table{ width:100%; border-collapse:separate; border-spacing:0; font-size:13.5px; }
+.q-list-table th{ text-align:left; padding:10px 12px; background:var(--surface2); color:var(--text-secondary); font-weight:700; font-size:12px; border-bottom:1px solid var(--border); }
+.q-list-table td{ padding:11px 12px; border-bottom:1px solid var(--border); }
+.q-list-table tbody tr{ cursor:pointer; }
+.q-list-table tbody tr:hover{ background:var(--surface2); }
+.q-status{ font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; background:var(--surface2); border:1px solid var(--border); color:var(--text-secondary); }
+.q-del,.q-rowdel{ background:none; border:1px solid var(--border); border-radius:6px; width:24px; height:24px; color:var(--text-muted); cursor:pointer; line-height:1; }
+.q-del:hover,.q-rowdel:hover{ background:var(--danger); border-color:var(--danger); color:#fff; }
+.q-editor{ padding:16px 24px 48px; }
+.q-top{ display:flex; flex-wrap:wrap; gap:12px 18px; margin-bottom:16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.q-f{ display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--text-secondary); font-weight:600; }
+.q-f-grow{ flex:1; min-width:200px; }
+.q-f > input, .q-f select{ padding:7px 9px; border:1.5px solid var(--border); border-radius:8px; font-size:13.5px; font-family:inherit; background:#fff; color:var(--text-primary); }
+.q-no-row{ display:flex; gap:6px; }
+.q-no-row input{ flex:1; padding:7px 9px; border:1.5px solid var(--border); border-radius:8px; font-size:13.5px; font-family:inherit; background:#fff; color:var(--text-primary); }
+.btn-xs{ padding:4px 10px; font-size:12px; }
+.q-grid-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:12px; -webkit-overflow-scrolling:touch; }
+.q-grid{ width:100%; border-collapse:separate; border-spacing:0; font-size:13px; min-width:980px; }
+.q-grid th{ background:var(--surface2); color:var(--text-secondary); font-weight:700; font-size:11.5px; padding:8px 7px; text-align:center; border-bottom:1px solid var(--border); white-space:nowrap; line-height:1.3; }
+.q-grid td{ padding:5px 6px; border-bottom:1px solid var(--border); }
+.q-grid tfoot td{ background:var(--surface2); border-top:2px solid var(--border); padding:9px 8px; }
+.q-idx{ text-align:center; color:var(--text-muted); }
+.q-c{ text-align:center; }
+.q-in{ width:100%; box-sizing:border-box; padding:6px 7px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:inherit; background:#fff; color:var(--text-primary); }
+.q-in:focus{ outline:none; border-color:var(--warm); }
+.q-num{ text-align:right; }
+.q-wide{ min-width:150px; }
+.q-narrow{ width:60px; }
+.q-cur{ width:72px; }
+.q-chk{ width:18px; height:18px; }
+.q-calc{ white-space:nowrap; color:var(--text-primary); }
+.q-quote{ color:var(--warm); }
+.q-hint{ margin-top:12px; font-size:12px; color:var(--text-muted); line-height:1.7; }
+
 /* ============================================================
    📱 手機版（≤760px）— 訂單管理 / 任務管理 / 進度筆記
    ============================================================ */
@@ -2183,6 +2220,13 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
   .db-week-grid:not(:has(.db-day-col.today)) .db-day-col:first-child { display: block; }
   /* 手機只看今天，不顯示「下週到期預告」 */
   .db-nextweek { display: none; }
+
+  /* 報價作業：手機縮距、輸入欄位放大好點 */
+  .q-wrap { padding: 14px 12px 80px; }
+  .q-editor { padding: 12px 12px 80px; }
+  .q-top { padding: 12px; gap: 10px 12px; }
+  .q-f, .q-f-grow { min-width: 140px; flex: 1; }
+  .q-list-table { font-size: 13px; }
 }
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -2212,6 +2256,7 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
       <button class="sidebar-home-btn sidebar-tile active" id="homeBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span>訂單管理</span></button>
       <button class="sidebar-home-btn sidebar-tile" id="workBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 13 7 5h10l2 8v6H5z"/></svg><span>任務管理</span></button>
     </div>
+    <button class="sidebar-home-btn" id="quoteBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6"/><path d="M9 11h2M13 11h2M9 15h2M13 15h2"/></svg>報價作業</button>
     <button class="sidebar-home-btn" id="projectPanelBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>專案面板</button>
     <button class="sidebar-home-btn" id="orderSearchBtn"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>查詢訂單</button>
     <button class="sidebar-home-btn" id="userMgmtBtn" style="display:none;" onclick="__openUserMgmt()"><svg class="nav-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號管理</button>
@@ -2227,6 +2272,7 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
     <div id="homePage" class="page active"></div>
     <div id="clientPage" class="page"></div>
     <div id="workPage" class="page"></div>
+    <div id="quotePage" class="page"></div>
     <div id="projectPage" class="page"></div>
   </main>
 
@@ -7116,6 +7162,11 @@ document.getElementById('workBtn').addEventListener('click', () => {
   document.getElementById('projectPanelBtn')?.classList.remove('active');
   renderWorkPage();
 });
+document.getElementById('quoteBtn').addEventListener('click', () => {
+  document.querySelectorAll('.client-item').forEach(li => li.classList.remove('active'));
+  _quoteView = 'list'; _quoteEditingId = null;
+  renderQuotePage();
+});
 document.getElementById('projectPanelBtn').addEventListener('click', () => {
   document.getElementById('homeBtn')?.classList.remove('active');
   document.getElementById('workBtn')?.classList.remove('active');
@@ -7523,6 +7574,237 @@ async function importData(file) {
   });
 }
 
+
+// ══════════════════ 報價作業系統（階段一：批次試算 + 存草稿 + 列表）══════════════════
+const QUOTE_KEY = 'crm_quotes';
+const QUOTE_STATUSES = ['草稿','送主管核對','已核准','已報出','成交','失單'];
+let _quoteView = 'list';     // 'list' | 'editor'
+let _quoteEditingId = null;
+let _quoteDraft = null;      // 編輯中的工作副本
+let _qSaveTimer = null;
+
+function quoteLoad(){
+  try{ const raw=cloudStore.getItem(QUOTE_KEY); const d=raw?JSON.parse(raw):{}; if(!Array.isArray(d.quotes)) d.quotes=[]; return d; }
+  catch{ return {quotes:[]}; }
+}
+function quoteSave(d){ cloudStore.setItem(QUOTE_KEY, JSON.stringify(d)); }
+function _qUid(p){ return (p||'q')+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function _qNum(v){ const n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isFinite(n)?n:0; }
+function _qMoney(n){ return 'NT$ '+Math.round(n).toLocaleString('zh-TW'); }
+function _qNewItem(){ return { id:_qUid('i'), productName:'', currency:'USD', lastPrice:'', markupPct:'', origPrice:'', taxIncluded:true, rate:'', costTwd:'' }; }
+
+// 單列計算（rate 空 → 用整張單的預設匯率 sheetRate）
+function _qCalcItem(it, sheetRate){
+  const orig=_qNum(it.origPrice);
+  const rate=(it.rate!=='' && it.rate!=null)?_qNum(it.rate):_qNum(sheetRate);
+  const pre=orig*rate;                         // 台幣未稅
+  const quote=it.taxIncluded?pre*1.05:pre;     // 台幣報價
+  const cost=_qNum(it.costTwd);
+  const margin=(cost>0&&pre>0)?(pre-cost)/pre*100:null;
+  return {orig,pre,quote,margin};
+}
+
+function renderQuotePage(){
+  showPage('quotePage');
+  document.querySelectorAll('.sidebar-home-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('quoteBtn')?.classList.add('active');
+  if(_quoteView==='editor') _renderQuoteEditor(); else _renderQuoteList();
+}
+
+function _renderQuoteList(){
+  const page=document.getElementById('quotePage');
+  const d=quoteLoad();
+  const quotes=d.quotes.slice().sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+  const esc=s=>String(s||'').replace(/</g,'&lt;');
+  const rows=quotes.map(q=>{
+    const c=getClientById(q.clientId);
+    const tot=(q.items||[]).reduce((s,it)=>s+_qCalcItem(it,q.sheetRate).quote,0);
+    return `<tr data-qopen="${q.id}">
+      <td>${esc(q.quoteNo)||'—'}</td>
+      <td>${c?esc(c.shortName):'—'}</td>
+      <td>${q.createdAt?fmtDate(q.createdAt):'—'}</td>
+      <td><span class="q-status">${esc(q.status)||'草稿'}</span></td>
+      <td style="text-align:center;">${(q.items||[]).length}</td>
+      <td style="text-align:right;">${tot?_qMoney(tot):'—'}</td>
+      <td style="text-align:center;"><button class="q-del" data-qdel="${q.id}" title="刪除">✕</button></td>
+    </tr>`;
+  }).join('');
+  page.innerHTML=`
+    <div class="page-header">
+      <h1>報價作業</h1>
+      <div class="page-header-actions">
+        <button class="btn btn-primary btn-sm" id="qNewBtn">＋ 新建報價</button>
+      </div>
+    </div>
+    <div class="q-wrap">
+      ${quotes.length ? `<table class="q-list-table"><thead><tr>
+        <th>報價單號</th><th>客戶</th><th>建立日</th><th>狀態</th><th>品項</th><th>台幣合計</th><th></th>
+      </tr></thead><tbody>${rows}</tbody></table>`
+      : `<div class="q-empty">還沒有報價單<br>點右上角「＋ 新建報價」開始試算 🧮</div>`}
+    </div>`;
+  document.getElementById('qNewBtn').addEventListener('click', _qNewQuote);
+  page.querySelectorAll('[data-qopen]').forEach(tr=>tr.addEventListener('click', e=>{
+    if(e.target.closest('[data-qdel]')) return;
+    _quoteEditingId=tr.dataset.qopen; _quoteView='editor'; renderQuotePage();
+  }));
+  page.querySelectorAll('[data-qdel]').forEach(b=>b.addEventListener('click', async e=>{
+    e.stopPropagation();
+    const ok=(typeof showConfirm==='function')?await showConfirm('確定刪除這張報價單？'):confirm('確定刪除這張報價單？');
+    if(!ok) return;
+    const dd=quoteLoad(); dd.quotes=dd.quotes.filter(x=>x.id!==b.dataset.qdel); quoteSave(dd);
+    renderQuotePage(); showToast('已刪除報價單');
+  }));
+}
+
+function _qNewQuote(){
+  const now=new Date().toISOString();
+  const q={ id:_qUid('q'), quoteNo:'', clientId:'', note:'', status:'草稿', sheetRate:'', createdAt:now, updatedAt:now, items:[_qNewItem()] };
+  const d=quoteLoad(); d.quotes.push(q); quoteSave(d);
+  _quoteEditingId=q.id; _quoteView='editor'; renderQuotePage();
+}
+
+function _renderQuoteEditor(){
+  const page=document.getElementById('quotePage');
+  const d=quoteLoad();
+  const src=d.quotes.find(q=>q.id===_quoteEditingId);
+  if(!src){ _quoteView='list'; return _renderQuoteList(); }
+  _quoteDraft=JSON.parse(JSON.stringify(src));
+  if(!Array.isArray(_quoteDraft.items)||!_quoteDraft.items.length) _quoteDraft.items=[_qNewItem()];
+  const q=_quoteDraft;
+  const attr=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const clientOpts=['<option value="">（選擇客戶）</option>'].concat(
+    getClients().sort((a,b)=>(a.sortOrder??9999)-(b.sortOrder??9999)||a.shortName.localeCompare(b.shortName,'zh-TW'))
+      .map(c=>`<option value="${c.id}" ${c.id===q.clientId?'selected':''}>${String(c.shortName).replace(/</g,'&lt;')}</option>`)).join('');
+  const statusOpts=QUOTE_STATUSES.map(s=>`<option ${s===(q.status||'草稿')?'selected':''}>${s}</option>`).join('');
+  page.innerHTML=`
+    <div class="page-header">
+      <button class="btn btn-ghost btn-sm" id="qBackBtn">← 返回列表</button>
+      <h1 style="font-size:18px;flex:1;">報價試算</h1>
+      <div class="page-header-actions">
+        <button class="btn btn-ghost btn-sm" id="qDupRowBtn">＋ 新增一列</button>
+        <button class="btn btn-primary btn-sm" id="qSaveBtn">💾 儲存</button>
+      </div>
+    </div>
+    <div class="q-editor">
+      <div class="q-top">
+        <label class="q-f"><span>客戶</span><select id="qClient">${clientOpts}</select></label>
+        <label class="q-f"><span>報價單號</span><span class="q-no-row"><input id="qNo" type="text" value="${attr(q.quoteNo)}" placeholder="客戶英文＋日期＋品名"/><button type="button" class="btn btn-ghost btn-xs" id="qNoSuggest" title="依客戶+日期產生建議">建議</button></span></label>
+        <label class="q-f"><span>預設匯率（帶入各列）</span><input id="qRate" type="text" inputmode="decimal" value="${attr(q.sheetRate)}" placeholder="例 31.9"/></label>
+        <label class="q-f"><span>狀態</span><select id="qStatus">${statusOpts}</select></label>
+        <label class="q-f q-f-grow"><span>備註</span><input id="qNote" type="text" value="${attr(q.note)}" placeholder="這張報價單的說明…"/></label>
+      </div>
+      <div class="q-grid-wrap">
+        <table class="q-grid">
+          <thead><tr>
+            <th>#</th><th>品項</th><th>幣別</th><th>去年原幣</th><th>漲幅%</th><th>今年原幣</th><th>含稅</th><th>匯率</th><th>台幣(未稅)</th><th>台幣(報價)</th><th>公司底價<br>(台幣)</th><th>毛利%</th><th></th>
+          </tr></thead>
+          <tbody id="qGridBody"></tbody>
+          <tfoot><tr>
+            <td colspan="8" style="text-align:right;font-weight:700;">合計</td>
+            <td style="text-align:right;font-weight:700;" id="qSumPre">—</td>
+            <td style="text-align:right;font-weight:700;color:var(--warm);" id="qSumQuote">—</td>
+            <td colspan="3"></td>
+          </tr></tfoot>
+        </table>
+      </div>
+      <div class="q-hint">填「去年原幣＋漲幅%」會自動算今年原幣；或直接填今年原幣。匯率各列留空＝用上方預設匯率。台幣即時計算，填了公司底價就會算毛利%。</div>
+    </div>`;
+  _qRenderRows();
+  const body=document.getElementById('qGridBody');
+  body.addEventListener('input', _qOnGridInput);
+  body.addEventListener('change', _qOnGridInput);
+  body.addEventListener('click', e=>{ const b=e.target.closest('[data-qrowdel]'); if(b) _qDelRow(b.dataset.qrowdel); });
+  document.getElementById('qBackBtn').addEventListener('click', ()=>{ _qPersistDraft(); _quoteView='list'; _quoteEditingId=null; renderQuotePage(); });
+  document.getElementById('qSaveBtn').addEventListener('click', ()=>{ _qPersistDraft(); showToast('已儲存報價單 💾'); });
+  document.getElementById('qDupRowBtn').addEventListener('click', ()=>{ _quoteDraft.items.push(_qNewItem()); _qRenderRows(); _qScheduleSave(); });
+  document.getElementById('qClient').addEventListener('change', e=>{ _quoteDraft.clientId=e.target.value; _qScheduleSave(); });
+  document.getElementById('qNo').addEventListener('input', e=>{ _quoteDraft.quoteNo=e.target.value; _qScheduleSave(); });
+  document.getElementById('qNote').addEventListener('input', e=>{ _quoteDraft.note=e.target.value; _qScheduleSave(); });
+  document.getElementById('qStatus').addEventListener('change', e=>{ _quoteDraft.status=e.target.value; _qScheduleSave(); });
+  document.getElementById('qRate').addEventListener('input', e=>{ _quoteDraft.sheetRate=e.target.value; _qRecalcAll(); _qScheduleSave(); });
+  document.getElementById('qNoSuggest').addEventListener('click', ()=>{
+    const c=getClientById(_quoteDraft.clientId);
+    const base=(c&&(c.engName||c.shortName))||'';
+    const dt=new Date(); const ymd=`${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}`;
+    const prod=(_quoteDraft.items[0]&&_quoteDraft.items[0].productName)||'';
+    const sug=[base,ymd,prod].filter(Boolean).join('-');
+    _quoteDraft.quoteNo=sug; document.getElementById('qNo').value=sug; _qScheduleSave();
+  });
+}
+
+function _qRowHtml(it,i){
+  const curOpts=['USD','EUR','GBP','JPY','TWD'];
+  const cs=curOpts.includes(it.currency)?it.currency:'USD';
+  const curSel=curOpts.map(c=>`<option ${c===cs?'selected':''}>${c}</option>`).join('');
+  const attr=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  return `<tr data-qrow="${it.id}">
+    <td class="q-idx">${i+1}</td>
+    <td><input class="q-in q-wide" data-f="productName" value="${attr(it.productName)}" placeholder="產品名稱"/></td>
+    <td><select class="q-in q-cur" data-f="currency">${curSel}</select></td>
+    <td><input class="q-in q-num" data-f="lastPrice" inputmode="decimal" value="${attr(it.lastPrice)}" placeholder="去年"/></td>
+    <td><input class="q-in q-num q-narrow" data-f="markupPct" inputmode="decimal" value="${attr(it.markupPct)}" placeholder="%"/></td>
+    <td><input class="q-in q-num" data-f="origPrice" inputmode="decimal" value="${attr(it.origPrice)}" placeholder="今年"/></td>
+    <td class="q-c"><input type="checkbox" class="q-chk" data-f="taxIncluded" ${it.taxIncluded?'checked':''}/></td>
+    <td><input class="q-in q-num q-narrow" data-f="rate" inputmode="decimal" value="${attr(it.rate)}" placeholder="預設"/></td>
+    <td class="q-calc q-pre" style="text-align:right;">—</td>
+    <td class="q-calc q-quote" style="text-align:right;font-weight:700;">—</td>
+    <td><input class="q-in q-num" data-f="costTwd" inputmode="decimal" value="${attr(it.costTwd)}" placeholder="底價"/></td>
+    <td class="q-calc q-margin" style="text-align:right;">—</td>
+    <td class="q-c"><button class="q-rowdel" data-qrowdel="${it.id}" title="刪除此列">✕</button></td>
+  </tr>`;
+}
+function _qRenderRows(){
+  const body=document.getElementById('qGridBody'); if(!body) return;
+  body.innerHTML=_quoteDraft.items.map((it,i)=>_qRowHtml(it,i)).join('');
+  _qRecalcAll();
+}
+function _qOnGridInput(e){
+  const tr=e.target.closest('[data-qrow]'); if(!tr) return;
+  const it=_quoteDraft.items.find(x=>x.id===tr.dataset.qrow); if(!it) return;
+  const f=e.target.dataset.f; if(!f) return;
+  if(f==='taxIncluded') it.taxIncluded=e.target.checked; else it[f]=e.target.value;
+  // 去年原幣 + 漲幅% → 自動算今年原幣，寫回「今年原幣」欄
+  if((f==='lastPrice'||f==='markupPct') && it.lastPrice!=='' && it.lastPrice!=null){
+    const v=_qNum(it.lastPrice)*(1+_qNum(it.markupPct)/100);
+    it.origPrice = v ? Math.round(v*100)/100 : '';
+    const oin=tr.querySelector('[data-f="origPrice"]'); if(oin) oin.value=it.origPrice;
+  }
+  _qRecalcRow(tr,it); _qRecalcTotals(); _qScheduleSave();
+}
+function _qRecalcRow(tr,it){
+  const r=_qCalcItem(it,_quoteDraft.sheetRate);
+  tr.querySelector('.q-pre').textContent=r.pre?_qMoney(r.pre):'—';
+  tr.querySelector('.q-quote').textContent=r.quote?_qMoney(r.quote):'—';
+  const mc=tr.querySelector('.q-margin');
+  mc.textContent=(r.margin!=null)?r.margin.toFixed(1)+'%':'—';
+  mc.style.color=(r.margin!=null&&r.margin<0)?'var(--danger)':'';
+}
+function _qRecalcAll(){
+  const body=document.getElementById('qGridBody'); if(!body) return;
+  body.querySelectorAll('[data-qrow]').forEach(tr=>{ const it=_quoteDraft.items.find(x=>x.id===tr.dataset.qrow); if(it) _qRecalcRow(tr,it); });
+  _qRecalcTotals();
+}
+function _qRecalcTotals(){
+  let pre=0,quote=0;
+  _quoteDraft.items.forEach(it=>{ const r=_qCalcItem(it,_quoteDraft.sheetRate); pre+=r.pre; quote+=r.quote; });
+  const ep=document.getElementById('qSumPre'), eq=document.getElementById('qSumQuote');
+  if(ep) ep.textContent=pre?_qMoney(pre):'—';
+  if(eq) eq.textContent=quote?_qMoney(quote):'—';
+}
+function _qDelRow(id){
+  _quoteDraft.items=_quoteDraft.items.filter(x=>x.id!==id);
+  if(!_quoteDraft.items.length) _quoteDraft.items=[_qNewItem()];
+  _qRenderRows(); _qScheduleSave();
+}
+function _qPersistDraft(){
+  if(!_quoteDraft||!_quoteDraft.id) return;
+  _quoteDraft.updatedAt=new Date().toISOString();
+  const d=quoteLoad();
+  const idx=d.quotes.findIndex(q=>q.id===_quoteDraft.id);
+  if(idx>=0) d.quotes[idx]=JSON.parse(JSON.stringify(_quoteDraft)); else d.quotes.push(JSON.parse(JSON.stringify(_quoteDraft)));
+  quoteSave(d);
+}
+function _qScheduleSave(){ clearTimeout(_qSaveTimer); _qSaveTimer=setTimeout(_qPersistDraft,600); }
 
 // ===== WORK UI =====
 let editingTaskId     = null;
