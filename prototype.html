@@ -2057,6 +2057,8 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .om-stage-item.all .om-stage-cnt{background:var(--warm);}
 /* 右：訂單卡片 */
 .om-orders-head{font-size:15px;font-weight:700;color:var(--navy);margin:2px 2px 12px;font-family:"Noto Serif TC",serif;}
+.om-client-filter{padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-primary);font-size:13px;font-family:inherit;max-width:160px;cursor:pointer;}
+.om-client-filter:focus{outline:none;border-color:var(--warm);}
 .om-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
 .om-card{border:1.5px solid var(--border);border-radius:11px;padding:11px 13px;background:var(--surface);cursor:pointer;transition:border-color .12s,box-shadow .12s;}
 .om-card:hover{border-color:var(--warm);box-shadow:0 3px 10px rgba(0,0,0,.06);}
@@ -6303,6 +6305,7 @@ function buildOrderStatusTabs() {
 }
 
 let _omStage = null; // null = 全部；否則為某階段 key
+let _omClient = null; // null = 全部客戶；否則為某 clientId（總表客戶篩選）
 function renderOrderGrid() {
   // 初始化早期可能在 TL_STAGES(const) 定義前被呼叫 → 用 try 保護，稍後會再重繪
   try { renderOmStages(); renderOmOrders(); } catch (e) { /* deferred until TL_STAGES ready */ }
@@ -6311,7 +6314,7 @@ function renderOrderGrid() {
 // 左側：時間軸階段框架（每階段顯示停在該階段的訂單數）
 function renderOmStages() {
   const el = document.getElementById('omStages'); if (!el) return;
-  const orders = getOrders().filter(o => !o.parentOrderId);
+  const orders = getOrders().filter(o => !o.parentOrderId && (!_omClient || o.clientId === _omClient));
   const countOf = key => orders.filter(o => o.status === key).length;
   const stages = TL_STAGES.filter(s => s.key !== '__base__');
   const countEl = document.getElementById('orderHomeCount');
@@ -6337,7 +6340,7 @@ function renderOmStages() {
 function renderOmOrders() {
   const el = document.getElementById('omOrders'); if (!el) return;
   const clients = getClients(); const cmap = {}; clients.forEach(c => cmap[c.id] = c);
-  let orders = getOrders().filter(o => !o.parentOrderId);
+  let orders = getOrders().filter(o => !o.parentOrderId && (!_omClient || o.clientId === _omClient));
   if (_omStage) orders = orders.filter(o => o.status === _omStage);
   const _postAward = ['契約書簽訂中','出貨中','驗收中','可開發票','發票確認中','履約期間','申退履保金','履約結束'];
   // 需警示的訂單 → 卡片紅底標示（取代原本右欄的訂單警示）
@@ -6346,7 +6349,9 @@ function renderOmOrders() {
   // 排序：紅色警示優先（danger → warn → 一般），同級再依最近更新
   const rank = o => { const a = alertMap[o.id]; return a ? (a.level === 'danger' ? 2 : 1) : 0; };
   orders.sort((a,b) => (rank(b) - rank(a)) || (b.updatedAt||'').localeCompare(a.updatedAt||''));
-  const title = _omStage ? `${_omStage}（${orders.length}）` : `全部訂單（${orders.length}）`;
+  const _cn = _omClient ? ((getClientById(_omClient)||{}).shortName || '') : '';
+  const _base = _omStage ? _omStage : '全部訂單';
+  const title = (_cn ? `${_cn}｜` : '') + `${_base}（${orders.length}）`;
   if (!orders.length) { el.innerHTML = `<div class="om-orders-head">${title}</div><div class="om-empty">此階段目前沒有訂單</div>`; return; }
   el.innerHTML = `<div class="om-orders-head">${title}</div><div class="om-cards">` + orders.map(o => {
     const c = cmap[o.clientId] || {};
@@ -6383,6 +6388,7 @@ function renderHomePage() {
     <div class="page-header">
       <h1>訂單管理</h1>
       <div class="page-header-actions">
+        <select id="omClientFilter" class="om-client-filter" title="只看單一客戶的訂單"></select>
         <span id="orderHomeCount" style="font-size:12px;color:var(--text-muted);"></span>
         <button class="btn btn-ghost btn-sm" id="exportDataBtn"><svg class="btn-ico" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M4 20h16"/></svg>匯出備份</button>
         <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
@@ -6402,6 +6408,14 @@ function renderHomePage() {
   `;
 
   page.querySelector('#exportDataBtn').addEventListener('click', exportData);
+  const _ocf = page.querySelector('#omClientFilter');
+  if (_ocf) {
+    _ocf.innerHTML = '<option value="">全部客戶</option>' + getClients()
+      .sort((a,b)=>(a.sortOrder??9999)-(b.sortOrder??9999)||a.shortName.localeCompare(b.shortName,'zh-TW'))
+      .map(c=>`<option value="${c.id}">${String(c.shortName).replace(/</g,'&lt;')}</option>`).join('');
+    _ocf.value = _omClient || '';
+    _ocf.addEventListener('change', () => { _omClient = _ocf.value || null; renderOmStages(); renderOmOrders(); });
+  }
   page.querySelector('#importFileInput').addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
