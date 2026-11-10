@@ -2047,6 +2047,9 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .om-stage-item.active{background:var(--surface);border-left-color:var(--navy);}
 .om-stage-node{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:12px;height:12px;border-radius:50%;border:2.5px solid #c9c4b4;background:var(--surface);z-index:2;}
 .om-stage-item.active .om-stage-node{border-color:var(--navy);background:var(--navy);box-shadow:0 0 0 4px rgba(43,58,66,.14);}
+.om-stage-item.na{margin-top:8px;border-top:1px dashed var(--border);padding-top:6px;}
+.om-stage-item.na .om-stage-node{border-color:#A8A29C;}
+.om-stage-item.na .om-stage-line{display:none;}
 .om-stage-node.all{border-color:var(--warm);background:var(--warm);}
 .om-stage-line{position:absolute;left:21px;top:-50%;height:100%;width:2px;background:var(--border);z-index:1;}
 .om-stage-lbl{font-size:13px;font-weight:600;color:var(--text-primary);flex:1;line-height:1.3;}
@@ -6335,6 +6338,12 @@ function renderOmStages() {
       <div class="om-stage-lbl">${s.label}${s.par?'<span class="om-par">可平行</span>':''}</div>
       <div class="om-stage-cnt">${c}</div></div>`;
   }).join('');
+  // 「未開始」獨立一格，放在履約結束下面（不列入時間軸流程）
+  const naCount = countOf('未開始');
+  html += `<div class="om-stage-item na ${_omStage==='未開始'?'active':''} ${naCount?'':'empty'}" data-stage="未開始">
+      <div class="om-stage-line"></div><div class="om-stage-node"></div>
+      <div class="om-stage-lbl">未開始</div>
+      <div class="om-stage-cnt">${naCount}</div></div>`;
   el.innerHTML = html;
   el.querySelectorAll('.om-stage-item').forEach(it => it.addEventListener('click', () => {
     _omStage = it.dataset.stage === '__all__' ? null : it.dataset.stage;
