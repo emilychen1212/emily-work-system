@@ -2857,8 +2857,8 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
       <div class="modal-body">
         <div class="status-tag-grid" id="statusTagGrid"></div>
         <div style="margin-top:14px;">
-          <label style="font-size:12.5px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px;">說明（選填）</label>
-          <textarea id="statusNote" rows="3" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical;outline:none;" placeholder="填寫此次狀態更新的說明…"></textarea>
+          <label style="font-size:12.5px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px;">這次的進度／說明（選填，會記進「案件進度筆記」）</label>
+          <textarea id="statusNote" rows="3" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical;outline:none;" placeholder="例如：已寄報價單，等客戶回覆…（會留在案件進度筆記）"></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -3646,8 +3646,13 @@ function updateOrderStatus(orderId, status, note) {
       db.orders[idx].bondRefundStatus = 'pending';
     }
     db.orders[idx].status    = status;
-    db.orders[idx].statusNote = note || '';
     db.orders[idx].updatedAt = now;
+    // 狀態變更的說明 → 記進「案件進度筆記」（整併原本的狀態備註）
+    const _n = (note || '').trim();
+    if (_n) {
+      if (!Array.isArray(db.orders[idx].progressLog)) db.orders[idx].progressLog = [];
+      db.orders[idx].progressLog.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), ts:now, text:_n });
+    }
     _tlEnforceProposal(db.orders[idx]);   // 提案階段依報價兩核取方塊自動校正（更改狀態視窗也適用）
     const _finalStatus = db.orders[idx].status;
     // 子訂單跟著同步
@@ -4745,7 +4750,7 @@ function renderClientDashboard(clientId) {
   const tickerHtml = tickerOrders.length
     ? tickerOrders.map(o => {
         const bg = getOrderStatusColor(o.status);
-        const noteSpan = o.statusNote ? `<span class="dash-action-note">${o.statusNote.replace(/</g,'&lt;')}</span>` : '';
+        const _ln = _orderLatestNote(o); const noteSpan = _ln ? `<span class="dash-action-note">${_ln.replace(/</g,'&lt;')}</span>` : '';
         return `<div class="dash-action-row">
           <span class="dash-action-product">${o.productName || '（未命名）'}</span>
           <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px;color:#fff;background:${bg};white-space:nowrap;flex-shrink:0;">${o.status}</span>
@@ -4949,7 +4954,7 @@ function renderOrdersGrid() {
     const _sBg     = _isEnded ? 'rgba(160,160,170,0.18)' : _statusHex;
     const _sColor  = _isEnded ? '#888' : '#fff';
     const _sBorder = _isEnded ? '1px solid rgba(160,160,170,0.4)' : 'none';
-    const note  = o.statusNote ? o.statusNote : '';
+    const note  = _orderLatestNote(o);
     const noteHtml = note
       ? `<div class="status-tooltip">${note}<div class="status-tooltip-time">更新：${fmtDateTime(o.updatedAt)}</div></div>`
       : `<div class="status-tooltip" style="display:none"></div>`;
@@ -5671,7 +5676,7 @@ function openStatusModal(orderId, currentStatus) {
   const orders = getOrders(currentClientId)
     .filter(o => !currentClientStatusTab || currentClientStatusTab === 'all' || o.status === currentClientStatusTab);
   const o = orders.find(x => x.id === orderId) || {};
-  document.getElementById('statusNote').value = o.statusNote || '';
+  document.getElementById('statusNote').value = '';  // 每次新增一筆進度，不預填舊筆記
 
   const grid = document.getElementById('statusTagGrid');
   grid.innerHTML = '';
@@ -6227,13 +6232,13 @@ function renderOrderDashboard() {
     ? tickerOrders.map(o => {
         const c  = clientMap[o.clientId];
         const bg = getOrderStatusColor(o.status);
-        const noteSpan = o.statusNote ? `<span class="dash-action-note">${o.statusNote.replace(/</g,'&lt;')}</span>` : '';
+        const _ln = _orderLatestNote(o); const noteSpan = _ln ? `<span class="dash-action-note">${_ln.replace(/</g,'&lt;')}</span>` : '';
         // 計算預計提醒日
         const alertDate = calcOrderAlertDate(o);
         const alertDateStr = alertDate ? alertDate.toISOString().slice(0,10).replace(/-/g,'/') : null;
         const tipParts = [];
         if (alertDateStr) tipParts.push(`預計 ${alertDateStr} 提醒`);
-        if (o.statusNote) tipParts.push(o.statusNote);
+        { const _ln = _orderLatestNote(o); if (_ln) tipParts.push(_ln); }
         const tipAttr = tipParts.length ? ` data-order-tip="${tipParts.join('\n').replace(/"/g,'&quot;')}"` : '';
         return `<div class="dash-action-row"${tipAttr}>
           <span class="dash-action-client">${c?.shortName || '—'}</span>
@@ -6384,7 +6389,7 @@ function renderOmOrders() {
     const c = cmap[o.clientId] || {};
     const color = getOrderStatusColor(o.status);
     const period = o.startDate ? `${fmtDate(o.startDate)}~${o.endDate?fmtDate(o.endDate):''}` : '未設定訂期';
-    const note = (o.statusNote && o.statusNote.trim()) ? `<div class="om-card-note">📝 ${o.statusNote.replace(/</g,'&lt;')}</div>` : '';
+    const _ln = _orderLatestNote(o); const note = (_ln && _ln.trim()) ? `<div class="om-card-note">📝 ${_ln.replace(/</g,'&lt;')}</div>` : '';
     const al = alertMap[o.id];
     const dealRateWarn = (o.currency && o.currency !== 'TWD' && !o.dealRate && _postAward.includes(o.status));
     const alertCls = al ? (al.level === 'danger' ? ' alert-danger' : ' alert-warn') : (dealRateWarn ? ' alert-warn' : '');
@@ -7237,6 +7242,7 @@ document.addEventListener('wheel', function(e){
 _initQuickCapture();
 _drainQuickInbox();
 _enforceAllProposalStatus();
+_migrateStatusNoteToProgress();   // 一次性：舊狀態備註 → 案件進度筆記
 
 // ── 快速收件浮動視窗（連按兩下 Esc 呼出；右下角 ⚡ 按鈕亦可）──
 function _qcVisible() { const el = document.getElementById('quickCaptureOverlay'); return el && el.style.display === 'flex'; }
@@ -11148,12 +11154,14 @@ function _tlSetFu(n){
   if(typeof updateRocHint==='function') updateRocHint(el);
 }
 function _tlFmtMoney(el){ const n=String(el.value).replace(/[^0-9]/g,''); el.value = n?('NT$ '+parseInt(n).toLocaleString('zh-TW')):''; }
-// ── 狀態備註（便條紙）：編輯 o.statusNote，顯示在訂單狀態標籤／儀表板 ──
+// ── 📝 按鈕：打開「案件進度筆記」（已整併原本的狀態備註）──
 function _tlNoteBtn(o){
-  const has=!!(o.statusNote&&o.statusNote.trim());
-  const tip=has?('狀態備註：'+o.statusNote.replace(/"/g,'&quot;')):'新增狀態備註';
-  return `<button type="button" class="tl-note-btn ${has?'has':''}" onclick="_tlEditStatusNote()" title="${tip}">📝${has?'<i></i>':''}</button>`;
+  const latest=_orderLatestNote(o);
+  const has=!!(latest&&latest.trim());
+  const tip=has?('案件進度筆記（最新）：'+latest.replace(/"/g,'&quot;')):'案件進度筆記';
+  return `<button type="button" class="tl-note-btn ${has?'has':''}" onclick="_tlOpenProgress()" title="${tip}">📝${has?'<i></i>':''}</button>`;
 }
+function _tlOpenProgress(){ if(_tlOrderId && typeof openProgressLog==='function') openProgressLog(_tlOrderId); }
 function _tlEditStatusNote(){
   const o=dbLoad().orders.find(x=>x.id===_tlOrderId); if(!o) return;
   document.getElementById('tlNotePop')?.remove();
@@ -11185,6 +11193,33 @@ function _tlResetInvoice(){
   const db=dbLoad(); const o=db.orders.find(x=>x.id===_tlOrderId); if(!o) return;
   o.invoiceAppliedAt=null; o.updatedAt=new Date().toISOString(); dbSave(db);
   showToast('已重設申請開發票時間'); _tlRender();
+}
+
+// 取某訂單「最新一筆進度筆記」文字（供儀表板／卡片顯示，取代原本的狀態備註）
+function _orderLatestNote(o){
+  if (o && Array.isArray(o.progressLog) && o.progressLog.length){
+    let best=null;
+    o.progressLog.forEach(e=>{ if(e && e.text && (!best || String(e.ts) > String(best.ts))) best=e; });
+    if (best) return best.text || '';
+  }
+  return (o && o.statusNote) ? o.statusNote : '';  // 尚未搬移的舊資料
+}
+// 一次性：把舊的「狀態備註」搬進「案件進度筆記」（每張訂單只搬一次）
+function _migrateStatusNoteToProgress(){
+  try{
+    const db=dbLoad(); let changed=false;
+    (db.orders||[]).forEach(o=>{
+      if (o._noteMigrated) return;
+      const sn=(o.statusNote||'').trim();
+      if (sn){
+        if (!Array.isArray(o.progressLog)) o.progressLog=[];
+        const dup=o.progressLog.some(e=>e && (e.text||'').trim()===sn);
+        if (!dup) o.progressLog.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), ts:(o.updatedAt||new Date().toISOString()), text:sn });
+      }
+      o._noteMigrated=true; changed=true;
+    });
+    if (changed) dbSave(db);
+  }catch(e){}
 }
 
 // ══════════ 案件進度筆記（每張訂單可累積拜訪／進度紀錄，桌機＋手機通用）══════════
@@ -11256,6 +11291,8 @@ function _progDel(orderId, entryId){
 function _progClose(){
   document.getElementById('progPop')?.remove();
   if(typeof renderOrdersGrid==='function') renderOrdersGrid();
+  if(typeof renderOrderGrid==='function') renderOrderGrid();              // 訂單管理卡片（最新筆記）
+  if(typeof refreshDashboardContent==='function') refreshDashboardContent(); // 首頁儀表板
 }
 
 // ── 加入 Google 日曆（透過後端 Apps Script CalendarApp）──
@@ -11449,6 +11486,7 @@ window._tlAddSvc=_tlAddSvc; window._tlRmSvc=_tlRmSvc; window._tlSvcCal=_tlSvcCal
 window._tlInvInstToggle=_tlInvInstToggle; window._tlInvGen=_tlInvGen;
 window._tlFmtMoney=_tlFmtMoney; window._tlAddCalRaw=_tlAddCalRaw; window._tlAutoSaveScheduled=_tlAutoSaveScheduled;
 window._tlEditStatusNote=_tlEditStatusNote; window._tlCloseNote=_tlCloseNote; window._tlSaveNote=_tlSaveNote;
+window._tlOpenProgress=_tlOpenProgress;
 window._tlOpenDelivery=_tlOpenDelivery; window._tlOpenInvoice=_tlOpenInvoice; window._tlResetInvoice=_tlResetInvoice;
 window._tlAddCal=_tlAddCal; window._tlDecorateCal=_tlDecorateCal;
 // （正式版：不再強制測試模式）
