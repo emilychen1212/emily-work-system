@@ -6735,9 +6735,15 @@ function computeDashboardItems() {
     if (_isLead && o.needsContract && o.contractDueDate && !CK.contractSubmitted) {
       _pushItem(_dPlus(o.contractDueDate, -3), '繳交合約', '✍️', 1, `預計繳交 ${fmtDate(o.contractDueDate)}`, { dueSnoozeOrderId: o.id });
     }
-    // 決標日 + 30天 仍未追回回簽合約 → 追回合約
-    if (_isLead && o.contractReceivedAt && !CK.contractReturned) {
-      _pushItem(_dPlus(o.contractReceivedAt, 30), '追回客戶回簽合約', '🔁', 2);
+    // 追回客戶回簽合約：完成合約（繳交）後兩週提醒；可 +3/+7 或自訂「追回回簽提醒日」(contractChaseDate)
+    if (_isLead && !CK.contractReturned) {
+      let _chaseBase = null;
+      if (o.contractChaseDate) _chaseBase = new Date(o.contractChaseDate + 'T00:00:00');
+      else {
+        const _done = (typeof CK.contractSubmitted === 'string' && CK.contractSubmitted) ? CK.contractSubmitted : (o.contractReceivedAt || null);
+        if (_done) _chaseBase = _dPlus(_done, 14);
+      }
+      if (_chaseBase && !isNaN(_chaseBase.getTime())) _pushItem(_chaseBase, '追回客戶回簽合約', '🔁', 2, `提醒追回 ${fmtDate(_isoDate(_chaseBase))}`, { chaseSnoozeOrderId: o.id });
     }
     // 製作啟用通知：有「預計製作時間」就照它排（+3/+7 直接改它）；沒填則訂期起始前5天；打勾完成才消失（子訂單不需）
     if (curGrp >= 4 && o.startDate && !o.parentOrderId && !CK.activationNotice) {
@@ -7000,6 +7006,7 @@ function refreshDashboardContent() {
         const days = parseInt(sb.dataset.snoozeDays);
         if (item.actSnoozeOrderId) snoozeActivation(item.actSnoozeOrderId, days);
         else if (item.dueSnoozeOrderId) snoozeContractDue(item.dueSnoozeOrderId, days);
+        else if (item.chaseSnoozeOrderId) snoozeContractChase(item.chaseSnoozeOrderId, days);
         else if (item.fuSnoozeOrderId) snoozeFollowUp(item.fuSnoozeOrderId, days);
         else snoozeOrderAlert(item.snoozeOrderId, days);
       });
@@ -9884,6 +9891,28 @@ function snoozeContractDue(orderId, days) {
   refreshDashboardContent();
   showToast(`預計繳交合約日延後 ${days} 天（${fmtDate(o.contractDueDate)}）`);
 }
+// 追回回簽合約專用延後：把日期寫進訂單的「追回回簽提醒日」(contractChaseDate)
+function snoozeContractChase(orderId, days) {
+  const db = dbLoad();
+  const o = db.orders.find(x => x.id === orderId);
+  if (!o) return;
+  let base;
+  if (o.contractChaseDate) base = new Date(o.contractChaseDate + 'T00:00:00');
+  else {
+    const done = (o.checks && typeof o.checks.contractSubmitted === 'string' && o.checks.contractSubmitted) ? o.checks.contractSubmitted : (o.contractReceivedAt || null);
+    base = done ? new Date(done + 'T00:00:00') : new Date();
+    if (done) base.setDate(base.getDate() + 14);   // 完成合約後兩週為預設基準
+  }
+  base.setHours(0,0,0,0);
+  base.setDate(base.getDate() + days);
+  o.contractChaseDate = _isoDate(base);
+  o.updatedAt = new Date().toISOString();
+  dbSave(db);
+  renderOrderDashboard();
+  if (typeof renderOrderGrid === 'function') renderOrderGrid();
+  refreshDashboardContent();
+  showToast(`追回回簽合約提醒延後 ${days} 天（${fmtDate(o.contractChaseDate)}）`);
+}
 function snoozeActivation(orderId, days) {
   const db = dbLoad();
   const o = db.orders.find(x => x.id === orderId);
@@ -10653,6 +10682,7 @@ function _tlContractPanel(o){
     ${(hasBid||hasBond)?_tlChk(o,'perfBondApplied','已申請履保金'):''}
     ${_tlChk(o,'perfBondReceipt','是否取得履保金收據')}
     ${_tlChk(o,'contractReturned','是否已追回客戶回簽合約',{word:'追回'})}
+    <div class="tl-f"><label>追回回簽提醒日（完成合約後自動帶兩週，可自訂）</label><input type="date" data-tlf="contractChaseDate" value="${dv(o.contractChaseDate)}" data-nocal/></div>
     <div class="tl-f full"><label>備註</label><textarea data-tlf="__note">${(o.stageNotes||{})['契約書簽訂中']||''}</textarea></div>`;
 }
 function _tlContractToggle(cb){
