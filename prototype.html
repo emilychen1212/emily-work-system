@@ -1854,7 +1854,24 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .db-source-section { padding: 4px 0 2px; }
 .db-source-section + .db-source-section { border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 6px; }
 .db-source-label { font-size: 10.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em; padding: 0 10px 4px; opacity: 0.75; }
-.db-section-title { font-size: 13px; font-weight: 700; color: var(--navy); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.db-section-title { font-size: 13px; font-weight: 700; color: var(--navy); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* 年底議價盯辦 */
+.db-refresh-btn.ye-toggle{ border:1px solid var(--warm); color:var(--warm); background:var(--surface); }
+.db-refresh-btn.ye-toggle.on{ background:var(--warm); color:#fff; border-color:var(--warm); }
+.ye-box{ background:var(--surface); border:1.5px solid var(--warm); border-radius:14px; padding:14px 16px; margin:0 0 16px; }
+.ye-title{ font-size:14px; font-weight:800; color:var(--navy); margin-bottom:10px; }
+.ye-title .ye-sub{ font-size:11.5px; font-weight:500; color:var(--text-muted); }
+.ye-row{ padding:8px 0; border-top:1px dashed var(--border); }
+.ye-row:first-of-type{ border-top:none; }
+.ye-row-h{ display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:var(--text-primary); margin-bottom:6px; }
+.ye-ic{ font-size:14px; }
+.ye-cnt{ margin-left:4px; background:var(--warm); color:#fff; font-size:11px; font-weight:700; border-radius:99px; padding:1px 8px; }
+.ye-ok .ye-cnt{ background:#4A5D4E; }
+.ye-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.ye-chip{ background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:4px 10px; font-size:12.5px; color:var(--text-primary); cursor:pointer; font-family:inherit; }
+.ye-chip:hover{ border-color:var(--warm); background:#fff; }
+.ye-chip .ye-date{ color:var(--text-muted); font-size:11px; }
+.ye-empty{ color:var(--text-muted); font-size:13px; padding:8px 0; }
 .db-nextweek { margin-top: 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
 .db-nextweek-title { font-size: 12px; font-weight: 700; color: var(--warm); letter-spacing: 0.03em; margin-bottom: 10px; }
 .db-nextweek-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -6924,6 +6941,59 @@ function computeDashboardItems() {
   return { days, nextDays, dayMap, unscheduled };
 }
 
+// ══════════ 年底議價盯辦（年底模式）══════════
+const YEAREND_KEY = 'ews_yearend';
+function _yearEndOn(){ try{ return localStorage.getItem(YEAREND_KEY)==='1'; }catch(e){ return false; } }
+function _yearEndToggle(){ try{ localStorage.setItem(YEAREND_KEY, _yearEndOn()?'0':'1'); }catch(e){} renderDashboardPage(); }
+
+// 計算「議價程序中」(採購議價／契約書簽訂中) 的訂單與各自缺什麼，依議價時間先後排序
+function _computeYearEndBid(){
+  const cmap = {}; getClients().forEach(c => cmap[c.id] = c);
+  const orders = getOrders().filter(o => !o.parentOrderId && ['採購議價','契約書簽訂中'].includes(o.status));
+  const _bidKey = o => (o.bidCloseAt || (o.bidCloseDate ? o.bidCloseDate + 'T09:00' : '') || o.contractReceivedAt || o.updatedAt || '9999');
+  const list = orders.map(o => {
+    const CK = o.checks || {};
+    const hasBid  = !!o.hasBidBond;
+    const perfRelevant = !!(o.hasPerfBond || CK.bidToPerf);
+    const miss = [];
+    if (o.status === '採購議價' && !CK.bidDocReceived) miss.push('doc_recv');      // 已知議價、未收到文件
+    if (CK.bidDocReceived && !CK.bidDocSent)           miss.push('doc_sent');       // 議價文件未寄出
+    if (hasBid && !CK.bidBondApplied)                  miss.push('bidbond_apply');  // 需申請押標金
+    if (hasBid && o.contractReceivedAt && !CK.bidToPerf) miss.push('bid_to_perf');  // 已決標，請確認押標是否轉履保金
+    if (o.needsContract && !CK.contractSubmitted)      miss.push('contract_make');  // 請做合約
+    if (perfRelevant && !CK.perfBondApplied)           miss.push('perfbond_apply'); // 需申請履保金
+    if (CK.perfBondApplied && !CK.perfBondReceipt)     miss.push('perfbond_receipt');// 需取得履保金收據
+    return { o, c: cmap[o.clientId] || {}, miss, bk: _bidKey(o) };
+  });
+  list.sort((a,b) => String(a.bk).localeCompare(String(b.bk)));   // 議價時間早 → 前
+  return list;
+}
+function _buildYearEndBoxHtml(){
+  const list = _computeYearEndBid();
+  const total = list.length;
+  const GROUPS = [
+    { k:'doc_recv',        icon:'⚠',  label:'已知議價、未收到文件' },
+    { k:'doc_sent',        icon:'📄', label:'議價文件未寄出' },
+    { k:'bidbond_apply',   icon:'🔐', label:'需申請押標金' },
+    { k:'bid_to_perf',     icon:'🔁', label:'已決標，請確認押標是否轉履保金' },
+    { k:'contract_make',   icon:'✍️', label:'請做合約' },
+    { k:'perfbond_apply',  icon:'🛡️', label:'需申請履保金' },
+    { k:'perfbond_receipt',icon:'🧾', label:'需取得履保金收據' },
+  ];
+  const esc = s => String(s||'').replace(/</g,'&lt;');
+  const nameOf = it => `${esc(it.c.shortName||'—')}｜${esc(it.o.productName||'（未命名）')}`;
+  let rows = GROUPS.map(g => {
+    const items = list.filter(it => it.miss.includes(g.k));
+    if (!items.length) return '';
+    const chips = items.map(it => `<button class="ye-chip" data-yeoid="${it.o.id}" title="開啟訂單時間軸">${nameOf(it)}${it.o.bidCloseAt?` <span class="ye-date">截標 ${fmtDate(it.o.bidCloseAt.slice(0,10))}</span>`:''}</button>`).join('');
+    return `<div class="ye-row"><div class="ye-row-h"><span class="ye-ic">${g.icon}</span>${g.label}<span class="ye-cnt">${items.length}</span></div><div class="ye-chips">${chips}</div></div>`;
+  }).join('');
+  const okCount = list.filter(it => !it.miss.length).length;
+  if (okCount) rows += `<div class="ye-row ye-ok"><div class="ye-row-h"><span class="ye-ic">✓</span>其餘資料齊全<span class="ye-cnt">${okCount}</span></div></div>`;
+  if (!total) rows = `<div class="ye-empty">目前沒有在議價程序中的訂單 🎉</div>`;
+  return `<div class="ye-box"><div class="ye-title">🏁 年底議價盯辦 — 議價程序中 <b>${total}</b> 件　<span class="ye-sub">（依議價時間先後）</span></div>${rows}</div>`;
+}
+
 function refreshDashboardContent() {
 
   const page = document.getElementById('dashboardPage');
@@ -6955,8 +7025,11 @@ function refreshDashboardContent() {
       <div class="db-section-title">
         ${weekLabel}
         ${isNextWeek ? '<span style="font-size:11px;font-weight:400;color:var(--warning);margin-left:8px;">週末預覽</span>' : ''}
+        <button class="db-refresh-btn ye-toggle ${_yearEndOn()?'on':''}" id="dbYearEndBtn" style="margin-left:auto;" title="年底議價盯辦：顯示所有在議價程序中的訂單與缺少的文件/流程">🏁 年底模式${_yearEndOn()?' ✓':''}</button>
         <button class="db-refresh-btn" id="dbWeeklyBtn" style="margin-right:6px;">📄 生成週報</button><button class="db-refresh-btn" id="dbRefreshBtn">↻ 重新整理</button>
       </div>
+
+      ${_yearEndOn() ? _buildYearEndBoxHtml() : ''}
 
       <div class="db-summary-bar">
         <div class="db-summary-card"><div class="db-summary-num">${totalOrder}</div><div class="db-summary-label">📋 訂單追蹤</div></div>
@@ -6977,6 +7050,8 @@ function refreshDashboardContent() {
   page.querySelector('#dbRefreshBtn')?.addEventListener('click', renderDashboardPage);
   page.querySelector('#dbWeeklyBtn')?.addEventListener('click', openWeeklyReport);
   page.querySelector('#dbUnscheduledRow')?.addEventListener('click', () => document.getElementById('workBtn').click());
+  page.querySelector('#dbYearEndBtn')?.addEventListener('click', _yearEndToggle);
+  page.querySelectorAll('.ye-chip[data-yeoid]').forEach(b => b.addEventListener('click', () => { if (typeof openOrderTimeline === 'function') openOrderTimeline(b.dataset.yeoid); }));
 
   const grid = page.querySelector('#dbWeekGrid');
 
