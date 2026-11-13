@@ -2731,6 +2731,7 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
           <button class="contact-tab" data-role="行政">行政<span class="contact-tab-count" data-count-role="行政"></span></button>
           <button class="contact-tab" data-role="醫護人員">醫護人員<span class="contact-tab-count" data-count-role="醫護人員"></span></button>
           <button class="contact-tab" data-role="老師">老師<span class="contact-tab-count" data-count-role="老師"></span></button>
+          <button class="contact-tab" data-role="學生">學生<span class="contact-tab-count" data-count-role="學生"></span></button>
         </div>
         <div class="contact-toolbar">
           <button class="btn btn-primary btn-sm" id="addContactRowBtn">＋ 新增聯絡人</button>
@@ -5870,7 +5871,7 @@ function openContactModal(clientId) {
 
   // Load existing contacts
   const allContacts = getContacts(clientId);
-  pendingContacts = { '館員': [], '行政': [], '醫護人員': [], '老師': [] };
+  pendingContacts = { '館員': [], '行政': [], '醫護人員': [], '老師': [], '學生': [] };
   allContacts.forEach(ct => {
     if (pendingContacts[ct.role]) pendingContacts[ct.role].push({ ...ct });
     else pendingContacts['館員'].push({ ...ct });
