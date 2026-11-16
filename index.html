@@ -11432,7 +11432,11 @@ function _tlAddCal(dateVal, title, btn){
   const _k=(typeof caseOfOrder==='function')?caseOfOrder(o.id):null;   // 屬於購案 → 標題用購案名稱
   const subj=(_k&&_k.name)?_k.name:(o.productName||'');
   const evTitle=`[${title}] ${c.shortName||''} ${subj}`.trim();
-  const details=`訂單追蹤（工作管理系統）\n客戶：${c.fullName||c.shortName||''}\n${_k?('購案：'+_k.name+'\n產品：'+(o.productName||'')):('產品：'+(o.productName||''))}\n案號：${o.caseNo||''}`;
+  let details=`訂單追蹤（工作管理系統）\n客戶：${c.fullName||c.shortName||''}\n${_k?('購案：'+_k.name+'\n產品：'+(o.productName||'')):('產品：'+(o.productName||''))}\n案號：${o.caseNo||''}`;
+  // 附上目前階段的「備註」到日曆說明欄（讀畫面上的即時內容，含尚未儲存的編輯；議價階段即「備註（議價／標案進度）」）
+  const _noteEl=document.querySelector('#tlRight [data-tlf="__note"]');
+  const _stageNote=(_noteEl?_noteEl.value:((o.stageNotes||{})[_tlView]||'')).trim();
+  if(_stageNote) details+=`\n\n備註：\n${_stageNote}`;
   _tlAddCalRaw(dateVal, evTitle, details, btn);
 }
 async function _tlAddCalRaw(dateVal, evTitle, details, btn){
