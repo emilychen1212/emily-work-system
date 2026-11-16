@@ -1711,7 +1711,7 @@ ul { list-style: none; }
 .prog-item .pdel{position:absolute;top:6px;right:7px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;line-height:1;padding:3px;border-radius:5px;}
 .prog-item .pdel:hover{background:var(--danger);color:#fff;}
 .prog-foot{border-top:1px solid var(--border);padding:12px 18px;display:flex;flex-direction:column;gap:9px;background:var(--surface);}
-.prog-foot textarea{width:100%;min-height:62px;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;background:#fff;color:var(--text-primary);resize:vertical;line-height:1.6;box-sizing:border-box;}
+.prog-foot textarea{width:100%;min-height:62px;max-height:42vh;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;background:#fff;color:var(--text-primary);resize:none;line-height:1.6;box-sizing:border-box;overflow-y:auto;}
 .prog-foot textarea:focus{outline:none;border-color:var(--warm);}
 .prog-acts{display:flex;gap:8px;}
 .prog-acts button{min-height:44px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);}
@@ -2088,7 +2088,7 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 .om-card-prod b{font-weight:700;}
 .om-card-tag{font-size:11px;font-weight:600;color:#fff;border-radius:20px;padding:2px 9px;white-space:nowrap;}
 .om-card-meta{font-size:11px;color:var(--text-muted);margin-top:6px;}
-.om-card-note{font-size:11.5px;color:var(--warm);margin-top:6px;background:var(--surface2);border-radius:6px;padding:3px 7px;line-height:1.4;}
+.om-card-note{font-size:11.5px;color:var(--warm);margin-top:6px;background:var(--surface2);border-radius:6px;padding:3px 7px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;}
 .om-card.alert-warn{border-color:#D9A491;background:#FBF0EA;}
 .om-card.alert-danger{border-color:#C56B54;background:#F6E4DE;}
 .om-card-alert{font-size:11.5px;font-weight:600;color:#A4472F;margin-top:7px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
@@ -11318,6 +11318,7 @@ function _migrateStatusNoteToProgress(){
 }
 
 // ══════════ 案件進度筆記（每張訂單可累積拜訪／進度紀錄，桌機＋手機通用）══════════
+function _progGrow(ta){ if(!ta) return; ta.style.height='auto'; ta.style.height=Math.max(62, ta.scrollHeight+2)+'px'; }
 function _progFmt(iso){
   const d=new Date(iso); if(isNaN(d)) return '';
   const p=n=>String(n).padStart(2,'0');
@@ -11351,8 +11352,10 @@ function openProgressLog(orderId){
   pop.querySelector('#progList').addEventListener('click', (e) => {
     const b = e.target.closest('.pdel'); if (b) _progDel(orderId, b.dataset.id);
   });
+  const _pta=pop.querySelector('#progTa');
+  _pta.addEventListener('input', ()=>_progGrow(_pta));
   _progRenderList(orderId);
-  setTimeout(()=>document.getElementById('progTa')?.focus(),30);
+  setTimeout(()=>{const t=document.getElementById('progTa'); if(t){t.focus(); _progGrow(t);}},30);
 }
 function _progRenderList(orderId){
   const box=document.getElementById('progList'); if(!box) return;
@@ -11373,7 +11376,7 @@ function _progAdd(orderId){
   if(!Array.isArray(o.progressLog)) o.progressLog=[];
   o.progressLog.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), ts:new Date().toISOString(), text });
   dbSave(db);
-  ta.value=''; ta.focus();
+  ta.value=''; ta.focus(); _progGrow(ta);
   _progRenderList(orderId);
   showToast('已記下 ✍️');
 }
