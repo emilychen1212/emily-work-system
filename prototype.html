@@ -11344,10 +11344,10 @@ function openProgressLog(orderId){
         <button type="button" class="padd">＋ 新增一筆</button>
       </div>
     </div></div>`;
-  pop.addEventListener('click',e=>{ if(e.target===pop) _progClose(); });
+  // 點背景不關閉，避免正在打字時誤觸消失
   document.body.appendChild(pop);
   // 用 addEventListener 綁定（函式在 __startApp 作用域內，inline onclick 讀不到）
-  pop.querySelector('.pclose').addEventListener('click', _progClose);
+  pop.querySelector('.pclose').addEventListener('click', () => _progClose());
   pop.querySelector('.padd').addEventListener('click', () => _progAdd(orderId));
   pop.querySelector('#progList').addEventListener('click', (e) => {
     const b = e.target.closest('.pdel'); if (b) _progDel(orderId, b.dataset.id);
@@ -11386,7 +11386,11 @@ function _progDel(orderId, entryId){
   dbSave(db);
   _progRenderList(orderId);
 }
-function _progClose(){
+function _progClose(force){
+  const ta=document.getElementById('progTa');
+  if(force!==true && ta && ta.value.trim()){
+    if(!confirm('你還有一筆進度沒有「＋ 新增一筆」，確定要取消、不儲存嗎？')){ ta.focus(); return; }
+  }
   document.getElementById('progPop')?.remove();
   if(typeof renderOrdersGrid==='function') renderOrdersGrid();
   if(typeof renderOrderGrid==='function') renderOrderGrid();              // 訂單管理卡片（最新筆記）
