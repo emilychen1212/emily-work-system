@@ -3241,7 +3241,7 @@ async function __googleLogin(idToken) {
       __showLogin('');
       if (hint) hint.textContent = (res.error === 'not_whitelisted')
         ? ('此 Google 帳號尚未開通：' + (res.email || '') + '，請用已開通的帳號登入')
-        : 'Google 登入失敗，請再試一次';
+        : ('Google 登入失敗' + (res.debug ? ('（' + res.debug + '）') : '，請再試一次'));
       return;
     }
     __token = res.token; window.localStorage.setItem('ews_token', __token);
