@@ -3171,7 +3171,11 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
 <div id="loginOverlay" style="position:fixed;inset:0;z-index:99990;background:#1B2A41;display:none;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:12px;padding:36px 40px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,.3);">
     <h2 style="margin:0 0 4px;font-size:20px;color:#1B2A41;">Emily 工作管理系統</h2>
-    <p style="margin:0 0 14px;font-size:12px;color:#888;">請選擇身分並登入</p>
+    <p style="margin:0 0 14px;font-size:12px;color:#888;">用已開通的 Google 帳號登入</p>
+    <div id="gSignInBtn" style="display:flex;justify-content:center;min-height:40px;margin-bottom:10px;"></div>
+    <div id="gLoginHint" style="font-size:11px;color:#c0392b;text-align:center;min-height:14px;margin-bottom:8px;"></div>
+    <div id="pwToggle" style="text-align:center;margin-bottom:10px;"><a href="#" id="pwToggleLink" style="font-size:11px;color:#888;text-decoration:underline;cursor:pointer;">改用帳號密碼登入</a></div>
+    <div id="pwLoginBox" style="display:none;">
     <div style="display:flex;gap:8px;margin-bottom:16px;">
       <button type="button" class="login-role-btn" data-lrole="staff" style="flex:1;padding:9px 0;border-radius:6px;border:2px solid #1B2A41;background:#1B2A41;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">👩‍💼 我是員工</button>
       <button type="button" class="login-role-btn" data-lrole="boss" style="flex:1;padding:9px 0;border-radius:6px;border:2px solid #ccc;background:#fff;color:#555;font-size:13px;font-weight:600;cursor:pointer;">👔 我是主管</button>
@@ -3182,10 +3186,12 @@ tr.sub-order-add-row > td { background: transparent !important; padding: 4px 12p
     <input id="loginPass" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;margin:4px 0 6px;padding:9px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" />
     <div id="loginErr" style="font-size:12px;color:#c0392b;min-height:16px;margin-bottom:8px;"></div>
     <button id="loginBtn" style="width:100%;padding:10px;border:none;border-radius:6px;background:#1B2A41;color:#fff;font-size:14px;cursor:pointer;">登入</button>
+    </div>
   </div>
 </div>
 <div id="loadingOverlay" style="position:fixed;inset:0;z-index:99989;background:#F4F1EA;display:flex;align-items:center;justify-content:center;font-size:14px;color:#1B2A41;">資料載入中…</div>
 <div id="cloudSyncBadge" style="position:fixed;bottom:12px;right:12px;z-index:9999;font-size:11px;padding:4px 10px;border-radius:12px;background:#e8f0e8;color:#3a6b3a;border:1px solid #b8d4b8;opacity:0;transition:opacity .3s;pointer-events:none;">已同步 ✓</div>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 // ── 雲端資料層：Google Sheet（經 Apps Script API）──
 const API_URL = 'https://script.google.com/macros/s/AKfycbxsrWZcR4s9v20YFzbvwj-ni5k7VAlD6jONPS4RjISDEBeSKwhC_SHHft12RjGIYBOj/exec';
@@ -3206,6 +3212,47 @@ function __applyRoleUI() {
   }
 }
 
+
+// ── Google 登入 ──
+const GOOGLE_CLIENT_ID = '210516766945-3kseug7hq6ir4jd4evja5ac7m44mqd70.apps.googleusercontent.com';
+let __gInited = false;
+function __initGoogleBtn() {
+  if (!(window.google && google.accounts && google.accounts.id)) { setTimeout(__initGoogleBtn, 250); return; }
+  const el = document.getElementById('gSignInBtn');
+  if (!el) return;
+  if (!__gInited) {
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: __onGoogleCred });
+    __gInited = true;
+  }
+  el.innerHTML = '';
+  google.accounts.id.renderButton(el, { theme: 'filled_blue', size: 'large', width: 248, text: 'signin_with', shape: 'pill', locale: 'zh_TW' });
+}
+function __onGoogleCred(resp) {
+  if (resp && resp.credential) __googleLogin(resp.credential);
+}
+async function __googleLogin(idToken) {
+  const hint = document.getElementById('gLoginHint'); if (hint) hint.textContent = '';
+  const ov = document.getElementById('loadingOverlay');
+  ov.style.display = 'flex'; ov.innerHTML = '登入中…';
+  try {
+    const res = await __api({ action: 'googleLogin', idToken: idToken });
+    if (!res.ok) {
+      ov.style.display = 'none';
+      __showLogin('');
+      if (hint) hint.textContent = (res.error === 'not_whitelisted')
+        ? ('此 Google 帳號尚未開通：' + (res.email || '') + '，請用已開通的帳號登入')
+        : 'Google 登入失敗，請再試一次';
+      return;
+    }
+    __token = res.token; window.localStorage.setItem('ews_token', __token);
+    __role = res.role || ''; window.localStorage.setItem('ews_role', __role); window.localStorage.setItem('ews_name', res.name || '');
+    await __loadAndStart();
+  } catch (err) {
+    ov.style.display = 'none';
+    __showLogin('');
+    if (hint) hint.textContent = '連線失敗，請再試一次';
+  }
+}
 
 async function __api(body, opts = {}) {
   body.token = __token;
@@ -3267,7 +3314,7 @@ async function __openUserMgmt() {
   let m = document.getElementById('userMgmtModal');
   if (!m) { m = document.createElement('div'); m.id = 'userMgmtModal'; m.className = 'modal-overlay'; document.body.appendChild(m); }
   m.innerHTML = `<div class="modal" style="width:680px;max-width:94vw;">
-    <div class="modal-header"><h2>👤 帳號管理</h2><button class="modal-close" data-close="userMgmtModal">✕</button></div>
+    <div class="modal-header"><h2>👤 帳號管理（Google 登入白名單）</h2><button class="modal-close" data-close="userMgmtModal">✕</button></div>
     <div class="modal-body" id="umBody" style="overflow:auto;max-height:62vh;font-size:13px;">載入中…</div>
   </div>`;
   m.classList.add('open');
@@ -3275,38 +3322,41 @@ async function __openUserMgmt() {
 }
 async function __renderUserList(msg) {
   const body = document.getElementById('umBody');
-  const res = await __api({ action: 'listUsers' });
+  const res = await __api({ action: 'listWhitelist' });
   if (!res.ok) { body.textContent = '載入失敗：' + (res.error || ''); return; }
+  const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const rowHtml = (u) => `
-    <tr data-user="${u.user}">
-      <td style="padding:6px 8px;font-weight:600;">${u.user}</td>
-      <td style="padding:6px 8px;"><input class="um-name" value="${(u.name||'').replace(/"/g,'&quot;')}" style="width:90px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" /></td>
-      <td style="padding:6px 8px;"><input class="um-pass" value="${(u.pass||'').replace(/"/g,'&quot;')}" style="width:150px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" /></td>
+    <tr data-email="${esc(u.email)}">
+      <td style="padding:6px 8px;font-weight:600;word-break:break-all;">${esc(u.email)}</td>
+      <td style="padding:6px 8px;"><input class="um-name" value="${esc(u.name)}" placeholder="顯示名稱" style="width:90px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" /></td>
       <td style="padding:6px 8px;">
         <select class="um-role" style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;">
           <option value="admin" ${u.role==='admin'?'selected':''}>管理者</option>
           <option value="viewer" ${u.role==='viewer'?'selected':''}>檢視者</option>
         </select>
       </td>
+      <td style="padding:6px 8px;text-align:center;">
+        <label style="font-size:12px;cursor:pointer;white-space:nowrap;"><input type="checkbox" class="um-enabled" ${u.disabled?'':'checked'} /> 啟用</label>
+      </td>
       <td style="padding:6px 8px;white-space:nowrap;">
         <button class="um-save" style="padding:5px 10px;border:none;border-radius:6px;background:var(--navy);color:#fff;cursor:pointer;">儲存</button>
-        <button class="um-del" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;color:#A36B5E;cursor:pointer;margin-left:4px;">刪除</button>
+        <button class="um-del" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;color:#A36B5E;cursor:pointer;margin-left:4px;">移除</button>
       </td>
     </tr>`;
   document.getElementById('umBody').innerHTML = `
     ${msg ? `<div style="margin-bottom:8px;color:var(--success,#4A5D4E);font-size:12px;">${msg}</div>` : ''}
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">只有名單內、且「啟用」的 Google 帳號才能登入；停用或移除後，對方下一個動作即失效。</div>
     <table style="width:100%;border-collapse:collapse;">
       <thead><tr style="border-bottom:2px solid var(--border);color:var(--text-muted);font-size:12px;text-align:left;">
-        <th style="padding:6px 8px;">帳號</th><th style="padding:6px 8px;">名稱</th><th style="padding:6px 8px;">密碼</th><th style="padding:6px 8px;">角色</th><th style="padding:6px 8px;">操作</th>
+        <th style="padding:6px 8px;">Google 帳號（email）</th><th style="padding:6px 8px;">名稱</th><th style="padding:6px 8px;">角色</th><th style="padding:6px 8px;">狀態</th><th style="padding:6px 8px;">操作</th>
       </tr></thead>
-      <tbody>${res.users.map(rowHtml).join('')}</tbody>
+      <tbody>${res.list.map(rowHtml).join('')}</tbody>
     </table>
     <div style="border-top:1px dashed var(--border);margin-top:12px;padding-top:12px;">
-      <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">＋ 新增帳號</div>
+      <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">＋ 新增白名單</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-        <input id="umNewUser" placeholder="帳號" style="width:110px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" />
+        <input id="umNewEmail" placeholder="Google email" style="width:190px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" />
         <input id="umNewName" placeholder="名稱" style="width:90px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" />
-        <input id="umNewPass" placeholder="密碼" style="width:150px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;" />
         <select id="umNewRole" style="padding:5px 6px;border:1px solid var(--border);border-radius:6px;">
           <option value="viewer">檢視者</option><option value="admin">管理者</option>
         </select>
@@ -3315,20 +3365,22 @@ async function __renderUserList(msg) {
       <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">管理者：完整編輯權限｜檢視者：僅能瀏覽與匯出，無法儲存變更</div>
     </div>`;
   const body2 = document.getElementById('umBody');
-  body2.querySelectorAll('tr[data-user]').forEach(tr => {
+  body2.querySelectorAll('tr[data-email]').forEach(tr => {
     tr.querySelector('.um-save').addEventListener('click', async () => {
-      const r = await __api({ action: 'saveUser', user2: tr.dataset.user, name2: tr.querySelector('.um-name').value, pass2: tr.querySelector('.um-pass').value, role2: tr.querySelector('.um-role').value });
-      __renderUserList(r.ok ? `已更新「${tr.dataset.user}」` : '❌ ' + (r.error || '更新失敗'));
+      const r = await __api({ action: 'saveWhitelist', email: tr.dataset.email, name: tr.querySelector('.um-name').value, role: tr.querySelector('.um-role').value, disabled: !tr.querySelector('.um-enabled').checked });
+      __renderUserList(r.ok ? `已更新「${tr.dataset.email}」` : '❌ ' + (r.error || '更新失敗'));
     });
     tr.querySelector('.um-del').addEventListener('click', async () => {
-      if (!confirm(`確定要刪除帳號「${tr.dataset.user}」？`)) return;
-      const r = await __api({ action: 'deleteUser', user2: tr.dataset.user });
-      __renderUserList(r.ok ? `已刪除「${tr.dataset.user}」` : '❌ ' + (r.error || '刪除失敗'));
+      if (!confirm(`確定要把「${tr.dataset.email}」移出白名單？移除後對方就無法登入。`)) return;
+      const r = await __api({ action: 'deleteWhitelist', email: tr.dataset.email });
+      __renderUserList(r.ok ? `已移除「${tr.dataset.email}」` : '❌ ' + (r.error || '移除失敗'));
     });
   });
   body2.querySelector('#umAdd').addEventListener('click', async () => {
-    const r = await __api({ action: 'saveUser', user2: document.getElementById('umNewUser').value, name2: document.getElementById('umNewName').value, pass2: document.getElementById('umNewPass').value, role2: document.getElementById('umNewRole').value });
-    __renderUserList(r.ok ? '已新增帳號' : '❌ ' + (r.error || '新增失敗'));
+    const email = document.getElementById('umNewEmail').value.trim();
+    if (!email) { alert('請輸入 Google email'); return; }
+    const r = await __api({ action: 'saveWhitelist', email: email, name: document.getElementById('umNewName').value, role: document.getElementById('umNewRole').value, disabled: false });
+    __renderUserList(r.ok ? '已新增白名單' : '❌ ' + (r.error || '新增失敗'));
   });
 }
 
@@ -3336,8 +3388,15 @@ function __showLogin(msg) {
   document.getElementById('loadingOverlay').style.display = 'none';
   document.getElementById('loginOverlay').style.display = 'flex';
   if (msg) document.getElementById('loginErr').textContent = msg;
-  setTimeout(() => document.getElementById('loginUser').focus(), 50);
+  __initGoogleBtn();
 }
+document.getElementById('pwToggleLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  const box = document.getElementById('pwLoginBox');
+  const link = document.getElementById('pwToggleLink');
+  if (box.style.display === 'none') { box.style.display = ''; link.textContent = '收起帳號密碼登入'; setTimeout(() => document.getElementById('loginUser').focus(), 30); }
+  else { box.style.display = 'none'; link.textContent = '改用帳號密碼登入'; }
+});
 let __loadAttempt = 0;
 async function __loadAndStart(isRetry) {
   const ov = document.getElementById('loadingOverlay');
