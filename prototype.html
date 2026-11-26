@@ -7040,7 +7040,13 @@ function _buildYearEndBoxHtml(){
     { k:'perfbond_receipt',icon:'🧾', label:'需取得履保金收據' },
   ];
   const esc = s => String(s||'').replace(/</g,'&lt;');
-  const nameOf = it => `${esc(it.c.shortName||'—')}｜${esc(it.o.productName||'（未命名）')}`;
+  const nameOf = it => {
+    const o = it.o;
+    if (o.caseName && o.caseName.trim()) return esc(o.caseName.trim());   // ① 優先：採購案名稱
+    const k = caseOfOrder(o.id);                                          // ② 其次：綁在一起的購案
+    if (k && k.name) return esc(k.name);
+    return `${esc(it.c.shortName||'—')}｜${esc(it.o.productName||'（未命名）')}`;  // ③ 退路
+  };
   let rows = GROUPS.map(g => {
     const items = list.filter(it => it.miss.includes(g.k));
     if (!items.length) return '';
