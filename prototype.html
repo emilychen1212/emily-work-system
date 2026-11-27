@@ -7064,7 +7064,7 @@ function _buildYearEndBoxHtml(){
     return `<div class="ye-row"><div class="ye-row-h"><span class="ye-ic">${g.icon}</span>${g.label}<span class="ye-cnt">${items.length}</span></div><div class="ye-chips">${chips}</div></div>`;
   }).join('');
   const okCount = list.filter(it => !it.miss.length).length;
-  if (okCount) rows += `<div class="ye-row ye-ok"><div class="ye-row-h"><span class="ye-ic">✓</span>其餘資料齊全<span class="ye-cnt">${okCount}</span></div></div>`;
+  if (okCount) rows += `<div class="ye-row ye-ok"><div class="ye-row-h"><span class="ye-ic">✓</span>其餘資料齊全，等待新進度<span class="ye-cnt">${okCount}</span></div></div>`;
   if (!total) rows = `<div class="ye-empty">目前沒有在議價程序中的訂單 🎉</div>`;
   return `<div class="ye-box"><div class="ye-title">🏁 年底議價盯辦 — 議價程序中 <b>${total}</b> 件　<span class="ye-sub">（依議價時間先後）</span></div>${rows}</div>`;
 }
